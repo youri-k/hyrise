@@ -51,6 +51,15 @@ target_link_libraries(
     hyriseBenchmarkLib
 )
 
+# Numa TPCH benchmark
+add_executable(numaBenchmarkTPCH numa_benchmark_tpch_main.cpp)
+target_link_libraries(
+    numaBenchmarkTPCH
+
+    hyrise
+    hyriseBenchmarkLib
+)
+
 # Configure hyriseBenchmarkTPCH
 add_executable(hyriseBenchmarkTPCH tpch_benchmark.cpp)
 target_link_libraries(

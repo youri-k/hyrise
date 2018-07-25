@@ -26,6 +26,9 @@ set(
     benchmark_runner.hpp
     benchmark_utils.cpp
     benchmark_utils.hpp
+
+    numa_benchmark_runner.cpp
+    numa_benchmark_runner.hpp
 )
 
 
