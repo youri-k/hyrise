@@ -39,6 +39,8 @@ class NumaBenchmarkRunner {
   void _benchmark_individual_queries();
 
   void _execute_query(const NamedQuery& named_query);
+  Duration _execute_query_numa(const NamedQuery& named_query);
+
   // Create a report in roughly the same format as google benchmarks do when run with --benchmark_format=json
   void _create_report(std::ostream& stream) const;
 

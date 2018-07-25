@@ -30,6 +30,7 @@ NumaBenchmarkRunner::NumaBenchmarkRunner(const BenchmarkConfig& config, const Na
   // Initialise the scheduler if the benchmark was requested to run multi-threaded
   if (config.enable_scheduler) {
     config.out << "- Multi-threaded Topology:" << std::endl;
+    Topology::use_numa_topology(config.available_cores);
     Topology::get().print(config.out);
 
     const auto scheduler = std::make_shared<NodeQueueScheduler>();
@@ -122,14 +123,16 @@ void NumaBenchmarkRunner::_benchmark_individual_queries() {
     const auto& name = named_query.first;
     _config.out << "- Benchmarking Query " << name << std::endl;
 
-    BenchmarkState state{_config.max_num_query_runs, _config.max_duration};
-    while (state.keep_running()) {
-      _execute_query(named_query);
-    }
+    // BenchmarkState state{_config.max_num_query_runs, _config.max_duration};
+    // while (state.keep_running()) {
+    //   _execute_query(named_query);
+    // }
+
+    const auto duration = _execute_query_numa(named_query);
 
     QueryBenchmarkResult result;
-    result.num_iterations = state.num_iterations;
-    result.duration = state.end - state.begin;
+    result.num_iterations = _config.query_runs;
+    result.duration = duration;
 
     _query_results_by_query_name.emplace(name, result);
   }
@@ -154,6 +157,28 @@ void NumaBenchmarkRunner::_execute_query(const NamedQuery& named_query) {
       _query_plans.emplace(name, plans);
     }
   }
+}
+
+Duration NumaBenchmarkRunner::_execute_query_numa(const NamedQuery& named_query) {
+  const auto& sql = named_query.second;
+
+  auto tasks = std::vector<std::shared_ptr<OperatorTask>>();
+
+  for (auto i = size_t{0} ; i < _config.query_runs ; ++i) {
+    auto pipeline = SQLPipelineBuilder{sql}.with_mvcc(_config.use_mvcc).create_pipeline();
+
+    for (auto task_set : pipeline.get_tasks()) {
+      for (auto task : task_set) {
+        tasks.emplace_back(std::move(task));
+      }
+    }
+  }
+
+  const auto query_benchmark_begin = std::chrono::steady_clock::now();
+  CurrentScheduler::schedule_and_wait_for_tasks(tasks);
+  const auto query_benchmark_end = std::chrono::steady_clock::now();
+
+  return query_benchmark_end - query_benchmark_begin;
 }
 
 void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
@@ -314,7 +339,7 @@ cxxopts::Options NumaBenchmarkRunner::get_basic_cli_options(const std::string& b
   cli_options.add_options()
     ("help", "print this help message")
     ("v,verbose", "Print log messages", cxxopts::value<bool>()->default_value("false"))
-    ("r,runs", "Maximum number of runs of a single query(set)", cxxopts::value<size_t>()->default_value("1000")) // NOLINT
+    ("r,runs", "Number of runs of a single query", cxxopts::value<size_t>()->default_value("10")) // NOLINT
     ("c,chunk_size", "ChunkSize, default is 2^32-1", cxxopts::value<ChunkOffset>()->default_value(std::to_string(Chunk::MAX_SIZE))) // NOLINT
     ("t,time", "Maximum seconds that a query(set) is run", cxxopts::value<size_t>()->default_value("5")) // NOLINT
     ("o,output", "File to output results to, don't specify for stdout", cxxopts::value<std::string>()->default_value("")) // NOLINT
@@ -322,6 +347,7 @@ cxxopts::Options NumaBenchmarkRunner::get_basic_cli_options(const std::string& b
     ("e,encoding", "Specify Chunk encoding as a string or as a JSON config file (for more detailed configuration, see below). String options: " + encoding_strings_option, cxxopts::value<std::string>()->default_value("Dictionary"))  // NOLINT
     ("compression", "Specify vector compression as a string. Options: " + compression_strings_option, cxxopts::value<std::string>()->default_value(""))  // NOLINT
     ("scheduler", "Enable or disable the scheduler", cxxopts::value<bool>()->default_value("false")) // NOLINT
+    ("cores", "Number of used cores when scheduler is enabled (0 equals all available cores)", cxxopts::value<size_t>()->default_value("0")) // NOLINT
     ("mvcc", "Enable MVCC", cxxopts::value<bool>()->default_value("false")) // NOLINT
     ("visualize", "Create a visualization image of one LQP and PQP for each query", cxxopts::value<bool>()->default_value("false")); // NOLINT
   // clang-format on
@@ -343,7 +369,7 @@ nlohmann::json NumaBenchmarkRunner::create_context(const BenchmarkConfig& config
       {"encoding", config.encoding_config.to_json()},
       {"benchmark_mode",
        config.benchmark_mode == BenchmarkMode::IndividualQueries ? "IndividualQueries" : "PermutedQuerySets"},
-      {"max_runs", config.max_num_query_runs},
+      {"runs", config.query_runs},
       {"max_duration (s)", std::chrono::duration_cast<std::chrono::seconds>(config.max_duration).count()},
       {"using_mvcc", config.use_mvcc == UseMvcc::Yes},
       {"using_visualization", config.enable_visualization},

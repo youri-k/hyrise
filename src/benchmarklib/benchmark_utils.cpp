@@ -63,19 +63,21 @@ bool BenchmarkState::keep_running() {
 }
 
 BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool verbose, const ChunkOffset chunk_size,
-                                 const EncodingConfig encoding_type, const size_t max_num_query_runs,
+                                 const EncodingConfig encoding_type, const size_t max_num_query_runs, const size_t query_runs,
                                  const Duration& max_duration, const UseMvcc use_mvcc,
                                  const std::optional<std::string>& output_file_path, const bool enable_scheduler,
-                                 const bool enable_visualization, std::ostream& out)
+                                 const size_t available_cores, const bool enable_visualization, std::ostream& out)
     : benchmark_mode(benchmark_mode),
       verbose(verbose),
       chunk_size(chunk_size),
       encoding_config(encoding_type),
       max_num_query_runs(max_num_query_runs),
+      query_runs(query_runs),
       max_duration(max_duration),
       use_mvcc(use_mvcc),
       output_file_path(output_file_path),
       enable_scheduler(enable_scheduler),
+      available_cores(available_cores),
       enable_visualization(enable_visualization),
       out(out) {}
 
@@ -123,7 +125,9 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
   out << "- MVCC is " << (enable_mvcc ? "enabled" : "disabled") << std::endl;
 
   const auto enable_scheduler = json_config.value("scheduler", default_config.enable_scheduler);
-  out << "- Running in " + std::string(enable_scheduler ? "multi" : "single") + "-threaded mode" << std::endl;
+  const auto available_cores = json_config.value("cores", default_config.available_cores);
+  const auto core_info = enable_scheduler ? std::string(" using " + std::string((available_cores == 0) ? "all available" : std::to_string(available_cores)) + " cores") : "";
+  out << "- Running in " + std::string(enable_scheduler ? "multi" : "single") + "-threaded mode" << core_info << std::endl;
 
   // Determine benchmark and display it
   const auto benchmark_mode_str = json_config.value("mode", "IndividualQueries");
@@ -161,7 +165,10 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
   out << "- Chunk size is " << chunk_size << std::endl;
 
   const auto max_runs = json_config.value("runs", default_config.max_num_query_runs);
-  out << "- Max runs per query is " << max_runs << std::endl;
+  out << "- (disabled) Max runs per query is " << max_runs << std::endl;
+
+  const auto query_runs = json_config.value("runs", default_config.query_runs);
+  out << "- Fixed runs per query is " << query_runs << std::endl;
 
   const auto default_duration_seconds = std::chrono::duration_cast<std::chrono::seconds>(default_config.max_duration);
   const auto max_duration = json_config.value("time", default_duration_seconds.count());
@@ -169,8 +176,8 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
   const Duration timeout_duration = std::chrono::duration_cast<opossum::Duration>(std::chrono::seconds{max_duration});
 
   return BenchmarkConfig{
-      benchmark_mode, verbose,          chunk_size,       *encoding_config,     max_runs, timeout_duration,
-      use_mvcc,       output_file_path, enable_scheduler, enable_visualization, out};
+      benchmark_mode, verbose,          chunk_size,       *encoding_config, max_runs, query_runs, timeout_duration,
+      use_mvcc,       output_file_path, enable_scheduler, available_cores, enable_visualization, out};
 }
 
 BenchmarkConfig CLIConfigParser::parse_basic_cli_options(const cxxopts::ParseResult& parse_result) {
@@ -188,6 +195,7 @@ nlohmann::json CLIConfigParser::basic_cli_options_to_json(const cxxopts::ParseRe
   json_config.emplace("encoding", parse_result["encoding"].as<std::string>());
   json_config.emplace("compression", parse_result["compression"].as<std::string>());
   json_config.emplace("scheduler", parse_result["scheduler"].as<bool>());
+  json_config.emplace("cores", parse_result["cores"].as<size_t>());
   json_config.emplace("mvcc", parse_result["mvcc"].as<bool>());
   json_config.emplace("visualize", parse_result["visualize"].as<bool>());
   json_config.emplace("output", parse_result["output"].as<std::string>());
