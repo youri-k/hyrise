@@ -124,3 +124,39 @@ target_include_directories(
 )
 
 target_link_libraries(pqxx PUBLIC ${PQ_LIBRARY})
+
+# Build pcm
+add_library(
+    pcm
+
+    STATIC
+
+    pcm/msr.cpp
+    pcm/cpucounters.cpp
+    pcm/pci.cpp
+    pcm/client_bw.cpp
+    pcm/utils.cpp
+    pcm/pcm.cpp
+    pcm/pcm-numa.cpp
+    pcm/pcm-power.cpp
+    pcm/pcm-sensor.cpp
+    pcm/pcm-msr.cpp
+    pcm/pcm-memory.cpp
+    pcm/pcm-tsx.cpp
+    pcm/pcm-pcie.cpp
+    pcm/pcm-core.cpp
+    pcm/pcm-iio.cpp
+    pcm/pcm-lspci.cpp
+)
+
+target_compile_options(
+    pcm
+    PRIVATE
+    -O3 -std=c++11 -DHAVE_STD_REGEX -DNDEBUG
+)
+
+target_include_directories(
+    pcm
+    PUBLIC
+    pcm
+)
