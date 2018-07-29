@@ -21,6 +21,8 @@
 #include "tpch/tpch_db_generator.hpp"
 #include "tpch/tpch_queries.hpp"
 
+#include "cpucounters.h" // PCM lib
+
 /**
  * This benchmark measures Hyrise's performance executing the TPC-H *queries*, it doesn't (yet) support running the
  * TPC-H *benchmark* exactly as it is specified.
@@ -88,6 +90,17 @@ int main(int argc, char* argv[]) {
   }
   config->out << "]" << std::endl;
 
+  // Initialize PCM lib
+  config->out << std::endl << "Initializing PCM lib" << std::endl;
+  PCM * pcm = PCM::getInstance();
+  PCM::ErrorCode returnResult = pcm->program();
+  if (returnResult != PCM::Success){
+    std::cerr << "PCM couldn't start" << std::endl;
+    std::cerr << "Error code: " << returnResult << std::endl;
+    exit(1);
+  }
+  config->out << std::endl;
+
   // Set up TPCH benchmark
   opossum::NamedQueries queries;
   queries.reserve(query_ids.size());
@@ -116,4 +129,8 @@ int main(int argc, char* argv[]) {
 
   // Run the benchmark
   opossum::NumaBenchmarkRunner(*config, queries, context).run();
+
+  // Deinitialize PCM lib (IMPORTANT!!)
+  config->out << std::endl << "Cleaning up PCM lib" << std::endl;
+  pcm->cleanup();
 }

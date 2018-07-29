@@ -16,6 +16,8 @@
 #include "storage/encoding_type.hpp"
 #include "utils/performance_warning.hpp"
 
+class SystemCounterState;
+
 namespace opossum {
 
 class NumaBenchmarkRunner {
@@ -43,6 +45,8 @@ class NumaBenchmarkRunner {
 
   // Create a report in roughly the same format as google benchmarks do when run with --benchmark_format=json
   void _create_report(std::ostream& stream) const;
+
+  void _save_qpi_utilization(QueryBenchmarkResult& result, const SystemCounterState& before, const SystemCounterState& after);
 
   // Get all the files/tables/queries from a given path
   static std::vector<std::string> _read_table_folder(const std::string& table_path);

@@ -38,6 +38,8 @@ std::ostream& get_out_stream(const bool verbose);
 struct QueryBenchmarkResult {
   size_t num_iterations = 0;
   Duration duration = Duration{};
+  std::vector<double> qpi_link_utilization_in = std::vector<double>{};
+  std::vector<double> qpi_link_utilization_out = std::vector<double>{};
 };
 
 using QueryID = size_t;

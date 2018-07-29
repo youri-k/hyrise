@@ -17,6 +17,8 @@
 #include "utils/load_table.hpp"
 #include "version.hpp"
 
+#include "cpucounters.h"
+
 namespace opossum {
 
 NumaBenchmarkRunner::NumaBenchmarkRunner(const BenchmarkConfig& config, const NamedQueries& queries,
@@ -128,11 +130,18 @@ void NumaBenchmarkRunner::_benchmark_individual_queries() {
     //   _execute_query(named_query);
     // }
 
+    SystemCounterState system_counter_state_before = getSystemCounterState();
+
     const auto duration = _execute_query_numa(named_query);
+
+    SystemCounterState system_counter_state_after = getSystemCounterState();
+
 
     QueryBenchmarkResult result;
     result.num_iterations = _config.query_runs;
     result.duration = duration;
+
+    _save_qpi_utilization(result, system_counter_state_before, system_counter_state_after);
 
     _query_results_by_query_name.emplace(name, result);
   }
@@ -199,6 +208,8 @@ void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
         {"avg_real_time_per_iteration", time_per_query},
         {"items_per_second", items_per_second},
         {"time_unit", "ns"},
+        {"qpi_link_utilization_in", query_result.qpi_link_utilization_in},
+        {"qpi_link_utilization_out", query_result.qpi_link_utilization_out},
     };
 
     benchmarks.push_back(benchmark);
@@ -207,6 +218,20 @@ void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
   nlohmann::json report{{"context", _context}, {"benchmarks", benchmarks}};
 
   stream << std::setw(2) << report << std::endl;
+}
+
+void NumaBenchmarkRunner::_save_qpi_utilization(QueryBenchmarkResult& result, const SystemCounterState& before, const SystemCounterState& after) {
+  PCM * pcm = PCM::getInstance();
+  auto number_of_sockets = pcm->getNumSockets();
+  auto links_per_socket = pcm->getQPILinksPerSocket();
+
+  for (auto socket = size_t{0}; socket < number_of_sockets; ++socket) {
+    for (auto link = size_t{0}; link < links_per_socket; ++link) {
+      // std::cout << "QPI Link speed for socket " << socket << " link " << link << ": " << pcm->getQPILinkSpeed(socket, link) << std::endl;
+      result.qpi_link_utilization_in.push_back(getIncomingQPILinkUtilization(socket, link, before, after));
+      result.qpi_link_utilization_out.push_back(getOutgoingQPILinkUtilization(socket, link, before, after));
+    }
+  }
 }
 
 NumaBenchmarkRunner NumaBenchmarkRunner::create(const BenchmarkConfig& config, const std::string& table_path,
