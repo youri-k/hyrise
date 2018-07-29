@@ -210,9 +210,9 @@ void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
         {"time_unit", "ns"},
         {"qpi_link_utilization_in", query_result.qpi_link_utilization_in},
         {"qpi_link_utilization_out", query_result.qpi_link_utilization_out},
-        {"qpi_all_link_bytes_in", result.qpi_all_link_bytes_in},
-        {"qpi_all_link_bytes_out", result.qpi_all_link_bytes_out},
-        {"qpi_to_mc_traffic_ratio", result.qpi_to_mc_traffic_ratio},
+        {"qpi_all_link_bytes_in", query_result.qpi_all_link_bytes_in},
+        {"qpi_all_link_bytes_out", query_result.qpi_all_link_bytes_out},
+        {"qpi_to_mc_traffic_ratio", query_result.qpi_to_mc_traffic_ratio},
     };
 
     benchmarks.push_back(benchmark);
@@ -224,9 +224,9 @@ void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
 }
 
 void NumaBenchmarkRunner::_save_qpi_utilization(QueryBenchmarkResult& result, const SystemCounterState& before, const SystemCounterState& after) {
-  PCM * pcm = PCM::getInstance();
-  auto number_of_sockets = pcm->getNumSockets();
-  auto links_per_socket = pcm->getQPILinksPerSocket();
+  // PCM * pcm = PCM::getInstance();
+  // auto number_of_sockets = pcm->getNumSockets();
+  // auto links_per_socket = pcm->getQPILinksPerSocket();
 
   // for (auto socket = size_t{0}; socket < number_of_sockets; ++socket) {
   //   for (auto link = size_t{0}; link < links_per_socket; ++link) {
