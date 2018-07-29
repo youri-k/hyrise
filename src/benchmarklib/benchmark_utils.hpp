@@ -40,6 +40,9 @@ struct QueryBenchmarkResult {
   Duration duration = Duration{};
   std::vector<double> qpi_link_utilization_in = std::vector<double>{};
   std::vector<double> qpi_link_utilization_out = std::vector<double>{};
+  uint64_t qpi_all_link_bytes_in = 0;
+  uint64_t qpi_all_link_bytes_out = 0;
+  double qpi_to_mc_traffic_ratio = 0.0;
 };
 
 using QueryID = size_t;
