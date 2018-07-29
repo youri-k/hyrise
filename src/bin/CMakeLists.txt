@@ -28,7 +28,6 @@ target_link_libraries(
     hyrisePlayground
     hyrise
     hyriseBenchmarkLib
-    pcm
 )
 
 # Configure tpchTableGenerator
