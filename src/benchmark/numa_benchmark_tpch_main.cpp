@@ -99,6 +99,8 @@ int main(int argc, char* argv[]) {
     std::cerr << "Error code: " << returnResult << std::endl;
     exit(1);
   }
+  auto number_of_sockets = pcm->getNumSockets();
+  auto links_per_socket = pcm->getQPILinksPerSocket();
   config->out << std::endl;
 
   // Set up TPCH benchmark
@@ -123,6 +125,10 @@ int main(int argc, char* argv[]) {
   config->out << "- ... done." << std::endl;
 
   auto context = opossum::NumaBenchmarkRunner::create_context(*config);
+
+  // Add NUMA-specific information
+  context.emplace("number_of_sockets", number_of_sockets);
+  context.emplace("links_per_socket", links_per_socket);
 
   // Add TPCH-specific information
   context.emplace("scale_factor", scale_factor);
