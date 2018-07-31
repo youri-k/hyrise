@@ -224,16 +224,21 @@ void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
 }
 
 void NumaBenchmarkRunner::_save_qpi_utilization(QueryBenchmarkResult& result, const SystemCounterState& before, const SystemCounterState& after) {
-  // PCM * pcm = PCM::getInstance();
-  // auto number_of_sockets = pcm->getNumSockets();
-  // auto links_per_socket = pcm->getQPILinksPerSocket();
+  const auto number_of_sockets = _context["number_of_sockets"];;
+  const auto links_per_socket = _context["links_per_socket"];
 
-  // for (auto socket = size_t{0}; socket < number_of_sockets; ++socket) {
-  //   for (auto link = size_t{0}; link < links_per_socket; ++link) {
-  //     result.qpi_link_utilization_in.push_back(getIncomingQPILinkUtilization(socket, link, before, after));
-  //     result.qpi_link_utilization_out.push_back(getOutgoingQPILinkUtilization(socket, link, before, after));
-  //   }
-  // }
+  for (auto socket = size_t{0}; socket < number_of_sockets; ++socket) {
+    auto qpi_link_utilization_in = std::vector<double>{};
+    auto qpi_link_utilization_out = std::vector<double>{};
+
+    for (auto link = size_t{0}; link < links_per_socket; ++link) {
+      qpi_link_utilization_in.push_back(getIncomingQPILinkUtilization(socket, link, before, after));
+      qpi_link_utilization_out.push_back(getOutgoingQPILinkUtilization(socket, link, before, after));
+    }
+
+    result.qpi_link_utilization_in.push_back(qpi_link_utilization_in);
+    result.qpi_link_utilization_out.push_back(qpi_link_utilization_out);
+  }
 
   result.qpi_all_link_bytes_in = getAllIncomingQPILinkBytes(before, after);
   result.qpi_all_link_bytes_out = getAllOutgoingQPILinkBytes(before, after);
