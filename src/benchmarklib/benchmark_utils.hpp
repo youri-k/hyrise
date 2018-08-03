@@ -43,6 +43,7 @@ struct QueryBenchmarkResult {
   uint64_t qpi_all_link_bytes_in = 0;
   uint64_t qpi_all_link_bytes_out = 0;
   double qpi_to_mc_traffic_ratio = 0.0;
+  std::vector<Duration> iteration_durations;
 };
 
 using QueryID = size_t;
@@ -60,12 +61,14 @@ struct BenchmarkState {
   bool keep_running();
 
   State state{State::NotStarted};
-  TimePoint begin = TimePoint{};
-  TimePoint end = TimePoint{};
+  TimePoint benchmark_begin = TimePoint{};
+  TimePoint iteration_begin = TimePoint{};
+  TimePoint benchmark_end = TimePoint{};
 
   size_t num_iterations = 0;
   size_t max_num_iterations;
   Duration max_duration;
+  std::vector<Duration> iteration_durations;
 };
 
 // View EncodingConfig::description to see format of encoding JSON
@@ -93,7 +96,7 @@ struct EncodingConfig {
 
 class BenchmarkTableEncoder {
  public:
-  static void encode(const std::string& table_name, std::shared_ptr<Table> table, const EncodingConfig& config);
+  static void encode(const std::string& table_name, const std::shared_ptr<Table>& table, const EncodingConfig& config);
 };
 
 // View BenchmarkConfig::description to see format of the JSON-version
