@@ -42,18 +42,21 @@ int main(int argc, char* argv[]) {
   // clang-format off
   cli_options.add_options()
     ("s,scale", "Database scale factor (1.0 ~ 1GB)", cxxopts::value<float>()->default_value("0.001"))
-    ("q,queries", "Specify queries to run, default is all that are supported", cxxopts::value<std::vector<opossum::QueryID>>()); // NOLINT
+    ("q,queries", "Specify queries to run, default is all that are supported", cxxopts::value<std::vector<opossum::QueryID>>()) // NOLINT
+    ("pcm", "Add PCM measurements (sudo needed)", cxxopts::value<bool>()->default_value("false")); // NOLINT
   // clang-format on
 
   std::unique_ptr<opossum::BenchmarkConfig> config;
   std::vector<opossum::QueryID> query_ids;
   float scale_factor;
+  bool pcm;
 
   if (opossum::CLIConfigParser::cli_has_json_config(argc, argv)) {
     // JSON config file was passed in
     const auto json_config = opossum::CLIConfigParser::parse_json_config_file(argv[1]);
     scale_factor = json_config.value("scale", 0.001f);
     query_ids = json_config.value("queries", std::vector<opossum::QueryID>());
+    pcm = json_config.value("pcm", false);
 
     config = std::make_unique<opossum::BenchmarkConfig>(
         opossum::CLIConfigParser::parse_basic_options_json_config(json_config));
@@ -71,6 +74,8 @@ int main(int argc, char* argv[]) {
     if (cli_parse_result.count("queries")) {
       query_ids = cli_parse_result["queries"].as<std::vector<opossum::QueryID>>();
     }
+
+    pcm = cli_parse_result["pcm"].as<bool>();
 
     scale_factor = cli_parse_result["scale"].as<float>();
 
@@ -90,20 +95,27 @@ int main(int argc, char* argv[]) {
   }
   config->out << "]" << std::endl;
 
-  // Initialize PCM lib
-  config->out << std::endl << "Initializing PCM lib" << std::endl;
-  PCM * pcm = PCM::getInstance();
-  // pcm->resetPMU();
-  // exit(0);
-  PCM::ErrorCode returnResult = pcm->program();
-  if (returnResult != PCM::Success){
-    std::cerr << "PCM couldn't start" << std::endl;
-    std::cerr << "Error code: " << returnResult << std::endl;
-    exit(1);
+  auto number_of_sockets = uint32_t{1};
+  auto links_per_socket = uint64_t{1};
+
+  PCM * pcmInstance = nullptr;
+
+  if (pcm) {
+    // Initialize PCM lib
+    config->out << std::endl << "Initializing PCM lib" << std::endl;
+    pcmInstance = PCM::getInstance();
+    // pcmInstance->resetPMU();
+    // exit(0);
+    PCM::ErrorCode returnResult = pcmInstance->program();
+    if (returnResult != PCM::Success){
+      std::cerr << "PCM couldn't start" << std::endl;
+      std::cerr << "Error code: " << returnResult << std::endl;
+      exit(1);
+    }
+    number_of_sockets = pcmInstance->getNumSockets();
+    links_per_socket = pcmInstance->getQPILinksPerSocket();
+    config->out << std::endl;
   }
-  auto number_of_sockets = pcm->getNumSockets();
-  auto links_per_socket = pcm->getQPILinksPerSocket();
-  config->out << std::endl;
 
   // Set up TPCH benchmark
   opossum::NamedQueries queries;
@@ -128,9 +140,11 @@ int main(int argc, char* argv[]) {
 
   auto context = opossum::NumaBenchmarkRunner::create_context(*config);
 
-  // Add NUMA-specific information
-  context.emplace("number_of_sockets", number_of_sockets);
-  context.emplace("links_per_socket", links_per_socket);
+  if (pcm) {
+    // Add NUMA-specific information
+    context.emplace("number_of_sockets", number_of_sockets);
+    context.emplace("links_per_socket", links_per_socket);
+  }
 
   // Add TPCH-specific information
   context.emplace("scale_factor", scale_factor);
@@ -138,7 +152,9 @@ int main(int argc, char* argv[]) {
   // Run the benchmark
   opossum::NumaBenchmarkRunner(*config, queries, context).run();
 
-  // Deinitialize PCM lib (IMPORTANT!!)
-  config->out << std::endl << "Cleaning up PCM lib" << std::endl;
-  pcm->cleanup();
+  if (pcm) {
+    // Deinitialize PCM lib (IMPORTANT!!)
+    config->out << std::endl << "Cleaning up PCM lib" << std::endl;
+    pcmInstance->cleanup();
+  }
 }

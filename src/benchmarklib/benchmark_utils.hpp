@@ -104,7 +104,7 @@ struct BenchmarkConfig {
   BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool verbose, const ChunkOffset chunk_size,
                   const EncodingConfig& encoding_config, const size_t max_num_query_runs, const size_t query_runs, const Duration& max_duration,
                   const UseMvcc use_mvcc, const std::optional<std::string>& output_file_path,
-                  const bool enable_scheduler, const size_t available_cores, const bool enable_visualization,
+                  const bool enable_scheduler, const bool enable_pcm, const size_t available_cores, const bool enable_visualization,
                   std::ostream& out);
 
   static BenchmarkConfig get_default_config();
@@ -119,6 +119,7 @@ struct BenchmarkConfig {
   const UseMvcc use_mvcc = UseMvcc::No;
   const std::optional<std::string> output_file_path = std::nullopt;
   const bool enable_scheduler = false;
+  const bool enable_pcm = false;
   const size_t available_cores = 0;
   const bool enable_visualization = false;
   std::ostream& out;

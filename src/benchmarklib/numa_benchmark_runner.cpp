@@ -181,11 +181,19 @@ void NumaBenchmarkRunner::_execute_query_numa(const NamedQuery& named_query) {
     // }
   }
 
-  SystemCounterState system_counter_state_before = getSystemCounterState();
+  SystemCounterState system_counter_state_before;
+  if (_context["using_pcm"]) {
+    system_counter_state_before = getSystemCounterState();
+  }
+
   const auto query_benchmark_begin = std::chrono::steady_clock::now();
   CurrentScheduler::schedule_and_wait_for_tasks(tasks);
   const auto query_benchmark_end = std::chrono::steady_clock::now();
-  SystemCounterState system_counter_state_after = getSystemCounterState();
+
+  SystemCounterState system_counter_state_after;
+  if (_context["using_pcm"]) {
+    system_counter_state_after = getSystemCounterState();
+  }
 
   const auto duration = query_benchmark_end - query_benchmark_begin;
 
@@ -193,7 +201,9 @@ void NumaBenchmarkRunner::_execute_query_numa(const NamedQuery& named_query) {
   result.num_iterations = _config.query_runs;
   result.duration = duration;
 
-  _save_qpi_utilization(result, system_counter_state_before, system_counter_state_after);
+  if (_context["using_pcm"]) {
+    _save_qpi_utilization(result, system_counter_state_before, system_counter_state_after);
+  }
 
   _query_results_by_query_name.emplace(name, result);
 }
@@ -418,6 +428,7 @@ nlohmann::json NumaBenchmarkRunner::create_context(const BenchmarkConfig& config
       {"using_visualization", config.enable_visualization},
       {"output_file_path", config.output_file_path ? *(config.output_file_path) : "stdout"},
       {"using_scheduler", config.enable_scheduler},
+      {"using_pcm", config.enable_pcm},
       {"cores", config.available_cores},
       {"verbose", config.verbose},
       {"GIT-HASH", GIT_HEAD_SHA1 + std::string(GIT_IS_DIRTY ? "-dirty" : "")}};
