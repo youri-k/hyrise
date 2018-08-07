@@ -93,6 +93,8 @@ int main(int argc, char* argv[]) {
   // Initialize PCM lib
   config->out << std::endl << "Initializing PCM lib" << std::endl;
   PCM * pcm = PCM::getInstance();
+  // pcm->resetPMU();
+  // exit(0);
   PCM::ErrorCode returnResult = pcm->program();
   if (returnResult != PCM::Success){
     std::cerr << "PCM couldn't start" << std::endl;
