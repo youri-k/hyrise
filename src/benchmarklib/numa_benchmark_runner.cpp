@@ -130,20 +130,7 @@ void NumaBenchmarkRunner::_benchmark_individual_queries() {
     //   _execute_query(named_query);
     // }
 
-    SystemCounterState system_counter_state_before = getSystemCounterState();
-
-    const auto duration = _execute_query_numa(named_query);
-
-    SystemCounterState system_counter_state_after = getSystemCounterState();
-
-
-    QueryBenchmarkResult result;
-    result.num_iterations = _config.query_runs;
-    result.duration = duration;
-
-    _save_qpi_utilization(result, system_counter_state_before, system_counter_state_after);
-
-    _query_results_by_query_name.emplace(name, result);
+    _execute_query_numa(named_query);
   }
 }
 
@@ -168,7 +155,8 @@ void NumaBenchmarkRunner::_execute_query(const NamedQuery& named_query) {
   }
 }
 
-Duration NumaBenchmarkRunner::_execute_query_numa(const NamedQuery& named_query) {
+void NumaBenchmarkRunner::_execute_query_numa(const NamedQuery& named_query) {
+  const auto& name = named_query.first;
   const auto& sql = named_query.second;
 
   auto tasks = std::vector<std::shared_ptr<OperatorTask>>();
@@ -181,13 +169,33 @@ Duration NumaBenchmarkRunner::_execute_query_numa(const NamedQuery& named_query)
         tasks.emplace_back(std::move(task));
       }
     }
+
+    // // If necessary, keep plans for visualization
+    // if (_config.enable_visualization) {
+    //   const auto query_plans_iter = _query_plans.find(name);
+    //   if (query_plans_iter == _query_plans.end()) {
+    //     Assert(pipeline.get_query_plans().size() == 1, "Expected exactly one SQLQueryPlan");
+    //     QueryPlans plans{pipeline.get_optimized_logical_plans(), pipeline.get_query_plans()};
+    //     _query_plans.emplace(name, plans);
+    //   }
+    // }
   }
 
+  SystemCounterState system_counter_state_before = getSystemCounterState();
   const auto query_benchmark_begin = std::chrono::steady_clock::now();
   CurrentScheduler::schedule_and_wait_for_tasks(tasks);
   const auto query_benchmark_end = std::chrono::steady_clock::now();
+  SystemCounterState system_counter_state_after = getSystemCounterState();
 
-  return query_benchmark_end - query_benchmark_begin;
+  const auto duration = query_benchmark_end - query_benchmark_begin;
+
+  QueryBenchmarkResult result;
+  result.num_iterations = _config.query_runs;
+  result.duration = duration;
+
+  _save_qpi_utilization(result, system_counter_state_before, system_counter_state_after);
+
+  _query_results_by_query_name.emplace(name, result);
 }
 
 void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
