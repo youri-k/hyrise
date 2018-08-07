@@ -43,6 +43,8 @@ struct QueryBenchmarkResult {
   uint64_t qpi_all_link_bytes_in = 0;
   uint64_t qpi_all_link_bytes_out = 0;
   double qpi_to_mc_traffic_ratio = 0.0;
+  double cycles_lost_due_l2_cache_misses = 0.0;
+  double cycles_lost_due_l3_cache_misses = 0.0;
   std::vector<Duration> iteration_durations;
 };
 

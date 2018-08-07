@@ -232,6 +232,8 @@ void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
         {"qpi_all_link_bytes_in", query_result.qpi_all_link_bytes_in},
         {"qpi_all_link_bytes_out", query_result.qpi_all_link_bytes_out},
         {"qpi_to_mc_traffic_ratio", query_result.qpi_to_mc_traffic_ratio},
+        {"cycles_lost_due_l2_cache_misses", query_result.cycles_lost_due_l2_cache_misses},
+        {"cycles_lost_due_l3_cache_misses", query_result.cycles_lost_due_l3_cache_misses},
     };
 
     benchmarks.push_back(benchmark);
@@ -259,9 +261,12 @@ void NumaBenchmarkRunner::_save_qpi_utilization(QueryBenchmarkResult& result, co
     result.qpi_link_utilization_out.push_back(qpi_link_utilization_out);
   }
 
+
   result.qpi_all_link_bytes_in = getAllIncomingQPILinkBytes(before, after);
   result.qpi_all_link_bytes_out = getAllOutgoingQPILinkBytes(before, after);
   result.qpi_to_mc_traffic_ratio = getQPItoMCTrafficRatio(before, after);
+  result.cycles_lost_due_l2_cache_misses = getCyclesLostDueL2CacheMisses(before, after);
+  result.cycles_lost_due_l3_cache_misses = getCyclesLostDueL3CacheMisses(before, after);
 }
 
 NumaBenchmarkRunner NumaBenchmarkRunner::create(const BenchmarkConfig& config, const std::string& table_path,
