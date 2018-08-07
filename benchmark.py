@@ -13,17 +13,19 @@ OUTPUT_FILE = 'current_run.out'
 NAME_FILE = 'current_run.name'
 
 
-SCALE = 0.1
+# SCALE = 0.1
+SCALE = 1
 # ITERATIONS_PER_QUERY = 300
 QUERY_RUNS_PER_CORE = 3
 ITERATIONS_OVERALL = 3
 
-APPENDIX = ''
+APPENDIX = '_original'
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-RESULT_DIR_NAME = 'tpch_scale' + str(SCALE) + '_runspercore' + str(QUERY_RUNS_PER_CORE) + APPENDIX + '_' + timestamp
+RESULT_DIR_NAME = 'tpch3_scale' + str(SCALE) + '_runspercore' + str(QUERY_RUNS_PER_CORE) + APPENDIX + '_' + timestamp
 RESULT_DIR = os.path.join(RESULT_DIR_BASE, RESULT_DIR_NAME)
 
 core_counts = list(range(80, 0, -5)) + [1, 0]
+# core_counts = list(range(20, -1, -1))
 # core_counts = [10]
 
 # [print(c) for c in core_counts]
@@ -67,6 +69,7 @@ for iteration in range(ITERATIONS_OVERALL):
                 '--runs', str(runs_per_query),
                 '--scheduler=' + use_scheduler,
                 '--cores', str(core_count),
+                '-q', '3',
                 # '-q', '1', '-q', '3', '-q', '6', '-q', '7', '-q', '10', '-q', '13',
                 ]
             run(args, cwd=CWD, stdout=output, stderr=output)
