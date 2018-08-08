@@ -270,32 +270,37 @@ std::shared_ptr<const Table> Aggregate::_on_execute() {
   It is gradually built by visitors, one for each group column.
   */
 
-  // Allocate a temporary memory buffer, for more details see aggregate.hpp
-  size_t needed_size_per_aggregate_key =
-      aligned_size<AggregateKey>() + _groupby_column_ids.size() * aligned_size<AggregateKeyEntry>();
-  size_t needed_size = aligned_size<KeysPerChunk>() + input_table->chunk_count() * aligned_size<AggregateKeys>() +
-                       input_table->row_count() * needed_size_per_aggregate_key;
-
-  auto temp_buffer = boost::container::pmr::monotonic_buffer_resource(needed_size);
-  auto allocator = AggregateKeysAllocator{PolymorphicAllocator<AggregateKeys>{&temp_buffer}};
-  const auto start_next_buffer_size = temp_buffer.next_buffer_size();
+  const auto needed_size_per_aggregate_key = aligned_size<AggregateKey>() + _groupby_column_ids.size() * aligned_size<AggregateKeyEntry>();
+  // const auto needed_size_per_chunk = aligned_size<AggregateKeys>() + input_table->row_count() * needed_size_per_aggregate_key;
 
   // Create the actual data structure
-  auto keys_per_chunk = KeysPerChunk{allocator};
-  keys_per_chunk.reserve(input_table->chunk_count());
+  auto keys_per_chunk = KeysPerChunk{};
 
   for (ChunkID chunk_id{0}; chunk_id < input_table->chunk_count(); ++chunk_id) {
-    keys_per_chunk.emplace_back(input_table->get_chunk(chunk_id)->size(), AggregateKey(_groupby_column_ids.size()));
+    const auto chunk = input_table->get_chunk(chunk_id);
+
+    // Allocate a temporary memory buffer, for more details see aggregate.hpp
+    const auto needed_size = aligned_size<AggregateKeys>() + chunk->size() * needed_size_per_aggregate_key;
+    auto temp_buffer = boost::container::pmr::monotonic_buffer_resource(needed_size, chunk->get_allocator().resource());
+    auto allocator = AggregateKeyAllocator{PolymorphicAllocator<AggregateKey>{&temp_buffer}};
+    // const auto start_next_buffer_size = temp_buffer.next_buffer_size();
+
+    keys_per_chunk.push_back(AggregateKeys(chunk->size(), AggregateKey(_groupby_column_ids.size()), allocator));
+    // keys_per_chunk.emplace_back(chunk->size(), AggregateKey(_groupby_column_ids.size()), allocator);
+
+    // const auto start_next_buffer_size2 = temp_buffer.next_buffer_size();
+
+    // // Make sure that we did not have to allocate more memory than originally computed
+    // if (temp_buffer.next_buffer_size() != (start_next_buffer_size) * 2) {
+    //   std::cerr << (start_next_buffer_size) * 2 << " - " << start_next_buffer_size2 << std::endl;
+    //   // The buffer sizes are increasing when the current buffer is full. We can use this to make sure that we allocated
+    //   // enough space from the beginning on. It would be more intuitive to compare current_buffer(), but this seems to
+    //   // be broken in boost: https://svn.boost.org/trac10/ticket/13639#comment:1
+    //   PerformanceWarning(std::string("needed_size ") + std::to_string(needed_size) +
+    //                      " was not enough and a second buffer for this chunk was needed");
+    // }
   }
 
-  // Make sure that we did not have to allocate more memory than originally computed
-  if (temp_buffer.next_buffer_size() != start_next_buffer_size) {
-    // The buffer sizes are increasing when the current buffer is full. We can use this to make sure that we allocated
-    // enough space from the beginning on. It would be more intuitive to compare current_buffer(), but this seems to
-    // be broken in boost: https://svn.boost.org/trac10/ticket/13639#comment:1
-    PerformanceWarning(std::string("needed_size ") + std::to_string(needed_size) +
-                       " was not enough and a second buffer was needed");
-  }
 
   // Now that we have the data structures in place, we can start the actual work
   std::vector<std::shared_ptr<AbstractTask>> jobs;

@@ -74,7 +74,7 @@ using KeysPerChunk = pmr_vector<AggregateKeys>;
 // reallocations, this might make less sense.
 // We use boost over std because libc++ does not yet (July 2018) support monotonic_buffer_resource:
 // https://libcxx.llvm.org/ts1z_status.html
-using AggregateKeysAllocator = boost::container::scoped_allocator_adaptor<PolymorphicAllocator<AggregateKeys>>;
+using AggregateKeyAllocator = boost::container::scoped_allocator_adaptor<PolymorphicAllocator<AggregateKey>>;
 
 /**
  * Types that are used for the special COUNT(*) and DISTINCT implementations
