@@ -1,4 +1,4 @@
-#include "strategy_base_test.hpp"
+#include "rule_base_test.hpp"
 
 #include <memory>
 #include <string>
@@ -6,11 +6,11 @@
 
 #include "logical_query_plan/abstract_lqp_node.hpp"
 #include "logical_query_plan/logical_plan_root_node.hpp"
-#include "optimizer/strategy/abstract_rule.hpp"
+#include "optimizer/rules/abstract_rule.hpp"
 
 namespace opossum {
 
-std::shared_ptr<AbstractLQPNode> StrategyBaseTest::apply_rule(const std::shared_ptr<AbstractRule>& rule,
+std::shared_ptr<AbstractLQPNode> RuleBaseTest::apply_rule(const std::shared_ptr<AbstractRule>& rule,
                                                               const std::shared_ptr<AbstractLQPNode>& input) {
   // Add explicit root node
   const auto root_node = LogicalPlanRootNode::make();

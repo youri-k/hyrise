@@ -7,16 +7,16 @@
 #include "logical_query_plan/projection_node.hpp"
 #include "logical_query_plan/sort_node.hpp"
 #include "logical_query_plan/union_node.hpp"
-#include "optimizer/strategy/column_pruning_rule.hpp"
+#include "optimizer/rules/column_pruning_rule.hpp"
 
-#include "strategy_base_test.hpp"
+#include "rule_base_test.hpp"
 #include "testing_assert.hpp"
 
 using namespace opossum::expression_functional;  // NOLINT
 
 namespace opossum {
 
-class ColumnPruningRuleTest : public StrategyBaseTest {
+class ColumnPruningRuleTest : public RuleBaseTest {
  public:
   void SetUp() override {
     node_a = MockNode::make(

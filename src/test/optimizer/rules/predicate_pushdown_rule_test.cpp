@@ -11,15 +11,15 @@
 #include "logical_query_plan/projection_node.hpp"
 #include "logical_query_plan/sort_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
-#include "optimizer/strategy/predicate_pushdown_rule.hpp"
-#include "optimizer/strategy/strategy_base_test.hpp"
+#include "optimizer/rules/predicate_pushdown_rule.hpp"
+#include "optimizer/rules/rule_base_test.hpp"
 #include "types.hpp"
 
 using namespace opossum::expression_functional;  // NOLINT
 
 namespace opossum {
 
-class PredicatePushdownRuleTest : public StrategyBaseTest {
+class PredicatePushdownRuleTest : public RuleBaseTest {
  protected:
   void SetUp() override {
     StorageManager::get().add_table("a", load_table("src/test/tables/int_float.tbl", Chunk::MAX_SIZE));
@@ -69,7 +69,7 @@ TEST_F(PredicatePushdownRuleTest, SimpleLiteralJoinPushdownTest) {
   auto predicate_node_0 = std::make_shared<PredicateNode>(greater_than_(_a_a, 10));
   predicate_node_0->set_left_input(join_node);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node_0);
 
   EXPECT_EQ(reordered, join_node);
   EXPECT_EQ(reordered->left_input(), predicate_node_0);
@@ -85,7 +85,7 @@ TEST_F(PredicatePushdownRuleTest, SimpleOneSideJoinPushdownTest) {
   auto predicate_node_0 = std::make_shared<PredicateNode>(greater_than_(_a_a, _a_b));
   predicate_node_0->set_left_input(join_node);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node_0);
 
   EXPECT_EQ(reordered, join_node);
   EXPECT_EQ(reordered->left_input(), predicate_node_0);
@@ -101,7 +101,7 @@ TEST_F(PredicatePushdownRuleTest, SimpleBothSideJoinPushdownTest) {
   auto predicate_node_0 = std::make_shared<PredicateNode>(greater_than_(_a_a, _b_b));
   predicate_node_0->set_left_input(join_node);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node_0);
 
   EXPECT_EQ(reordered, predicate_node_0);
   EXPECT_EQ(reordered->left_input(), join_node);
@@ -117,7 +117,7 @@ TEST_F(PredicatePushdownRuleTest, SimpleSortPushdownTest) {
   auto predicate_node = std::make_shared<PredicateNode>(greater_than_(_a_a, _a_b));
   predicate_node->set_left_input(sort_node);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node);
 
   EXPECT_EQ(reordered, sort_node);
   EXPECT_EQ(reordered->left_input(), predicate_node);
@@ -142,9 +142,9 @@ TEST_F(PredicatePushdownRuleTest, ComplexBlockingPredicatesPushdownTest) {
   auto predicate_node_2 = std::make_shared<PredicateNode>(greater_than_(_c_a, 100));
   predicate_node_2->set_left_input(predicate_node_1);
 
-  auto reordered0 = StrategyBaseTest::apply_rule(_rule, predicate_node_2);
-  auto reordered1 = StrategyBaseTest::apply_rule(_rule, reordered0);
-  auto reordered = StrategyBaseTest::apply_rule(_rule, reordered1);
+  auto reordered0 = RuleBaseTest::apply_rule(_rule, predicate_node_2);
+  auto reordered1 = RuleBaseTest::apply_rule(_rule, reordered0);
+  auto reordered = RuleBaseTest::apply_rule(_rule, reordered1);
 
   EXPECT_EQ(reordered, predicate_node_0);
   EXPECT_EQ(reordered->left_input(), join_node_ab);
@@ -162,7 +162,7 @@ TEST_F(PredicatePushdownRuleTest, AllowedValuePredicatePushdownThroughProjection
   auto predicate_node = std::make_shared<PredicateNode>(greater_than_(_a_a, value_(4)));
   predicate_node->set_left_input(_projection_pushdown_node);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node);
 
   EXPECT_EQ(reordered, _projection_pushdown_node);
   EXPECT_EQ(reordered->left_input(), predicate_node);
@@ -175,7 +175,7 @@ TEST_F(PredicatePushdownRuleTest, AllowedColumnPredicatePushdownThroughProjectio
   auto predicate_node = std::make_shared<PredicateNode>(greater_than_(_a_a, _a_b));
   predicate_node->set_left_input(_projection_pushdown_node);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node);
 
   EXPECT_EQ(reordered, _projection_pushdown_node);
   EXPECT_EQ(reordered->left_input(), predicate_node);
@@ -188,7 +188,7 @@ TEST_F(PredicatePushdownRuleTest, ForbiddenPredicatePushdownThroughProjectionTes
   auto predicate_node = std::make_shared<PredicateNode>(greater_than_(_select_c, _a_b));
   predicate_node->set_left_input(_projection_pushdown_node);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node);
 
   EXPECT_EQ(reordered, predicate_node);
   EXPECT_EQ(reordered->left_input(), _projection_pushdown_node);
@@ -204,7 +204,7 @@ TEST_F(PredicatePushdownRuleTest, PredicatePushdownThroughOtherPredicateTest) {
   auto predicate_node_2 = std::make_shared<PredicateNode>(greater_than_(_a_a, _a_b));
   predicate_node_2->set_left_input(predicate_node_1);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node_2);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node_2);
 
   EXPECT_EQ(reordered, predicate_node_1);
   EXPECT_EQ(reordered->left_input(), _projection_pushdown_node);
@@ -228,9 +228,9 @@ TEST_F(PredicatePushdownRuleTest, PredicatePushdownThroughMultipleNodesTest) {
   auto root = std::make_shared<LogicalPlanRootNode>();
   root->set_left_input(predicate_node_2);
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, root);  // pushes predicate_node_1 under sort
-  reordered = StrategyBaseTest::apply_rule(_rule, root);  // pushes predicate_node_2 under sort
-  reordered = StrategyBaseTest::apply_rule(_rule, root);  // pushes predicate_node_2 under the projection
+  auto reordered = RuleBaseTest::apply_rule(_rule, root);  // pushes predicate_node_1 under sort
+  reordered = RuleBaseTest::apply_rule(_rule, root);  // pushes predicate_node_2 under sort
+  reordered = RuleBaseTest::apply_rule(_rule, root);  // pushes predicate_node_2 under the projection
 
   EXPECT_EQ(reordered->left_input(), sort_node);
   EXPECT_EQ(reordered->left_input()->left_input(), predicate_node_1);

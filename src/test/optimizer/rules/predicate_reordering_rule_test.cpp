@@ -16,8 +16,8 @@
 #include "logical_query_plan/sort_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
 #include "logical_query_plan/union_node.hpp"
-#include "optimizer/strategy/predicate_reordering_rule.hpp"
-#include "optimizer/strategy/strategy_base_test.hpp"
+#include "optimizer/rules/predicate_reordering_rule.hpp"
+#include "optimizer/rules/rule_base_test.hpp"
 #include "statistics/column_statistics.hpp"
 #include "statistics/table_statistics.hpp"
 #include "storage/storage_manager.hpp"
@@ -30,7 +30,7 @@ using namespace opossum::expression_functional;  // NOLINT
 
 namespace opossum {
 
-class PredicateReorderingTest : public StrategyBaseTest {
+class PredicateReorderingRuleTest : public RuleBaseTest {
  protected:
   void SetUp() override {
     const auto table = load_table("src/test/tables/int_int_int.tbl", Chunk::MAX_SIZE);
@@ -57,7 +57,7 @@ class PredicateReorderingTest : public StrategyBaseTest {
   std::shared_ptr<PredicateReorderingRule> _rule;
 };
 
-TEST_F(PredicateReorderingTest, SimpleReorderingTest) {
+TEST_F(PredicateReorderingRuleTest, SimpleReorderingTest) {
   // clang-format off
   const auto input_lqp =
   PredicateNode::make(greater_than_(a, 50),
@@ -69,11 +69,11 @@ TEST_F(PredicateReorderingTest, SimpleReorderingTest) {
       node));
   // clang-format on
 
-  const auto reordered_input_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  const auto reordered_input_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
   EXPECT_LQP_EQ(reordered_input_lqp, expected_lqp)
 }
 
-TEST_F(PredicateReorderingTest, MoreComplexReorderingTest) {
+TEST_F(PredicateReorderingRuleTest, MoreComplexReorderingTest) {
   // clang-format off
   const auto input_lqp =
   PredicateNode::make(greater_than_(a, 99),
@@ -87,11 +87,11 @@ TEST_F(PredicateReorderingTest, MoreComplexReorderingTest) {
         node)));
   // clang-format on
 
-  const auto reordered_input_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  const auto reordered_input_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
   EXPECT_LQP_EQ(reordered_input_lqp, expected_lqp)
 }
 
-TEST_F(PredicateReorderingTest, ComplexReorderingTest) {
+TEST_F(PredicateReorderingRuleTest, ComplexReorderingTest) {
   // clang-format off
   const auto input_lqp =
   PredicateNode::make(equals_(a, 42),
@@ -113,11 +113,11 @@ TEST_F(PredicateReorderingTest, ComplexReorderingTest) {
               node))))));
   // clang-format on
 
-  const auto reordered_input_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  const auto reordered_input_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
   EXPECT_LQP_EQ(reordered_input_lqp, expected_optimized_lqp);
 }
 
-TEST_F(PredicateReorderingTest, SameOrderingForStoredTable) {
+TEST_F(PredicateReorderingRuleTest, SameOrderingForStoredTable) {
   std::shared_ptr<Table> table_a = load_table("src/test/tables/int_float4.tbl", 2);
   StorageManager::get().add_table("table_a", std::move(table_a));
 
@@ -133,7 +133,7 @@ TEST_F(PredicateReorderingTest, SameOrderingForStoredTable) {
 
   predicate_node_1->get_statistics();
 
-  auto reordered = StrategyBaseTest::apply_rule(_rule, predicate_node_1);
+  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node_1);
 
   // Setup second LQP
   // predicate_node_3 -> predicate_node_2 -> stored_table_node
@@ -143,7 +143,7 @@ TEST_F(PredicateReorderingTest, SameOrderingForStoredTable) {
   auto predicate_node_3 = PredicateNode::make(less_than_(LQPColumnReference{stored_table_node, ColumnID{0}}, 20));
   predicate_node_3->set_left_input(predicate_node_2);
 
-  auto reordered_1 = StrategyBaseTest::apply_rule(_rule, predicate_node_3);
+  auto reordered_1 = RuleBaseTest::apply_rule(_rule, predicate_node_3);
 
   EXPECT_EQ(reordered, predicate_node_1);
   EXPECT_EQ(reordered->left_input(), predicate_node_0);
@@ -151,7 +151,7 @@ TEST_F(PredicateReorderingTest, SameOrderingForStoredTable) {
   EXPECT_EQ(reordered_1->left_input(), predicate_node_3);
 }
 
-TEST_F(PredicateReorderingTest, PredicatesAsRightInput) {
+TEST_F(PredicateReorderingRuleTest, PredicatesAsRightInput) {
   /**
    * Check that Reordering predicates works if a predicate chain is both on the left and right side of a node.
    * This is particularly interesting because the PredicateReorderingRule needs to re-attach the ordered chain of
@@ -193,7 +193,7 @@ TEST_F(PredicateReorderingTest, PredicatesAsRightInput) {
   cross_node->set_left_input(predicate_0);
   cross_node->set_right_input(predicate_2);
 
-  const auto reordered = StrategyBaseTest::apply_rule(_rule, cross_node);
+  const auto reordered = RuleBaseTest::apply_rule(_rule, cross_node);
 
   EXPECT_EQ(reordered, cross_node);
   EXPECT_EQ(reordered->left_input(), predicate_1);
@@ -204,7 +204,7 @@ TEST_F(PredicateReorderingTest, PredicatesAsRightInput) {
   EXPECT_EQ(reordered->right_input()->left_input()->left_input(), predicate_2);
 }
 
-TEST_F(PredicateReorderingTest, PredicatesWithMultipleOutputs) {
+TEST_F(PredicateReorderingRuleTest, PredicatesWithMultipleOutputs) {
   /**
    * If a PredicateNode has multiple outputs, it should not be considered for reordering
    */
@@ -237,7 +237,7 @@ TEST_F(PredicateReorderingTest, PredicatesWithMultipleOutputs) {
   predicate_a_node->set_left_input(predicate_b_node);
   predicate_b_node->set_left_input(table_node);
 
-  const auto reordered = StrategyBaseTest::apply_rule(_rule, union_node);
+  const auto reordered = RuleBaseTest::apply_rule(_rule, union_node);
 
   EXPECT_EQ(reordered, union_node);
   EXPECT_EQ(reordered->left_input(), predicate_a_node);

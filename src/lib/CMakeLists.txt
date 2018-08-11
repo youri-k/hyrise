@@ -251,24 +251,24 @@ set(
     statistics/chunk_statistics/range_filter.hpp
     optimizer/optimizer.cpp
     optimizer/optimizer.hpp
-    optimizer/strategy/abstract_rule.cpp
-    optimizer/strategy/abstract_rule.hpp
-    optimizer/strategy/column_pruning_rule.cpp
-    optimizer/strategy/column_pruning_rule.hpp
-    optimizer/strategy/chunk_pruning_rule.cpp
-    optimizer/strategy/chunk_pruning_rule.hpp
-    optimizer/strategy/constant_calculation_rule.cpp
-    optimizer/strategy/constant_calculation_rule.hpp
-    optimizer/strategy/index_scan_rule.cpp
-    optimizer/strategy/index_scan_rule.hpp
-    optimizer/strategy/join_detection_rule.cpp
-    optimizer/strategy/join_detection_rule.hpp
-    optimizer/strategy/predicate_pushdown_rule.cpp
-    optimizer/strategy/predicate_pushdown_rule.hpp
-    optimizer/strategy/predicate_reordering_rule.cpp
-    optimizer/strategy/predicate_reordering_rule.hpp
-    optimizer/strategy/rule_batch.cpp
-    optimizer/strategy/rule_batch.hpp
+    optimizer/rules/abstract_rule.cpp
+    optimizer/rules/abstract_rule.hpp
+    optimizer/rules/column_pruning_rule.cpp
+    optimizer/rules/column_pruning_rule.hpp
+    optimizer/rules/chunk_pruning_rule.cpp
+    optimizer/rules/chunk_pruning_rule.hpp
+    optimizer/rules/constant_calculation_rule.cpp
+    optimizer/rules/constant_calculation_rule.hpp
+    optimizer/rules/index_scan_rule.cpp
+    optimizer/rules/index_scan_rule.hpp
+    optimizer/rules/join_detection_rule.cpp
+    optimizer/rules/join_detection_rule.hpp
+    optimizer/rules/predicate_pushdown_rule.cpp
+    optimizer/rules/predicate_pushdown_rule.hpp
+    optimizer/rules/predicate_reordering_rule.cpp
+    optimizer/rules/predicate_reordering_rule.hpp
+    optimizer/rules/rule_batch.cpp
+    optimizer/rules/rule_batch.hpp
     planviz/abstract_visualizer.hpp
     planviz/lqp_visualizer.cpp
     planviz/lqp_visualizer.hpp

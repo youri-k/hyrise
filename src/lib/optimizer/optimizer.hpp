@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include "optimizer/strategy/rule_batch.hpp"
+#include "optimizer/rules/rule_batch.hpp"
 
 namespace opossum {
 

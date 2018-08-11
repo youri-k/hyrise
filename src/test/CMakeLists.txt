@@ -67,6 +67,7 @@ set(
     operators/limit_test.cpp
     operators/operator_join_predicate_test.cpp
     operators/operator_scan_predicate_test.cpp
+    operators/lqp_translator_test.cpp
     operators/maintenance/create_view_test.cpp
     operators/maintenance/drop_view_test.cpp
     operators/maintenance/show_columns_test.cpp
@@ -87,17 +88,16 @@ set(
     statistics/column_statistics_test.cpp
     statistics/table_statistics_join_test.cpp
     statistics/table_statistics_test.cpp
-    optimizer/lqp_translator_test.cpp
     optimizer/optimizer_test.cpp
-    optimizer/strategy/column_pruning_rule_test.cpp
-    optimizer/strategy/chunk_pruning_test.cpp
-    optimizer/strategy/constant_calculation_rule_test.cpp
-    optimizer/strategy/index_scan_rule_test.cpp
-    optimizer/strategy/join_detection_rule_test.cpp
-    optimizer/strategy/predicate_reordering_test.cpp
-    optimizer/strategy/predicate_pushdown_rule_test.cpp
-    optimizer/strategy/strategy_base_test.cpp
-    optimizer/strategy/strategy_base_test.hpp
+    optimizer/rules/column_pruning_rule_test.cpp
+    optimizer/rules/chunk_pruning_rule_test.cpp
+    optimizer/rules/constant_calculation_rule_test.cpp
+    optimizer/rules/index_scan_rule_test.cpp
+    optimizer/rules/join_detection_rule_test.cpp
+    optimizer/rules/predicate_reordering_rule_test.cpp
+    optimizer/rules/predicate_pushdown_rule_test.cpp
+    optimizer/rules/rule_base_test.cpp
+    optimizer/rules/rule_base_test.hpp
     scheduler/scheduler_test.cpp
     server/mock_connection.hpp
     server/mock_task_runner.hpp

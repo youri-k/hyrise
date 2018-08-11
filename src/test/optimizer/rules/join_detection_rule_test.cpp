@@ -13,8 +13,8 @@
 #include "logical_query_plan/predicate_node.hpp"
 #include "logical_query_plan/projection_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
-#include "optimizer/strategy/join_detection_rule.hpp"
-#include "optimizer/strategy/strategy_base_test.hpp"
+#include "optimizer/rules/join_detection_rule.hpp"
+#include "optimizer/rules/rule_base_test.hpp"
 #include "sql/sql_translator.hpp"
 #include "storage/storage_manager.hpp"
 #include "utils/load_table.hpp"
@@ -29,7 +29,7 @@ struct JoinDetectionTestParam {
   const uint8_t number_of_detectable_cross_joins;
 };
 
-class JoinDetectionRuleTest : public StrategyBaseTest, public ::testing::WithParamInterface<JoinDetectionTestParam> {
+class JoinDetectionRuleTest : public RuleBaseTest, public ::testing::WithParamInterface<JoinDetectionTestParam> {
  protected:
   void SetUp() override {
     StorageManager::get().add_table("a", load_table("src/test/tables/int_float.tbl"));
@@ -109,7 +109,7 @@ TEST_F(JoinDetectionRuleTest, SimpleDetectionTest) {
     _table_node_b);
   // clang-format on
 
-  auto actual_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
 
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
@@ -156,7 +156,7 @@ TEST_F(JoinDetectionRuleTest, SecondDetectionTest) {
       _table_node_b));
   // clang-format on
 
-  auto actual_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
 
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
@@ -190,7 +190,7 @@ TEST_F(JoinDetectionRuleTest, NoPredicate) {
       _table_node_b));
   // clang-format on
 
-  auto actual_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
 
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
@@ -224,7 +224,7 @@ TEST_F(JoinDetectionRuleTest, Nop) {
       _table_node_b));
   // clang-format on
 
-  auto actual_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
 
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
@@ -264,7 +264,7 @@ TEST_F(JoinDetectionRuleTest, NoMatchingPredicate) {
         _table_node_b)));
   // clang-format on
 
-  auto actual_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
 
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
@@ -304,7 +304,7 @@ TEST_F(JoinDetectionRuleTest, NonCrossJoin) {
       _table_node_b)));
   // clang-format on
 
-  auto actual_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
 
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
@@ -359,7 +359,7 @@ TEST_F(JoinDetectionRuleTest, MultipleJoins) {
     _table_node_c));
   // clang-format on
 
-  auto actual_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);
+  auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
 
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
@@ -396,7 +396,7 @@ TEST_F(JoinDetectionRuleTest, JoinInRightChild) {
   join_node2->set_left_input(_table_node_b);
   join_node2->set_right_input(_table_node_c);
 
-  const auto actual_lqp = StrategyBaseTest::apply_rule(_rule, predicate_node);
+  const auto actual_lqp = RuleBaseTest::apply_rule(_rule, predicate_node);
 
   // clang-format off
   const auto expected_lqp =
@@ -453,7 +453,7 @@ TEST_F(JoinDetectionRuleTest, MultipleJoins2) {
   const auto projection_node = ProjectionNode::make(expression_vector(_a_a));
   projection_node->set_left_input(predicate_node);
 
-  auto actual_lqp = StrategyBaseTest::apply_rule(_rule, projection_node);
+  auto actual_lqp = RuleBaseTest::apply_rule(_rule, projection_node);
 
   // clang-format off
   const auto expected_lqp =
@@ -476,7 +476,7 @@ TEST_P(JoinDetectionRuleTest, JoinDetectionSQL) {
   auto node = SQLTranslator{}.translate_parser_result(parse_result)[0];
 
   auto before = _count_cross_joins(node);
-  auto output = StrategyBaseTest::apply_rule(_rule, node);
+  auto output = RuleBaseTest::apply_rule(_rule, node);
   auto after = _count_cross_joins(output);
 
   EXPECT_EQ(before - after, params.number_of_detectable_cross_joins);

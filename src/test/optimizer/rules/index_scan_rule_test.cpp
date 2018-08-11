@@ -12,8 +12,8 @@
 #include "logical_query_plan/mock_node.hpp"
 #include "logical_query_plan/predicate_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
-#include "optimizer/strategy/index_scan_rule.hpp"
-#include "optimizer/strategy/strategy_base_test.hpp"
+#include "optimizer/rules/index_scan_rule.hpp"
+#include "optimizer/rules/rule_base_test.hpp"
 #include "statistics/column_statistics.hpp"
 #include "statistics/table_statistics.hpp"
 #include "storage/chunk_encoder.hpp"
@@ -28,7 +28,7 @@ using namespace opossum::expression_functional;  // NOLINT
 
 namespace opossum {
 
-class IndexScanRuleTest : public StrategyBaseTest {
+class IndexScanRuleTest : public RuleBaseTest {
  public:
   void SetUp() override {
     table = load_table("src/test/tables/int_int_int.tbl", Chunk::MAX_SIZE);
@@ -65,7 +65,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithoutIndex) {
   predicate_node_0->set_left_input(stored_table_node);
 
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
-  auto reordered = StrategyBaseTest::apply_rule(rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
 }
 
@@ -79,7 +79,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithIndexOnOtherColumn) {
   predicate_node_0->set_left_input(stored_table_node);
 
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
-  auto reordered = StrategyBaseTest::apply_rule(rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
 }
 
@@ -93,7 +93,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithMultiColumnIndex) {
   predicate_node_0->set_left_input(stored_table_node);
 
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
-  auto reordered = StrategyBaseTest::apply_rule(rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
 }
 
@@ -105,7 +105,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithTwoColumnPredicate) {
   predicate_node_0->set_left_input(stored_table_node);
 
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
-  auto reordered = StrategyBaseTest::apply_rule(rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
 }
 
@@ -119,7 +119,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithHighSelectivity) {
   predicate_node_0->set_left_input(stored_table_node);
 
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
-  auto reordered = StrategyBaseTest::apply_rule(rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
 }
 
@@ -133,7 +133,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanIfNotGroupKey) {
   predicate_node_0->set_left_input(stored_table_node);
 
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
-  auto reordered = StrategyBaseTest::apply_rule(rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
 }
 
@@ -147,7 +147,7 @@ TEST_F(IndexScanRuleTest, IndexScanWithIndex) {
   predicate_node_0->set_left_input(stored_table_node);
 
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
-  auto reordered = StrategyBaseTest::apply_rule(rule, predicate_node_0);
+  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::IndexScan);
 }
 
@@ -163,7 +163,7 @@ TEST_F(IndexScanRuleTest, IndexScanOnlyOnOutputOfStoredTableNode) {
   auto predicate_node_1 = PredicateNode::make(less_than_(b, 15));
   predicate_node_1->set_left_input(predicate_node_0);
 
-  auto reordered = StrategyBaseTest::apply_rule(rule, predicate_node_1);
+  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_1);
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::IndexScan);
   EXPECT_EQ(predicate_node_1->scan_type, ScanType::TableScan);
 }

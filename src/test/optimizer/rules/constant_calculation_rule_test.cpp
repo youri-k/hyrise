@@ -13,8 +13,8 @@
 #include "logical_query_plan/predicate_node.hpp"
 #include "logical_query_plan/projection_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
-#include "optimizer/strategy/constant_calculation_rule.hpp"
-#include "optimizer/strategy/strategy_base_test.hpp"
+#include "optimizer/rules/constant_calculation_rule.hpp"
+#include "optimizer/rules/rule_base_test.hpp"
 #include "sql/sql_pipeline.hpp"
 #include "sql/sql_pipeline_builder.hpp"
 #include "storage/storage_manager.hpp"
@@ -29,7 +29,7 @@ std::shared_ptr<opossum::AbstractLQPNode> compile_query(const std::string& query
 
 namespace opossum {
 
-class ConstantCalculationRuleTest : public StrategyBaseTest {
+class ConstantCalculationRuleTest : public RuleBaseTest {
  public:
   void SetUp() override {
     StorageManager::get().add_table("table_a", load_table("src/test/tables/int_float.tbl", Chunk::MAX_SIZE));
@@ -49,7 +49,7 @@ TEST_F(ConstantCalculationRuleTest, ResolveExpressionTest) {
   const auto query = "SELECT * FROM table_a WHERE a = 1232 + 1 + 1";
   const auto result_node = compile_query(query);
 
-  const auto actual_lqp = StrategyBaseTest::apply_rule(rule, result_node);
+  const auto actual_lqp = RuleBaseTest::apply_rule(rule, result_node);
 
   /**
    * NOTE
@@ -74,7 +74,7 @@ TEST_F(ConstantCalculationRuleTest, DoesntPruneList) {
   const auto query = "SELECT * FROM table_a WHERE a IN (1, 2, 3+5, 4)";
   const auto result_node = compile_query(query);
 
-  const auto actual_lqp = StrategyBaseTest::apply_rule(rule, result_node);
+  const auto actual_lqp = RuleBaseTest::apply_rule(rule, result_node);
 
   // clang-format off
   const auto expected_lqp =

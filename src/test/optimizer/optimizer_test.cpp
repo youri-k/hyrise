@@ -7,7 +7,7 @@
 #include "logical_query_plan/predicate_node.hpp"
 #include "logical_query_plan/projection_node.hpp"
 #include "optimizer/optimizer.hpp"
-#include "optimizer/strategy/abstract_rule.hpp"
+#include "optimizer/rules/abstract_rule.hpp"
 #include "testing_assert.hpp"
 
 using namespace opossum::expression_functional;  // NOLINT
