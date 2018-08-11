@@ -386,19 +386,16 @@ TEST_F(JoinDetectionRuleTest, JoinInRightChild) {
    *         b                       c
    *
    */
-  const auto join_node1 = JoinNode::make(JoinMode::Cross);
-  const auto join_node2 = JoinNode::make(JoinMode::Cross);
-  const auto predicate_node = PredicateNode::make(equals_(_b_a, _c_b));
-
-  predicate_node->set_left_input(join_node1);
-  join_node1->set_left_input(_table_node_a);
-  join_node1->set_right_input(join_node2);
-  join_node2->set_left_input(_table_node_b);
-  join_node2->set_right_input(_table_node_c);
-
-  const auto actual_lqp = RuleBaseTest::apply_rule(_rule, predicate_node);
 
   // clang-format off
+  const auto input_lqp =
+  PredicateNode::make(equals_(_b_a, _c_b),
+    JoinNode::make(JoinMode::Cross,
+      _table_node_a,
+      JoinNode::make(JoinMode::Cross,
+        _table_node_b,
+        _table_node_c)));
+
   const auto expected_lqp =
   JoinNode::make(JoinMode::Cross,
     _table_node_a,
@@ -407,6 +404,7 @@ TEST_F(JoinDetectionRuleTest, JoinInRightChild) {
       _table_node_c));
   // clang-format on
 
+  const auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
 
@@ -439,23 +437,17 @@ TEST_F(JoinDetectionRuleTest, MultipleJoins2) {
    *   a       b
    *
    */
-  const auto join_node1 = JoinNode::make(JoinMode::Cross);
-  join_node1->set_left_input(_table_node_a);
-  join_node1->set_right_input(_table_node_b);
-
-  const auto join_node2 = JoinNode::make(JoinMode::Cross);
-  join_node2->set_left_input(join_node1);
-  join_node2->set_right_input(_table_node_c);
-
-  const auto predicate_node = PredicateNode::make(equals_(_c_a, _a_a));
-  predicate_node->set_left_input(join_node2);
-
-  const auto projection_node = ProjectionNode::make(expression_vector(_a_a));
-  projection_node->set_left_input(predicate_node);
-
-  auto actual_lqp = RuleBaseTest::apply_rule(_rule, projection_node);
 
   // clang-format off
+  const auto input_lqp =
+  ProjectionNode::make(expression_vector(_a_a),
+    PredicateNode::make(equals_(_c_a, _a_a),
+      JoinNode::make(JoinMode::Cross,
+        JoinNode::make(JoinMode::Cross,
+          _table_node_a,
+          _table_node_b),
+        _table_node_c)));
+
   const auto expected_lqp =
   ProjectionNode::make(expression_vector(_a_a),
     JoinNode::make(JoinMode::Inner, equals_(_c_a, _a_a),
@@ -465,6 +457,7 @@ TEST_F(JoinDetectionRuleTest, MultipleJoins2) {
     _table_node_c));
   // clang-format on
 
+  const auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
 

@@ -33,40 +33,52 @@ namespace opossum {
 class PredicateReorderingRuleTest : public RuleBaseTest {
  protected:
   void SetUp() override {
-    const auto table = load_table("src/test/tables/int_int_int.tbl", Chunk::MAX_SIZE);
-    StorageManager::get().add_table("a", table);
+    StorageManager::get().add_table("a", load_table("src/test/tables/int_int_int.tbl"));
+    StorageManager::get().add_table("b", load_table("src/test/tables/int_float4.tbl"));
+    
     _rule = std::make_shared<PredicateReorderingRule>();
 
-    std::vector<std::shared_ptr<const BaseColumnStatistics>> column_statistics(
+    std::vector<std::shared_ptr<const BaseColumnStatistics>> column_statistics_a(
         {std::make_shared<ColumnStatistics<int32_t>>(0.0f, 20, 10, 100),
          std::make_shared<ColumnStatistics<int32_t>>(0.0f, 5, 50, 60),
          std::make_shared<ColumnStatistics<int32_t>>(0.0f, 2, 110, 1100)});
 
-    auto table_statistics = std::make_shared<TableStatistics>(TableType::Data, 100, column_statistics);
+    auto table_statistics_a = std::make_shared<TableStatistics>(TableType::Data, 100, column_statistics_a);
 
-    node = StoredTableNode::make("a");
-    table->set_table_statistics(table_statistics);
+    node_a = StoredTableNode::make("a");
+    StorageManager::get().get_table("a")->set_table_statistics(table_statistics_a);
 
-    a = LQPColumnReference{node, ColumnID{0}};
-    b = LQPColumnReference{node, ColumnID{1}};
-    c = LQPColumnReference{node, ColumnID{2}};
+    std::vector<std::shared_ptr<const BaseColumnStatistics>> column_statistics_b(
+    {std::make_shared<ColumnStatistics<int32_t>>(0.0f, 20, 10, 100),
+     std::make_shared<ColumnStatistics<float>>(0.0f, 5, 50, 60)});
+
+    auto table_statistics_b = std::make_shared<TableStatistics>(TableType::Data, 100, column_statistics_b);
+
+    node_b = StoredTableNode::make("b");
+    StorageManager::get().get_table("b")->set_table_statistics(table_statistics_b);
+    
+    a_a = LQPColumnReference{node_a, ColumnID{0}};
+    a_b = LQPColumnReference{node_a, ColumnID{1}};
+    a_c = LQPColumnReference{node_a, ColumnID{2}};
+    b_a = LQPColumnReference{node_b, ColumnID{0}};
+    b_b = LQPColumnReference{node_b, ColumnID{1}};
   }
 
-  std::shared_ptr<StoredTableNode> node;
-  LQPColumnReference a, b, c;
+  std::shared_ptr<StoredTableNode> node_a, node_b;
+  LQPColumnReference a_a, a_b, a_c, b_a, b_b;
   std::shared_ptr<PredicateReorderingRule> _rule;
 };
 
 TEST_F(PredicateReorderingRuleTest, SimpleReorderingTest) {
   // clang-format off
   const auto input_lqp =
-  PredicateNode::make(greater_than_(a, 50),
-    PredicateNode::make(greater_than_(a, 10),
-      node));
+  PredicateNode::make(greater_than_(a_a, 50),
+    PredicateNode::make(greater_than_(a_a, 10),
+      node_a));
   const auto expected_lqp =
-  PredicateNode::make(greater_than_(a, 10),
-    PredicateNode::make(greater_than_(a, 50),
-      node));
+  PredicateNode::make(greater_than_(a_a, 10),
+    PredicateNode::make(greater_than_(a_a, 50),
+      node_a));
   // clang-format on
 
   const auto reordered_input_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
@@ -76,15 +88,15 @@ TEST_F(PredicateReorderingRuleTest, SimpleReorderingTest) {
 TEST_F(PredicateReorderingRuleTest, MoreComplexReorderingTest) {
   // clang-format off
   const auto input_lqp =
-  PredicateNode::make(greater_than_(a, 99),
-    PredicateNode::make(greater_than_(b, 55),
-      PredicateNode::make(greater_than_(c, 100),
-        node)));
+  PredicateNode::make(greater_than_(a_a, 99),
+    PredicateNode::make(greater_than_(a_b, 55),
+      PredicateNode::make(greater_than_(a_c, 100),
+        node_a)));
   const auto expected_lqp =
-  PredicateNode::make(greater_than_(c, 100),
-    PredicateNode::make(greater_than_(b, 55),
-      PredicateNode::make(greater_than_(a, 99),
-        node)));
+  PredicateNode::make(greater_than_(a_c, 100),
+    PredicateNode::make(greater_than_(a_b, 55),
+      PredicateNode::make(greater_than_(a_a, 99),
+        node_a)));
   // clang-format on
 
   const auto reordered_input_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
@@ -94,23 +106,23 @@ TEST_F(PredicateReorderingRuleTest, MoreComplexReorderingTest) {
 TEST_F(PredicateReorderingRuleTest, ComplexReorderingTest) {
   // clang-format off
   const auto input_lqp =
-  PredicateNode::make(equals_(a, 42),
-    PredicateNode::make(greater_than_(b, 50),
-      PredicateNode::make(greater_than_(b, 40),
-        ProjectionNode::make(expression_vector(a, b, c),
-          PredicateNode::make(greater_than_equals_(a, 90),
-            PredicateNode::make(less_than_(c, 500),
-              node))))));
+  PredicateNode::make(equals_(a_a, 42),
+    PredicateNode::make(greater_than_(a_b, 50),
+      PredicateNode::make(greater_than_(a_b, 40),
+        ProjectionNode::make(expression_vector(a_a, a_b, a_c),
+          PredicateNode::make(greater_than_equals_(a_a, 90),
+            PredicateNode::make(less_than_(a_c, 500),
+              node_a))))));
 
 
   const auto expected_optimized_lqp =
-  PredicateNode::make(greater_than_(b, 40),
-    PredicateNode::make(greater_than_(b, 50),
-      PredicateNode::make(equals_(a, 42),
-        ProjectionNode::make(expression_vector(a, b, c),
-          PredicateNode::make(less_than_(c, 500),
-            PredicateNode::make(greater_than_equals_(a, 90),
-              node))))));
+  PredicateNode::make(greater_than_(a_b, 40),
+    PredicateNode::make(greater_than_(a_b, 50),
+      PredicateNode::make(equals_(a_a, 42),
+        ProjectionNode::make(expression_vector(a_a, a_b, a_c),
+          PredicateNode::make(less_than_(a_c, 500),
+            PredicateNode::make(greater_than_equals_(a_a, 90),
+              node_a))))));
   // clang-format on
 
   const auto reordered_input_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
@@ -118,95 +130,69 @@ TEST_F(PredicateReorderingRuleTest, ComplexReorderingTest) {
 }
 
 TEST_F(PredicateReorderingRuleTest, SameOrderingForStoredTable) {
-  std::shared_ptr<Table> table_a = load_table("src/test/tables/int_float4.tbl", 2);
-  StorageManager::get().add_table("table_a", std::move(table_a));
+  // clang-format off
+  const auto input_lqp =
+  PredicateNode::make(less_than_(b_a, 20),
+    PredicateNode::make(less_than_(b_a, 40),
+      node_b));
 
-  auto stored_table_node = StoredTableNode::make("table_a");
+  const auto expected_lqp =
+  PredicateNode::make(less_than_(b_a, 40),
+    PredicateNode::make(less_than_(b_a, 20),
+      node_b));
+  // clang-format on
 
-  // Setup first LQP
-  // predicate_node_1 -> predicate_node_0 -> stored_table_node
-  auto predicate_node_0 = PredicateNode::make(less_than_(LQPColumnReference{stored_table_node, ColumnID{0}}, 20));
-  predicate_node_0->set_left_input(stored_table_node);
+  const auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
 
-  auto predicate_node_1 = PredicateNode::make(less_than_(LQPColumnReference{stored_table_node, ColumnID{0}}, 40));
-  predicate_node_1->set_left_input(predicate_node_0);
-
-  predicate_node_1->get_statistics();
-
-  auto reordered = RuleBaseTest::apply_rule(_rule, predicate_node_1);
-
-  // Setup second LQP
-  // predicate_node_3 -> predicate_node_2 -> stored_table_node
-  auto predicate_node_2 = PredicateNode::make(less_than_(LQPColumnReference{stored_table_node, ColumnID{0}}, 40));
-  predicate_node_2->set_left_input(stored_table_node);
-
-  auto predicate_node_3 = PredicateNode::make(less_than_(LQPColumnReference{stored_table_node, ColumnID{0}}, 20));
-  predicate_node_3->set_left_input(predicate_node_2);
-
-  auto reordered_1 = RuleBaseTest::apply_rule(_rule, predicate_node_3);
-
-  EXPECT_EQ(reordered, predicate_node_1);
-  EXPECT_EQ(reordered->left_input(), predicate_node_0);
-  EXPECT_EQ(reordered_1, predicate_node_2);
-  EXPECT_EQ(reordered_1->left_input(), predicate_node_3);
+  EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
 
 TEST_F(PredicateReorderingRuleTest, PredicatesAsRightInput) {
   /**
-   * Check that Reordering predicates works if a predicate chain is both on the left and right side of a node.
+   * Check that Reordering predicates works if a_a predicate chain is both on the left and right side of a_a node_a.
    * This is particularly interesting because the PredicateReorderingRule needs to re-attach the ordered chain of
-   * predicates to the output (the cross node in this case). This test checks whether the attachment happens as the
+   * predicates to the output (the cross node_a in this case). This test checks whether the attachment happens as the
    * correct input.
    *
    *             _______Cross________
    *            /                    \
-   *  Predicate_0(a > 80)     Predicate_2(a > 90)
+   *  Predicate_0(a_a > 80)     Predicate_2(a_a > 90)
    *           |                     |
-   *  Predicate_1(a > 60)     Predicate_3(a > 50)
+   *  Predicate_1(a_a > 60)     Predicate_3(a_a > 50)
    *           |                     |
-   *        Table_0           Predicate_4(a > 30)
+   *        Table_0           Predicate_4(a_a > 30)
    *                                 |
    *                               Table_1
    */
+  // clang-format off
+  const auto input_lqp =
+  JoinNode::make(JoinMode::Cross,
+    PredicateNode::make(greater_than_(a_a, 80),
+      PredicateNode::make(greater_than_(a_a, 60),
+        node_a)),
+    PredicateNode::make(greater_than_(b_a, 90),
+      PredicateNode::make(greater_than_(b_a, 50),
+        PredicateNode::make(greater_than_(b_a, 30),
+          node_b))));
 
-  /**
-   * The mocked table has one column of int32_ts with the value range 0..100
-   */
-  auto column_statistics = std::make_shared<ColumnStatistics<int32_t>>(ColumnID{0}, 100.0f, 0.0f, 100.0f);
-  auto table_statistics = std::make_shared<TableStatistics>(
-      TableType::Data, 100, std::vector<std::shared_ptr<const BaseColumnStatistics>>{column_statistics});
+  const auto expected_lqp =
+  JoinNode::make(JoinMode::Cross,
+    PredicateNode::make(greater_than_(a_a, 60),
+      PredicateNode::make(greater_than_(a_a, 80),
+        node_a)),
+    PredicateNode::make(greater_than_(b_a, 30),
+      PredicateNode::make(greater_than_(b_a, 50),
+        PredicateNode::make(greater_than_(b_a, 90),
+          node_b))));
+  // clang-format on
 
-  auto table_0 = MockNode::make(table_statistics);
-  auto table_1 = MockNode::make(table_statistics);
-  auto cross_node = JoinNode::make(JoinMode::Cross);
-  auto predicate_0 = PredicateNode::make(greater_than_(LQPColumnReference{table_0, ColumnID{0}}, 80));
-  auto predicate_1 = PredicateNode::make(greater_than_(LQPColumnReference{table_0, ColumnID{0}}, 60));
-  auto predicate_2 = PredicateNode::make(greater_than_(LQPColumnReference{table_1, ColumnID{0}}, 90));
-  auto predicate_3 = PredicateNode::make(greater_than_(LQPColumnReference{table_1, ColumnID{0}}, 50));
-  auto predicate_4 = PredicateNode::make(greater_than_(LQPColumnReference{table_1, ColumnID{0}}, 30));
-
-  predicate_1->set_left_input(table_0);
-  predicate_0->set_left_input(predicate_1);
-  predicate_4->set_left_input(table_1);
-  predicate_3->set_left_input(predicate_4);
-  predicate_2->set_left_input(predicate_3);
-  cross_node->set_left_input(predicate_0);
-  cross_node->set_right_input(predicate_2);
-
-  const auto reordered = RuleBaseTest::apply_rule(_rule, cross_node);
-
-  EXPECT_EQ(reordered, cross_node);
-  EXPECT_EQ(reordered->left_input(), predicate_1);
-  EXPECT_EQ(reordered->left_input()->left_input(), predicate_0);
-  EXPECT_EQ(reordered->left_input()->left_input()->left_input(), table_0);
-  EXPECT_EQ(reordered->right_input(), predicate_4);
-  EXPECT_EQ(reordered->right_input()->left_input(), predicate_3);
-  EXPECT_EQ(reordered->right_input()->left_input()->left_input(), predicate_2);
+  const auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
+  EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
 
 TEST_F(PredicateReorderingRuleTest, PredicatesWithMultipleOutputs) {
   /**
-   * If a PredicateNode has multiple outputs, it should not be considered for reordering
+   * If a_a PredicateNode has multiple outputs, it should not be considered for reordering
    */
   /**
    *      _____Union___
@@ -220,30 +206,24 @@ TEST_F(PredicateReorderingRuleTest, PredicatesWithMultipleOutputs) {
    * predicate_a should come before predicate_b - but since Predicate_b has two outputs, it can't be reordered
    */
 
-  /**
-   * The mocked table has one column of int32_ts with the value range 0..100
-   */
-  auto column_statistics = std::make_shared<ColumnStatistics<int32_t>>(ColumnID{0}, 100.0f, 0.0f, 100.0f);
-  auto table_statistics = std::make_shared<TableStatistics>(
-      TableType::Data, 100, std::vector<std::shared_ptr<const BaseColumnStatistics>>{column_statistics});
+  const auto predicate_b = PredicateNode::make(greater_than_(a_b, 90), node_a);
 
-  auto table_node = MockNode::make(table_statistics);
-  auto union_node = UnionNode::make(UnionMode::Positions);
-  auto predicate_a_node = PredicateNode::make(greater_than_(LQPColumnReference{table_node, ColumnID{0}}, 90));
-  auto predicate_b_node = PredicateNode::make(greater_than_(LQPColumnReference{table_node, ColumnID{0}}, 10));
+  // clang-format off
+  const auto input_lqp =
+  UnionNode::make(UnionMode::Positions,
+    PredicateNode::make(greater_than_(a_a, 90),
+      predicate_b,
+    predicate_b));
 
-  union_node->set_left_input(predicate_a_node);
-  union_node->set_right_input(predicate_b_node);
-  predicate_a_node->set_left_input(predicate_b_node);
-  predicate_b_node->set_left_input(table_node);
+  const auto expected_lqp =
+  UnionNode::make(UnionMode::Positions,
+    PredicateNode::make(greater_than_(a_a, 90),
+      predicate_b,
+    predicate_b));
+  // clang-format on
 
-  const auto reordered = RuleBaseTest::apply_rule(_rule, union_node);
-
-  EXPECT_EQ(reordered, union_node);
-  EXPECT_EQ(reordered->left_input(), predicate_a_node);
-  EXPECT_EQ(reordered->right_input(), predicate_b_node);
-  EXPECT_EQ(predicate_a_node->left_input(), predicate_b_node);
-  EXPECT_EQ(predicate_b_node->left_input(), table_node);
+  const auto actual_lqp = RuleBaseTest::apply_rule(_rule, input_lqp);
+  EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
 
 }  // namespace opossum

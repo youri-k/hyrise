@@ -41,6 +41,13 @@ class IndexScanRuleTest : public RuleBaseTest {
     a = stored_table_node->get_column("a");
     b = stored_table_node->get_column("b");
     c = stored_table_node->get_column("c");
+
+    small_statistics = generate_mock_statistics(1);
+    medium_statistics = generate_mock_statistics(80'000);
+    large_statistics = generate_mock_statistics(1'000'000);
+
+    // small by default, tests can change that
+    table->set_table_statistics(small_statistics);
   }
 
   std::shared_ptr<TableStatistics> generate_mock_statistics(float row_count = 0.0f) {
@@ -55,28 +62,22 @@ class IndexScanRuleTest : public RuleBaseTest {
   std::shared_ptr<StoredTableNode> stored_table_node;
   std::shared_ptr<Table> table;
   LQPColumnReference a, b, c;
+  std::shared_ptr<TableStatistics> small_statistics, medium_statistics, large_statistics;
 };
 
 TEST_F(IndexScanRuleTest, NoIndexScanWithoutIndex) {
-  auto statistics_mock = generate_mock_statistics();
-  table->set_table_statistics(statistics_mock);
+  const auto input_lqp = PredicateNode::make(greater_than_(a, 10), stored_table_node);
+  input_lqp->scan_type = ScanType::TableScan;
 
-  auto predicate_node_0 = PredicateNode::make(greater_than_(a, 10));
-  predicate_node_0->set_left_input(stored_table_node);
-
-  EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
-  auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
-  EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
+  const auto expected_lqp = PredicateNode::make(greater_than_(a, 10), stored_table_node);
+  const auto actual_lqp = RuleBaseTest::apply_rule(rule, input_lqp);
+  EXPECT_LQP_EQ(actual_lqp, expected_lqp)
 }
 
 TEST_F(IndexScanRuleTest, NoIndexScanWithIndexOnOtherColumn) {
   table->create_index<GroupKeyIndex>({ColumnID{2}});
 
-  auto statistics_mock = generate_mock_statistics();
-  table->set_table_statistics(statistics_mock);
-
-  auto predicate_node_0 = PredicateNode::make(greater_than_(a, 10));
-  predicate_node_0->set_left_input(stored_table_node);
+  const auto input_lqp = PredicateNode::make(greater_than_(a, 10), stored_table_node);
 
   EXPECT_EQ(predicate_node_0->scan_type, ScanType::TableScan);
   auto reordered = RuleBaseTest::apply_rule(rule, predicate_node_0);
@@ -85,9 +86,6 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithIndexOnOtherColumn) {
 
 TEST_F(IndexScanRuleTest, NoIndexScanWithMultiColumnIndex) {
   table->create_index<CompositeGroupKeyIndex>({ColumnID{2}, ColumnID{1}});
-
-  auto statistics_mock = generate_mock_statistics();
-  table->set_table_statistics(statistics_mock);
 
   auto predicate_node_0 = PredicateNode::make(greater_than_(c, 10));
   predicate_node_0->set_left_input(stored_table_node);
@@ -98,9 +96,6 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithMultiColumnIndex) {
 }
 
 TEST_F(IndexScanRuleTest, NoIndexScanWithTwoColumnPredicate) {
-  auto statistics_mock = generate_mock_statistics();
-  table->set_table_statistics(statistics_mock);
-
   auto predicate_node_0 = PredicateNode::make(greater_than_(c, b));
   predicate_node_0->set_left_input(stored_table_node);
 
@@ -111,9 +106,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithTwoColumnPredicate) {
 
 TEST_F(IndexScanRuleTest, NoIndexScanWithHighSelectivity) {
   table->create_index<GroupKeyIndex>({ColumnID{2}});
-
-  auto statistics_mock = generate_mock_statistics(80'000);
-  table->set_table_statistics(statistics_mock);
+  table->set_table_statistics(medium_statistics);
 
   auto predicate_node_0 = PredicateNode::make(greater_than_(c, 10));
   predicate_node_0->set_left_input(stored_table_node);
@@ -125,9 +118,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanWithHighSelectivity) {
 
 TEST_F(IndexScanRuleTest, NoIndexScanIfNotGroupKey) {
   table->create_index<AdaptiveRadixTreeIndex>({ColumnID{2}});
-
-  auto statistics_mock = generate_mock_statistics(1'000'000);
-  table->set_table_statistics(statistics_mock);
+  table->set_table_statistics(large_statistics);
 
   auto predicate_node_0 = PredicateNode::make(greater_than_(c, 10));
   predicate_node_0->set_left_input(stored_table_node);
@@ -139,9 +130,7 @@ TEST_F(IndexScanRuleTest, NoIndexScanIfNotGroupKey) {
 
 TEST_F(IndexScanRuleTest, IndexScanWithIndex) {
   table->create_index<GroupKeyIndex>({ColumnID{2}});
-
-  auto statistics_mock = generate_mock_statistics(1'000'000);
-  table->set_table_statistics(statistics_mock);
+  table->set_table_statistics(large_statistics);
 
   auto predicate_node_0 = PredicateNode::make(greater_than_(c, 19'900));
   predicate_node_0->set_left_input(stored_table_node);
@@ -153,9 +142,7 @@ TEST_F(IndexScanRuleTest, IndexScanWithIndex) {
 
 TEST_F(IndexScanRuleTest, IndexScanOnlyOnOutputOfStoredTableNode) {
   table->create_index<GroupKeyIndex>({ColumnID{2}});
-
-  auto statistics_mock = generate_mock_statistics(1'000'000);
-  table->set_table_statistics(statistics_mock);
+  table->set_table_statistics(large_statistics);
 
   auto predicate_node_0 = PredicateNode::make(greater_than_(c, 19'900));
   predicate_node_0->set_left_input(stored_table_node);
