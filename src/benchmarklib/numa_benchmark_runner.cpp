@@ -229,11 +229,14 @@ void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
         {"time_unit", "ns"},
         {"qpi_link_utilization_in", query_result.qpi_link_utilization_in},
         {"qpi_link_utilization_out", query_result.qpi_link_utilization_out},
+        {"qpi_link_bytes_per_socket_in", query_result.qpi_link_bytes_per_socket_in},
+        {"qpi_link_bytes_per_socket_out", query_result.qpi_link_bytes_per_socket_out},
         {"qpi_all_link_bytes_in", query_result.qpi_all_link_bytes_in},
         {"qpi_all_link_bytes_out", query_result.qpi_all_link_bytes_out},
         {"qpi_to_mc_traffic_ratio", query_result.qpi_to_mc_traffic_ratio},
         {"cycles_lost_due_l2_cache_misses", query_result.cycles_lost_due_l2_cache_misses},
         {"cycles_lost_due_l3_cache_misses", query_result.cycles_lost_due_l3_cache_misses},
+        {"bytesReadFromMC", query_result.bytesReadFromMC},
     };
 
     benchmarks.push_back(benchmark);
@@ -252,13 +255,22 @@ void NumaBenchmarkRunner::_save_qpi_utilization(QueryBenchmarkResult& result, co
     auto qpi_link_utilization_in = std::vector<double>{};
     auto qpi_link_utilization_out = std::vector<double>{};
 
+    auto qpi_link_bytes_per_socket_in = uint64_t{0};
+    auto qpi_link_bytes_per_socket_out = uint64_t{0};
+
     for (auto link = size_t{0}; link < links_per_socket; ++link) {
       qpi_link_utilization_in.push_back(getIncomingQPILinkUtilization(socket, link, before, after));
       qpi_link_utilization_out.push_back(getOutgoingQPILinkUtilization(socket, link, before, after));
+
+      qpi_link_bytes_per_socket_in += getIncomingQPILinkBytes(socket, link, before, after);
+      qpi_link_bytes_per_socket_out += getOutgoingQPILinkBytes(socket, link, before, after);
     }
 
     result.qpi_link_utilization_in.push_back(qpi_link_utilization_in);
     result.qpi_link_utilization_out.push_back(qpi_link_utilization_out);
+
+    result.qpi_link_bytes_per_socket_in.push_back(qpi_link_bytes_per_socket_in);
+    result.qpi_link_bytes_per_socket_out.push_back(qpi_link_bytes_per_socket_out);
   }
 
 
@@ -267,6 +279,7 @@ void NumaBenchmarkRunner::_save_qpi_utilization(QueryBenchmarkResult& result, co
   result.qpi_to_mc_traffic_ratio = getQPItoMCTrafficRatio(before, after);
   result.cycles_lost_due_l2_cache_misses = getCyclesLostDueL2CacheMisses(before, after);
   result.cycles_lost_due_l3_cache_misses = getCyclesLostDueL3CacheMisses(before, after);
+  result.bytesReadFromMC = getBytesReadFromMC(before, after);
 }
 
 NumaBenchmarkRunner NumaBenchmarkRunner::create(const BenchmarkConfig& config, const std::string& table_path,
