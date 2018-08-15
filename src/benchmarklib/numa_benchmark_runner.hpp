@@ -42,6 +42,7 @@ class NumaBenchmarkRunner {
 
   // Run benchmark in BenchmarkMode::IndividualQueries mode
   void _benchmark_individual_queries();
+  void _benchmark_dummy_query();
 
   void _execute_query(const NamedQuery& named_query);
   void _execute_query_numa(const NamedQuery& named_query);

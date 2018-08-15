@@ -127,15 +127,15 @@ int main(int argc, char* argv[]) {
 
   config->out << "- Generating TPCH Tables with scale_factor=" << scale_factor << " ..." << std::endl;
 
-  const auto tables = opossum::TpchDbGenerator(scale_factor, config->chunk_size).generate();
+  // const auto tables = opossum::TpchDbGenerator(scale_factor, config->chunk_size).generate();
 
-  for (auto& tpch_table : tables) {
-    const auto& table_name = opossum::tpch_table_names.at(tpch_table.first);
-    auto& table = tpch_table.second;
+  // for (auto& tpch_table : tables) {
+  //   const auto& table_name = opossum::tpch_table_names.at(tpch_table.first);
+  //   auto& table = tpch_table.second;
 
-    opossum::BenchmarkTableEncoder::encode(table_name, table, config->encoding_config);
-    opossum::StorageManager::get().add_table(table_name, table);
-  }
+  //   opossum::BenchmarkTableEncoder::encode(table_name, table, config->encoding_config);
+  //   opossum::StorageManager::get().add_table(table_name, table);
+  // }
   config->out << "- ... done." << std::endl;
 
   auto context = opossum::NumaBenchmarkRunner::create_context(*config);

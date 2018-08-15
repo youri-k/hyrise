@@ -8,6 +8,7 @@
 #include "planviz/lqp_visualizer.hpp"
 #include "planviz/sql_query_plan_visualizer.hpp"
 #include "scheduler/current_scheduler.hpp"
+#include "scheduler/job_task.hpp"
 #include "sql/sql_pipeline_builder.hpp"
 #include "storage/chunk_encoder.hpp"
 #include "storage/storage_manager.hpp"
@@ -50,7 +51,8 @@ void NumaBenchmarkRunner::run() {
       break;
     }
     case BenchmarkMode::PermutedQuerySets: {
-      _benchmark_permuted_query_sets();
+      _benchmark_dummy_query();
+      // _benchmark_permuted_query_sets();
       break;
     }
   }
@@ -118,6 +120,30 @@ void NumaBenchmarkRunner::_benchmark_permuted_query_sets() {
       query_benchmark_result.num_iterations++;
     }
   }
+}
+
+void NumaBenchmarkRunner::_benchmark_dummy_query() {
+  const auto& name = "dummy";
+
+  // Build tasks
+  auto tasks = std::vector<std::shared_ptr<AbstractTask>>{};
+  for (auto iter = 0u; iter < _config.query_runs; ++iter) {
+    tasks.emplace_back(std::make_shared<JobTask>([](){
+      std::this_thread::sleep_for( std::chrono::milliseconds(1) );
+    }));
+  }
+
+  QueryBenchmarkResult result;
+  result.num_iterations = _config.query_runs;
+
+  const auto query_benchmark_begin = std::chrono::steady_clock::now();
+  CurrentScheduler::schedule_and_wait_for_tasks(tasks);
+  const auto query_benchmark_end = std::chrono::steady_clock::now();
+
+  const auto duration = query_benchmark_end - query_benchmark_begin;
+  result.duration = duration;
+  
+  _query_results_by_query_name.emplace(name, result);
 }
 
 void NumaBenchmarkRunner::_benchmark_individual_queries() {
@@ -212,8 +238,9 @@ void NumaBenchmarkRunner::_execute_query_numa(const NamedQuery& named_query) {
 void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
   nlohmann::json benchmarks;
 
-  for (const auto& named_query : _queries) {
-    const auto& name = named_query.first;
+  for ( [[gnu::unused]] const auto& _ : _queries) {
+    // const auto& name = named_query.first;
+    const auto& name = "dummy";
     const auto& query_result = _query_results_by_query_name.at(name);
 
     const auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(query_result.duration).count();
@@ -240,6 +267,7 @@ void NumaBenchmarkRunner::_create_report(std::ostream& stream) const {
     };
 
     benchmarks.push_back(benchmark);
+    break;
   }
 
   nlohmann::json report{{"context", _context}, {"benchmarks", benchmarks}};
