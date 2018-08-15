@@ -129,7 +129,7 @@ void NumaBenchmarkRunner::_benchmark_dummy_query() {
   auto tasks = std::vector<std::shared_ptr<AbstractTask>>{};
   for (auto iter = 0u; iter < _config.query_runs; ++iter) {
     tasks.emplace_back(std::make_shared<JobTask>([](){
-      std::this_thread::sleep_for( std::chrono::milliseconds(1) );
+      std::this_thread::sleep_for( std::chrono::milliseconds(5) );
     }));
   }
 
