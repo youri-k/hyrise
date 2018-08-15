@@ -453,4 +453,24 @@ nlohmann::json NumaBenchmarkRunner::create_context(const BenchmarkConfig& config
       {"GIT-HASH", GIT_HEAD_SHA1 + std::string(GIT_IS_DIRTY ? "-dirty" : "")}};
 }
 
+void NumaBenchmarkRunner::create_tables(const BenchmarkConfig& config, const std::string& table_path) {
+  const auto tables = _read_table_folder(table_path);
+  Assert(!tables.empty(), "No tables found in '" + table_path + "'");
+
+  for (const auto& table_path_str : tables) {
+    const auto table_name = filesystem::path{table_path_str}.stem().string();
+
+    std::shared_ptr<Table> table;
+    if (boost::algorithm::ends_with(table_path_str, ".tbl")) {
+      table = load_table(table_path_str, config.chunk_size);
+    } else {
+      table = CsvParser{}.parse(table_path_str);
+    }
+
+    config.out << "- Adding table '" << table_name << "'" << std::endl;
+    BenchmarkTableEncoder::encode(table_name, table, config.encoding_config);
+    StorageManager::get().add_table(table_name, table);
+  }
+}
+
 }  // namespace opossum

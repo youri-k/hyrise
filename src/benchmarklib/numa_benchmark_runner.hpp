@@ -24,14 +24,17 @@ class NumaBenchmarkRunner {
  public:
   NumaBenchmarkRunner(const BenchmarkConfig& config, const NamedQueries& queries, const nlohmann::json& context);
 
-  static NumaBenchmarkRunner create(const BenchmarkConfig& config, const std::string& table_path,
-                                const std::string& query_path);
+  static NumaBenchmarkRunner create(const BenchmarkConfig& config, const std::string& table_path, const std::string& query_path);
 
   void run();
 
   static cxxopts::Options get_basic_cli_options(const std::string& benchmark_name);
 
   static nlohmann::json create_context(const BenchmarkConfig& config);
+
+  static void create_tables(const BenchmarkConfig& config, const std::string& table_path);
+
+  static NamedQueries _read_query_folder(const std::string& query_path);
 
  private:
   // Run benchmark in BenchmarkMode::PermutedQuerySets mode
@@ -50,7 +53,6 @@ class NumaBenchmarkRunner {
 
   // Get all the files/tables/queries from a given path
   static std::vector<std::string> _read_table_folder(const std::string& table_path);
-  static NamedQueries _read_query_folder(const std::string& query_path);
 
   static NamedQueries _parse_query_file(const std::string& query_path);
 
