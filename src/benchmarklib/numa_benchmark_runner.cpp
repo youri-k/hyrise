@@ -32,7 +32,11 @@ NumaBenchmarkRunner::NumaBenchmarkRunner(const BenchmarkConfig& config, const Na
   // Initialise the scheduler if the benchmark was requested to run multi-threaded
   if (config.enable_scheduler) {
     config.out << "- Multi-threaded Topology:" << std::endl;
-    Topology::use_numa_topology(config.available_cores);
+    if (config.single_node) {
+      Topology::use_single_node_topology(config.node, config.available_cores);
+    } else {
+      Topology::use_numa_topology(config.available_cores);
+    }
     Topology::get().print(config.out);
 
     const auto scheduler = std::make_shared<NodeQueueScheduler>();
@@ -420,6 +424,8 @@ cxxopts::Options NumaBenchmarkRunner::get_basic_cli_options(const std::string& b
     ("e,encoding", "Specify Chunk encoding as a string or as a JSON config file (for more detailed configuration, see below). String options: " + encoding_strings_option, cxxopts::value<std::string>()->default_value("Dictionary"))  // NOLINT
     ("compression", "Specify vector compression as a string. Options: " + compression_strings_option, cxxopts::value<std::string>()->default_value(""))  // NOLINT
     ("scheduler", "Enable or disable the scheduler", cxxopts::value<bool>()->default_value("false")) // NOLINT
+    ("single_node", "Tell the Topology to only expose a single NUMA node", cxxopts::value<bool>()->default_value("false")) // NOLINT
+    ("node", "if single_node is set to True, this specifies the Node ID", cxxopts::value<int>()->default_value("0")) // NOLINT
     ("cores", "Number of used cores when scheduler is enabled (0 equals all available cores)", cxxopts::value<size_t>()->default_value("0")) // NOLINT
     ("mvcc", "Enable MVCC", cxxopts::value<bool>()->default_value("false")) // NOLINT
     ("visualize", "Create a visualization image of one LQP and PQP for each query", cxxopts::value<bool>()->default_value("false")); // NOLINT
@@ -447,6 +453,8 @@ nlohmann::json NumaBenchmarkRunner::create_context(const BenchmarkConfig& config
       {"using_visualization", config.enable_visualization},
       {"output_file_path", config.output_file_path ? *(config.output_file_path) : "stdout"},
       {"using_scheduler", config.enable_scheduler},
+      {"single_node", config.single_node},
+      {"node", config.node},
       {"using_pcm", config.enable_pcm},
       {"cores", config.available_cores},
       {"verbose", config.verbose},

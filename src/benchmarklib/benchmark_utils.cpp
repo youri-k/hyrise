@@ -83,7 +83,7 @@ BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool 
                                  const EncodingConfig& encoding_config, const size_t max_num_query_runs, const size_t query_runs,
                                  const Duration& max_duration, const UseMvcc use_mvcc,
                                  const std::optional<std::string>& output_file_path, const bool enable_scheduler,
-                                 const bool enable_pcm,
+                                 const bool single_node, const int node, const bool enable_pcm,
                                  const size_t available_cores, const bool enable_visualization, std::ostream& out)
     : benchmark_mode(benchmark_mode),
       verbose(verbose),
@@ -95,6 +95,8 @@ BenchmarkConfig::BenchmarkConfig(const BenchmarkMode benchmark_mode, const bool 
       use_mvcc(use_mvcc),
       output_file_path(output_file_path),
       enable_scheduler(enable_scheduler),
+      single_node(single_node),
+      node(node),
       enable_pcm(enable_pcm),
       available_cores(available_cores),
       enable_visualization(enable_visualization),
@@ -144,9 +146,12 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
   out << "- MVCC is " << (enable_mvcc ? "enabled" : "disabled") << std::endl;
 
   const auto enable_scheduler = json_config.value("scheduler", default_config.enable_scheduler);
+  const auto single_node = json_config.value("single_node", default_config.single_node);
+  const auto node = json_config.value("node", default_config.node);
   const auto available_cores = json_config.value("cores", default_config.available_cores);
   const auto core_info = enable_scheduler ? std::string(" using " + std::string((available_cores == 0) ? "all available" : std::to_string(available_cores)) + " cores") : "";
-  out << "- Running in " + std::string(enable_scheduler ? "multi" : "single") + "-threaded mode" << core_info << std::endl;
+  const auto single_node_info = single_node ? std::string(" on NUMA node " + std::to_string(node)) : "";
+  out << "- Running in " + std::string(enable_scheduler ? "multi" : "single") + "-threaded mode" << core_info << single_node_info << std::endl;
 
   const auto enable_pcm = json_config.value("pcm", default_config.enable_pcm);
   out << "- PCM " + std::string(enable_pcm ? "enabled" : "disabled") << std::endl;
@@ -199,7 +204,8 @@ BenchmarkConfig CLIConfigParser::parse_basic_options_json_config(const nlohmann:
 
   return BenchmarkConfig{
       benchmark_mode, verbose,          chunk_size,       *encoding_config, max_runs, query_runs, timeout_duration,
-      use_mvcc,       output_file_path, enable_scheduler, enable_pcm, available_cores, enable_visualization, out};
+      use_mvcc,       output_file_path, enable_scheduler, single_node, node, enable_pcm, available_cores,
+      enable_visualization, out};
 }
 
 BenchmarkConfig CLIConfigParser::parse_basic_cli_options(const cxxopts::ParseResult& parse_result) {
@@ -217,6 +223,8 @@ nlohmann::json CLIConfigParser::basic_cli_options_to_json(const cxxopts::ParseRe
   json_config.emplace("encoding", parse_result["encoding"].as<std::string>());
   json_config.emplace("compression", parse_result["compression"].as<std::string>());
   json_config.emplace("scheduler", parse_result["scheduler"].as<bool>());
+  json_config.emplace("single_node", parse_result["single_node"].as<bool>());
+  json_config.emplace("node", parse_result["node"].as<int>());
   json_config.emplace("pcm", parse_result["pcm"].as<bool>());
   json_config.emplace("cores", parse_result["cores"].as<size_t>());
   json_config.emplace("mvcc", parse_result["mvcc"].as<bool>());

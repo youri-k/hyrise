@@ -43,6 +43,7 @@ void TopologyNode::print(std::ostream& stream) const {
 void Topology::use_default_topology() { Topology::get()._init_default_topology(); }
 
 void Topology::use_numa_topology(uint32_t max_num_cores) { Topology::get()._init_numa_topology(max_num_cores); }
+void Topology::use_single_node_topology(int single_node_id, uint32_t max_num_cores) { Topology::get()._init_single_node_topology(single_node_id, max_num_cores); }
 
 void Topology::use_non_numa_topology(uint32_t max_num_cores) { Topology::get()._init_non_numa_topology(max_num_cores); }
 
@@ -76,6 +77,52 @@ void Topology::_init_numa_topology(uint32_t max_num_cores) {
   auto core_count = uint32_t{0};
 
   for (auto node_id = 0; node_id <= max_node; node_id++) {
+    if (max_num_cores == 0 || core_count < max_num_cores) {
+      auto cpus = std::vector<TopologyCpu>();
+
+      numa_node_to_cpus(node_id, cpu_bitmask);
+
+      for (CpuID cpu_id{0}; cpu_id < num_configured_cpus; ++cpu_id) {
+        if (numa_bitmask_isbitset(cpu_bitmask, cpu_id)) {
+          if (max_num_cores == 0 || core_count < max_num_cores) {
+            cpus.emplace_back(TopologyCpu(cpu_id));
+            _num_cpus++;
+          }
+          core_count++;
+        }
+      }
+
+      TopologyNode node(std::move(cpus));
+      _nodes.emplace_back(std::move(node));
+    }
+  }
+
+  _create_memory_resources();
+
+  numa_free_cpumask(cpu_bitmask);
+#endif
+}
+
+void Topology::_init_single_node_topology(int single_node_id, uint32_t max_num_cores) {
+#if !HYRISE_NUMA_SUPPORT
+  _init_fake_numa_topology(max_num_cores);
+#else
+
+  if (numa_available() < 0) {
+    return _init_fake_numa_topology(max_num_cores);
+  }
+
+  _clear();
+  _fake_numa_topology = false;
+
+  auto max_node = numa_max_node();
+  auto num_configured_cpus = static_cast<CpuID>(numa_num_configured_cpus());
+  auto cpu_bitmask = numa_allocate_cpumask();
+  auto core_count = uint32_t{0};
+
+  for (auto node_id = 0; node_id <= max_node; node_id++) {
+    if (node_id != single_node_id) continue;
+
     if (max_num_cores == 0 || core_count < max_num_cores) {
       auto cpus = std::vector<TopologyCpu>();
 

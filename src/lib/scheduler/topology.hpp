@@ -61,6 +61,7 @@ class Topology final {
    * Calls _init_fake_numa_topology() if on a non-NUMA system.
    */
   static void use_numa_topology(uint32_t max_num_cores = 0);
+  static void use_single_node_topology(int single_node_id, uint32_t max_num_cores);
 
   /**
    * Use a non-NUMA topology.
@@ -93,6 +94,7 @@ class Topology final {
 
   void _init_default_topology();
   void _init_numa_topology(uint32_t max_num_cores = 0);
+  void _init_single_node_topology(int single_node_id, uint32_t max_num_cores);
   void _init_non_numa_topology(uint32_t max_num_cores = 0);
   void _init_fake_numa_topology(uint32_t max_num_workers = 0, uint32_t workers_per_node = 1);
 

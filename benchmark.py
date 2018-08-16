@@ -78,9 +78,10 @@ for iteration in range(ITERATIONS_OVERALL):
                 '--runs', str(runs_per_query),
                 '--scheduler=' + use_scheduler,
                 '--cores', str(core_count),
-                # '--pcm',
+                '--pcm',
                 # '-q', '6', '-q', '13'
-                '-q', '1', '-q', '3', '-q', '5', '-q', '6', '-q', '7', '-q', '9', '-q', '10', '-q', '13',
+                # '-q', '1', '-q', '3', '-q', '5', '-q', '6', '-q', '7', '-q', '9', '-q', '10', '-q', '13',
+                '-q', '1', '-q', '3', '-q', '6', '-q', '7', '-q', '10', '-q', '13',
                 ]
             run(args, cwd=CWD, stdout=output, stderr=output)
             # run(args, cwd=CWD)
