@@ -125,11 +125,41 @@ void NumaBenchmarkRunner::_benchmark_permuted_query_sets() {
 void NumaBenchmarkRunner::_benchmark_dummy_query() {
   const auto& name = "dummy";
 
+  Assert(_config.query_runs >= 2000, "Too few runs (< 2000)!");
+  const auto& layer0runs = _config.query_runs / 1000;
+
   // Build tasks
-  auto tasks = std::vector<std::shared_ptr<AbstractTask>>{};
-  for (auto iter = 0u; iter < _config.query_runs; ++iter) {
-    tasks.emplace_back(std::make_shared<JobTask>([](){
+  auto tasks0 = std::vector<std::shared_ptr<AbstractTask>>{};
+  for (auto iter0 = 0u; iter0 < layer0runs; ++iter0) {
+    tasks0.emplace_back(std::make_shared<JobTask>([](){
       std::this_thread::sleep_for( std::chrono::milliseconds(5) );
+
+      auto tasks1 = std::vector<std::shared_ptr<AbstractTask>>{};
+      for (auto iter1 = 0; iter1 < 10; ++iter1) {
+        tasks1.emplace_back(std::make_shared<JobTask>([](){
+          std::this_thread::sleep_for( std::chrono::milliseconds(5) );
+
+          auto tasks2 = std::vector<std::shared_ptr<AbstractTask>>{};
+          for (auto iter2 = 0; iter2 < 10; ++iter2) {
+            tasks2.emplace_back(std::make_shared<JobTask>([](){
+              std::this_thread::sleep_for( std::chrono::milliseconds(5) );
+
+              auto tasks3 = std::vector<std::shared_ptr<AbstractTask>>{};
+              for (auto iter3 = 0; iter3 < 10; ++iter3) {
+                tasks3.emplace_back(std::make_shared<JobTask>([](){
+                  std::this_thread::sleep_for( std::chrono::milliseconds(5) );
+                }));
+              }
+              CurrentScheduler::schedule_tasks(tasks3);
+            }));
+
+          }
+          CurrentScheduler::schedule_tasks(tasks2);
+        }));
+
+      }
+      CurrentScheduler::schedule_tasks(tasks1);
+
     }));
   }
 
@@ -137,7 +167,8 @@ void NumaBenchmarkRunner::_benchmark_dummy_query() {
   result.num_iterations = _config.query_runs;
 
   const auto query_benchmark_begin = std::chrono::steady_clock::now();
-  CurrentScheduler::schedule_and_wait_for_tasks(tasks);
+  CurrentScheduler::schedule_and_wait_for_tasks(tasks0);
+  CurrentScheduler::get()->finish();
   const auto query_benchmark_end = std::chrono::steady_clock::now();
 
   const auto duration = query_benchmark_end - query_benchmark_begin;

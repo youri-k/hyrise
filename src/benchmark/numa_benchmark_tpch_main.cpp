@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
     queries.emplace_back("TPC-H " + std::to_string(query_id), opossum::tpch_queries.at(query_id));
   }
 
-  config->out << "- Generating TPCH Tables with scale_factor=" << scale_factor << " ..." << std::endl;
+  config->out << "- NOT Generating TPCH Tables with scale_factor=" << scale_factor << " ..." << std::endl;
 
   // const auto tables = opossum::TpchDbGenerator(scale_factor, config->chunk_size).generate();
 
