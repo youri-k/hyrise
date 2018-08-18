@@ -25,15 +25,20 @@ NAME_FILE = 'current_run.name'
 
 SCALE = 1
 QUERY_RUNS_PER_CORE = 3
-ITERATIONS_OVERALL = 3
+# ITERATIONS_OVERALL = 3
+ITERATIONS_OVERALL = 2
+# CHUNK_SIZE = 100000
+CHUNK_SIZE_TXT = '_chunksizeMAX'
+# CHUNK_SIZE_TXT = '_chunksize' + CHUNK_SIZE
 
 APPENDIX = ''
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-RESULT_DIR_NAME = 'tpch_scale' + str(SCALE) + '_runspercore' + str(QUERY_RUNS_PER_CORE) + APPENDIX + '_' + timestamp
+RESULT_DIR_NAME = 'tpch_scale' + str(SCALE) + CHUNK_SIZE_TXT + '_runspercore' + str(QUERY_RUNS_PER_CORE) + APPENDIX + '_' + timestamp
 RESULT_DIR = os.path.join(RESULT_DIR_BASE, RESULT_DIR_NAME)
 
 # core_counts = list(range(80, 0, -5)) + [4, 3, 2, 1, 0]
-core_counts = list(range(224, 0, -14)) + [7, 1, 0]
+# core_counts = list(range(224, 0, -14)) + [7, 1, 0]
+core_counts = list(range(224, 0, -28)) + [7, 1, 0]
 # core_counts = list(range(20, -1, -1))
 # core_counts = [10]
 
@@ -57,6 +62,8 @@ if os.path.exists(OUTPUT_FILE):
 if os.path.exists(NAME_FILE):
     os.remove(NAME_FILE)
 
+bot_sendtext('Starting benchmarks...')
+
 for iteration in range(ITERATIONS_OVERALL):
     for core_count in core_counts:
         with open(STATUS_FILE, 'a+') as status:
@@ -78,12 +85,15 @@ for iteration in range(ITERATIONS_OVERALL):
                 '--runs', str(runs_per_query),
                 '--scheduler=' + use_scheduler,
                 '--cores', str(core_count),
+                # '--chunk_size', str(CHUNK_SIZE),
                 # '--pcm',
                 # '-q', '6', '-q', '13'
-                '-q', '1', '-q', '3', '-q', '5', '-q', '6', '-q', '7', '-q', '9', '-q', '10', '-q', '13',
+                '-q', '1', '-q', '3', '-q', '6', '-q', '7', '-q', '10', '-q', '13',
+                # '-q', '1', '-q', '3', '-q', '5', '-q', '6', '-q', '7', '-q', '9', '-q', '10', '-q', '13',
                 ]
             run(args, cwd=CWD, stdout=output, stderr=output)
             # run(args, cwd=CWD)
+    bot_sendtext('Iteration ' + str(iteration + 1) + ' of ' + str(ITERATIONS_OVERALL) + ' complete!')
 
 with open(STATUS_FILE, 'a+') as status:
     status.write('Done\n')
