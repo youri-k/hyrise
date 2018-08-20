@@ -124,30 +124,39 @@ void NumaBenchmarkRunner::_benchmark_permuted_query_sets() {
 
 void NumaBenchmarkRunner::_benchmark_dummy_query() {
   const auto& name = "dummy";
+  const auto sleep_time = 2;
 
-  Assert(_config.query_runs >= 2000, "Too few runs (< 2000)!");
-  const auto& layer0runs = _config.query_runs / 1000;
+  Assert(_config.query_runs >= 20000, "Too few runs (< 20000)!");
+  const auto& layer0runs = _config.query_runs / 10000;
 
   // Build tasks
   auto tasks0 = std::vector<std::shared_ptr<AbstractTask>>{};
   for (auto iter0 = 0u; iter0 < layer0runs; ++iter0) {
     tasks0.emplace_back(std::make_shared<JobTask>([](){
-      std::this_thread::sleep_for( std::chrono::milliseconds(5) );
+      std::this_thread::sleep_for( std::chrono::milliseconds(sleep_time) );
 
       auto tasks1 = std::vector<std::shared_ptr<AbstractTask>>{};
       for (auto iter1 = 0; iter1 < 10; ++iter1) {
         tasks1.emplace_back(std::make_shared<JobTask>([](){
-          std::this_thread::sleep_for( std::chrono::milliseconds(5) );
+          std::this_thread::sleep_for( std::chrono::milliseconds(sleep_time) );
 
           auto tasks2 = std::vector<std::shared_ptr<AbstractTask>>{};
           for (auto iter2 = 0; iter2 < 10; ++iter2) {
             tasks2.emplace_back(std::make_shared<JobTask>([](){
-              std::this_thread::sleep_for( std::chrono::milliseconds(5) );
+              std::this_thread::sleep_for( std::chrono::milliseconds(sleep_time) );
 
               auto tasks3 = std::vector<std::shared_ptr<AbstractTask>>{};
               for (auto iter3 = 0; iter3 < 10; ++iter3) {
                 tasks3.emplace_back(std::make_shared<JobTask>([](){
-                  std::this_thread::sleep_for( std::chrono::milliseconds(5) );
+                  std::this_thread::sleep_for( std::chrono::milliseconds(sleep_time) );
+
+                  auto tasks4 = std::vector<std::shared_ptr<AbstractTask>>{};
+                  for (auto iter4 = 0; iter4 < 10; ++iter4) {
+                    tasks4.emplace_back(std::make_shared<JobTask>([](){
+                      std::this_thread::sleep_for( std::chrono::milliseconds(sleep_time) );
+                    }));
+                  }
+                  CurrentScheduler::schedule_tasks(tasks4);
                 }));
               }
               CurrentScheduler::schedule_tasks(tasks3);
