@@ -24,10 +24,12 @@ OUTPUT_FILE = 'current_run.out'
 NAME_FILE = 'current_run.name'
 
 SCALE = 1
+# SCALE = 0.1
 QUERY_RUNS_PER_CORE = 3
 # ITERATIONS_OVERALL = 3
-ITERATIONS_OVERALL = 2
+ITERATIONS_OVERALL = 3
 # CHUNK_SIZE = 100000
+CHUNK_SIZE_TXT = ''
 CHUNK_SIZE_TXT = '_chunksizeMAX'
 # CHUNK_SIZE_TXT = '_chunksize' + CHUNK_SIZE
 
@@ -88,8 +90,9 @@ for iteration in range(ITERATIONS_OVERALL):
                 # '--chunk_size', str(CHUNK_SIZE),
                 # '--pcm',
                 # '-q', '6', '-q', '13'
-                '-q', '1', '-q', '3', '-q', '6', '-q', '7', '-q', '10', '-q', '13',
+                # '-q', '1', '-q', '3', '-q', '6', '-q', '7', '-q', '10', '-q', '13',
                 # '-q', '1', '-q', '3', '-q', '5', '-q', '6', '-q', '7', '-q', '9', '-q', '10', '-q', '13',
+                '-q', '1', '-q', '2', '-q', '3', '-q', '4', '-q', '5', '-q', '6', '-q', '7', '-q', '8', '-q', '9', '-q', '10', '-q', '11', '-q', '12', '-q', '13', '-q', '14', '-q', '16', '-q', '17', '-q', '18', '-q', '19', '-q', '21', '-q', '22',
                 ]
             run(args, cwd=CWD, stdout=output, stderr=output)
             # run(args, cwd=CWD)
