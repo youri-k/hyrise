@@ -58,11 +58,11 @@ const AllTypeVariant ValueSegment<T>::operator[](const ChunkOffset chunk_offset)
     return NULL_VALUE;
   }
 
-  return _values.at(chunk_offset);
+  return promote_temp_type(_values.at(chunk_offset));
 }
 
 template <typename T>
-const std::optional<T> ValueSegment<T>::get_typed_value(const ChunkOffset chunk_offset) const {
+const std::optional<TempType<T>> ValueSegment<T>::get_typed_value(const ChunkOffset chunk_offset) const {
   // Column supports null values and value is null
   if (is_nullable() && (*_null_values)[chunk_offset]) {
     return std::nullopt;

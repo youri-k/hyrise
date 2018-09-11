@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "null_value.hpp"
@@ -86,6 +87,25 @@ static constexpr auto data_type_enum_string_pairs = detail::data_type_enum_strin
 
 using DataType = detail::DataType;
 using AllTypeVariant = detail::AllTypeVariant;
+
+// We use TempType so that we don't have to pass around std::strings (and, in the future, other expensive data types).
+// strings are replaced by string_views (meaning that the original string has to remain available, thus TEMPType).
+// Use promote_temp_type to get the original DataType back.
+template <typename DataType>
+using TempType = std::conditional_t<std::is_same_v<DataType, std::string>, std::string_view, DataType>;
+
+// Turns a TempType into its full, original DataType. Remember to use emplace instead of insert/push so that you don't
+// copy the return value unnecessary.
+template <typename T>
+auto promote_temp_type(const T& temp_value) {
+  return temp_value;
+}
+
+template <>
+// We need auto, so we can't move it to a cpp. To avoid double declarations, we need to inline this.
+inline auto promote_temp_type(const std::string_view& temp_value) {
+  return std::string{temp_value};
+}
 
 // Function to check if AllTypeVariant is null
 inline bool variant_is_null(const AllTypeVariant& variant) { return (variant.which() == 0); }

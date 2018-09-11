@@ -67,7 +67,7 @@ void BTreeIndexImpl<DataType>::_bulk_insert(const std::shared_ptr<const BaseSegm
     auto iterable_left = create_iterable_from_segment<DataType>(typed_segment);
     iterable_left.for_each([&](const auto& value) {
       if (value.is_null()) return;
-      values.push_back(std::make_pair(value.chunk_offset(), value.value()));
+      values.emplace_back(value.chunk_offset(), promote_temp_type(value.value()));
     });
   });
 

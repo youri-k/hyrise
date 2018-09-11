@@ -40,11 +40,11 @@ const AllTypeVariant FrameOfReferenceSegment<T, U>::operator[](const ChunkOffset
   if (!typed_value.has_value()) {
     return NULL_VALUE;
   }
-  return *typed_value;
+  return promote_temp_type(*typed_value);
 }
 
 template <typename T, typename U>
-const std::optional<T> FrameOfReferenceSegment<T, U>::get_typed_value(const ChunkOffset chunk_offset) const {
+const std::optional<TempType<T>> FrameOfReferenceSegment<T, U>::get_typed_value(const ChunkOffset chunk_offset) const {
   if (_null_values[chunk_offset]) {
     return std::nullopt;
   }

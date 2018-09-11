@@ -70,10 +70,10 @@ class JitReadTuples : public AbstractJittable {
       if constexpr (Nullable) {
         context.tuple.set_is_null(_tuple_value.tuple_index(), value.is_null());
         if (!value.is_null()) {
-          context.tuple.set<DataType>(_tuple_value.tuple_index(), value.value());
+          context.tuple.set<DataType>(_tuple_value.tuple_index(), promote_temp_type(value.value()));
         }
       } else {
-        context.tuple.set<DataType>(_tuple_value.tuple_index(), value.value());
+        context.tuple.set<DataType>(_tuple_value.tuple_index(), promote_temp_type(value.value()));
       }
       // clang-format on
     }

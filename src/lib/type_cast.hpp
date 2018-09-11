@@ -57,4 +57,15 @@ std::enable_if_t<std::is_integral<T>::value, T> type_cast(const AllTypeVariant& 
   }
 }
 
+// Template specialization for string(_view) inputs (which we always need to cast)
+template <typename T>
+T type_cast(const std::string& value) {
+  return boost::lexical_cast<T>(value);
+}
+
+template <typename T>
+T type_cast(const std::string_view& value) {
+  return boost::lexical_cast<T>(value);
+}
+
 }  // namespace opossum

@@ -98,7 +98,7 @@ The original value is used to detect hash collisions.
 template <typename T>
 struct PartitionedElement {
   PartitionedElement() : row_id(NULL_ROW_ID), partition_hash(0), value(T()) {}
-  PartitionedElement(RowID row, Hash hash, T val) : row_id(row), partition_hash(hash), value(val) {}
+  PartitionedElement(RowID row, Hash hash, T&& val) : row_id(row), partition_hash(hash), value(std::forward<T>(val)) {}
 
   RowID row_id;
   Hash partition_hash{0};
@@ -251,7 +251,7 @@ std::shared_ptr<Partition<T>> materialize_input(const std::shared_ptr<const Tabl
 
         iterable.for_each([&, chunk_id, keep_nulls](const auto& value) {
           if (!value.is_null() || keep_nulls) {
-            const Hash hashed_value = hash_value<T, HashedType>(value.value(), partitioning_seed);
+            const Hash hashed_value = hash_value<TempType<T>, HashedType>(value.value(), partitioning_seed);
 
             /*
             For ReferenceSegments we do not use the RowIDs from the referenced tables.
@@ -259,11 +259,11 @@ std::shared_ptr<Partition<T>> materialize_input(const std::shared_ptr<const Tabl
             values from different inputs (important for Multi Joins).
             */
             if constexpr (std::is_same<std::decay<decltype(typed_segment)>, ReferenceSegment>::value) {
-              *(output_iterator++) =
-                  PartitionedElement<T>{RowID{chunk_id, reference_chunk_offset}, hashed_value, value.value()};
+              *(output_iterator++) = PartitionedElement<T>{RowID{chunk_id, reference_chunk_offset}, hashed_value,
+                                                           promote_temp_type(value.value())};
             } else {
-              *(output_iterator++) =
-                  PartitionedElement<T>{RowID{chunk_id, value.chunk_offset()}, hashed_value, value.value()};
+              *(output_iterator++) = PartitionedElement<T>{RowID{chunk_id, value.chunk_offset()}, hashed_value,
+                                                           promote_temp_type(value.value())};
             }
 
             const Hash radix = hashed_value & mask;

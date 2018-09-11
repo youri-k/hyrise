@@ -70,7 +70,7 @@ class ReferenceSegmentIterable : public SegmentIterable<ReferenceSegmentIterable
       }
       const auto typed_value = _accessors[chunk_id]->access(chunk_offset);
 
-      return SegmentIteratorValue<T>{typed_value.value_or(T{}), !typed_value.has_value(),
+      return SegmentIteratorValue<T>{typed_value ? *typed_value : T{}, !typed_value.has_value(),
                                      chunk_offset_into_ref_segment};
     }
 

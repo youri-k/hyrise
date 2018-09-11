@@ -4,6 +4,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -57,13 +58,13 @@ FixedString FixedStringVector::at(const size_t pos) {
   return FixedString(&_chars.at(pos * _string_length), _string_length);
 }
 
-const std::string FixedStringVector::get_string_at(const size_t pos) const {
+const std::string_view FixedStringVector::get_string_at(const size_t pos) const {
   const auto string_start = &_chars[pos * _string_length];
   if (*(string_start + _string_length - 1) == '\0') {
     // The string is zero-padded - the std::string constructor takes care of finding the correct length
-    return std::string(string_start);
+    return std::string_view(string_start);
   } else {
-    return std::string(string_start, _string_length);
+    return std::string_view(string_start, _string_length);
   }
 }
 

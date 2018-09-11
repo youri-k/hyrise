@@ -23,11 +23,16 @@ struct IsLexCastable : std::false_type {};
 template <typename T>
 struct IsLexCastable<T, decltype(void(std::declval<std::ostream&>() << std::declval<T>()))> : std::true_type {};
 
+template <typename L, typename R, typename = void>
+struct HaveCommonType : std::false_type {};
+
+template <typename L, typename R>
+struct HaveCommonType<L, R, std::void_t<std::common_type<L, R>>> : std::true_type {};
+
 /* EQUAL */
 // L and R are implicitly convertible
 template <typename L, typename R>
-typename std::enable_if<std::is_convertible<L, R>::value && std::is_convertible<R, L>::value, bool>::type value_equal(
-    L l, R r) {
+typename std::enable_if<HaveCommonType<L, R>::value, bool>::type value_equal(L l, R r) {
   return l == r;
 }
 
@@ -50,8 +55,7 @@ value_equal(L l, R r) {
 /* SMALLER */
 // L and R are implicitly convertible
 template <typename L, typename R>
-typename std::enable_if<std::is_convertible<L, R>::value && std::is_convertible<R, L>::value, bool>::type value_smaller(
-    L l, R r) {
+typename std::enable_if<HaveCommonType<L, R>::value, bool>::type value_smaller(L l, R r) {
   return l < r;
 }
 
@@ -74,8 +78,7 @@ value_smaller(L l, R r) {
 /* GREATER > */
 // L and R are implicitly convertible
 template <typename L, typename R>
-typename std::enable_if<std::is_convertible<L, R>::value && std::is_convertible<R, L>::value, bool>::type value_greater(
-    L l, R r) {
+typename std::enable_if<HaveCommonType<L, R>::value, bool>::type value_greater(L l, R r) {
   return l > r;
 }
 

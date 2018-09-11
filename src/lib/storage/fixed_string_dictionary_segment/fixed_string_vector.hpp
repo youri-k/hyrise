@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -42,7 +43,7 @@ class FixedStringVector {
 
   FixedString at(const size_t pos);
 
-  const std::string get_string_at(const size_t pos) const;
+  const std::string_view get_string_at(const size_t pos) const;
 
   // Make the FixedStringVector of FixedStrings iterable in different ways
   FixedStringIterator<false> begin() noexcept;

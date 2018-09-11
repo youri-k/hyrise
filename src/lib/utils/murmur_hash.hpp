@@ -19,4 +19,11 @@ typename std::enable_if<std::is_same<T, std::string>::value, unsigned int>::type
   return murmur_hash2(key.c_str(), key.size(), seed);
 }
 
+// murmur hash for std::string_view
+template <typename T>
+typename std::enable_if<std::is_same<T, std::string_view>::value, unsigned int>::type murmur2(T key,
+                                                                                              unsigned int seed) {
+  return murmur_hash2(key.data(), key.size(), seed);
+}
+
 }  // namespace opossum

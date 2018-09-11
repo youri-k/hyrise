@@ -4,6 +4,7 @@
 
 #include <cstddef>
 
+#include "all_type_variant.hpp"
 #include "types.hpp"
 
 namespace opossum {
@@ -24,7 +25,7 @@ class AbstractSegmentIteratorValue {
   using Type = T;
 
  public:
-  virtual const T& value() const = 0;
+  virtual const TempType<T>& value() const = 0;
   virtual bool is_null() const = 0;
 
   /**
@@ -46,15 +47,15 @@ class SegmentIteratorValue : public AbstractSegmentIteratorValue<T> {
  public:
   static constexpr bool Nullable = true;
 
-  SegmentIteratorValue(const T& value, const bool null_value, const ChunkOffset& chunk_offset)
+  SegmentIteratorValue(const TempType<T>& value, const bool null_value, const ChunkOffset& chunk_offset)
       : _value{value}, _null_value{null_value}, _chunk_offset{chunk_offset} {}
 
-  const T& value() const final { return _value; }
+  const TempType<T>& value() const final { return _value; }
   bool is_null() const final { return _null_value; }
   const ChunkOffset& chunk_offset() const final { return _chunk_offset; }
 
  private:
-  const T _value;
+  const TempType<T> _value;
   const bool _null_value;
   const ChunkOffset _chunk_offset;
 };
@@ -72,12 +73,12 @@ class NonNullSegmentIteratorValue : public AbstractSegmentIteratorValue<T> {
   NonNullSegmentIteratorValue(const T& value, const ChunkOffset& chunk_offset)
       : _value{value}, _chunk_offset{chunk_offset} {}
 
-  const T& value() const final { return _value; }
+  const TempType<T>& value() const final { return _value; }
   bool is_null() const final { return false; }
   const ChunkOffset& chunk_offset() const final { return _chunk_offset; }
 
  private:
-  const T _value;
+  const TempType<T> _value;
   const ChunkOffset _chunk_offset;
 };
 

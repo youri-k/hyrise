@@ -149,7 +149,7 @@ class ColumnMaterializerNUMA {
           null_rows_output->emplace_back(row_id);
         }
       } else {
-        output->emplace_back(row_id, segment_value.value());
+        output->emplace_back(row_id, promote_temp_type(segment_value.value()));
       }
     });
 

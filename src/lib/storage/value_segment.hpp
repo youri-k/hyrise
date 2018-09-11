@@ -37,7 +37,7 @@ class ValueSegment : public BaseValueSegment {
   const T get(const ChunkOffset chunk_offset) const;
 
   // return the value at a certain position.
-  const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const;
+  const std::optional<TempType<T>> get_typed_value(const ChunkOffset chunk_offset) const;
 
   // Add a value to the end of the segment.
   void append(const AllTypeVariant& val) final;

@@ -16,7 +16,7 @@ namespace opossum {
  * A SegmentAccessor is templated per SegmentType and DataType (T).
  * It requires that the underlying segment implements an implicit interface:
  *
- *   const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const;
+ *   const std::optional<TempType<T>> get_typed_value(const ChunkOffset chunk_offset) const;
  *
  */
 template <typename T, typename SegmentType>
@@ -24,7 +24,7 @@ class SegmentAccessor : public BaseSegmentAccessor<T> {
  public:
   explicit SegmentAccessor(const SegmentType& segment) : _segment{segment} {}
 
-  const std::optional<T> access(ChunkOffset offset) const final { return _segment.get_typed_value(offset); }
+  const std::optional<TempType<T>> access(ChunkOffset offset) const final { return _segment.get_typed_value(offset); }
 
  protected:
   const SegmentType& _segment;
@@ -43,7 +43,7 @@ template <typename T>
 class SegmentAccessor<T, ReferenceSegment> : public BaseSegmentAccessor<T> {
  public:
   explicit SegmentAccessor(const ReferenceSegment& segment) : _segment{segment} {}
-  const std::optional<T> access(ChunkOffset offset) const final {
+  const std::optional<TempType<T>> access(ChunkOffset offset) const final {
     PerformanceWarning("SegmentAccessor used on ReferenceSegment");
     const auto all_type_variant = _segment[offset];
     if (variant_is_null(all_type_variant)) {

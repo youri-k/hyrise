@@ -59,7 +59,7 @@ std::shared_ptr<SegmentStatistics> SegmentStatistics::build_statistics(
       iterable.for_each([&](const auto& value) {
         // we are only interested in non-null values
         if (!value.is_null()) {
-          values.insert(value.value());
+          values.emplace(promote_temp_type(value.value()));
         }
       });
       pmr_vector<DataTypeT> dictionary{values.cbegin(), values.cend()};
