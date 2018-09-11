@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "all_type_variant.hpp"
 #include "boost/variant.hpp"
 #include "utils/assert.hpp"
 
