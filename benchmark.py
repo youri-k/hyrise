@@ -27,20 +27,21 @@ SCALE = 1
 # SCALE = 0.1
 QUERY_RUNS_PER_CORE = 3
 # ITERATIONS_OVERALL = 3
-ITERATIONS_OVERALL = 3
+ITERATIONS_OVERALL = 1
 # CHUNK_SIZE = 100000
 CHUNK_SIZE_TXT = ''
 CHUNK_SIZE_TXT = '_chunksizeMAX'
 # CHUNK_SIZE_TXT = '_chunksize' + CHUNK_SIZE
 
-APPENDIX = ''
+APPENDIX = '_push'
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 RESULT_DIR_NAME = 'tpch_scale' + str(SCALE) + CHUNK_SIZE_TXT + '_runspercore' + str(QUERY_RUNS_PER_CORE) + APPENDIX + '_' + timestamp
 RESULT_DIR = os.path.join(RESULT_DIR_BASE, RESULT_DIR_NAME)
 
 # core_counts = list(range(80, 0, -5)) + [4, 3, 2, 1, 0]
 # core_counts = list(range(224, 0, -14)) + [7, 1, 0]
-core_counts = list(range(224, 0, -28)) + [7, 1, 0]
+# core_counts = list(range(224, 0, -28)) + [7, 1, 0]
+core_counts = list(range(224, 0, -28)) + [1, 0]
 # core_counts = list(range(20, -1, -1))
 # core_counts = [10]
 
@@ -67,7 +68,9 @@ if os.path.exists(NAME_FILE):
 bot_sendtext('Starting benchmarks...')
 
 for iteration in range(ITERATIONS_OVERALL):
+    cc = 0
     for core_count in core_counts:
+        cc += 1
         with open(STATUS_FILE, 'a+') as status:
             status.write('Running iteration ' + str(iteration) + ', core count ' + str(core_count) + '...\n')
         if core_count == 0:
@@ -90,12 +93,14 @@ for iteration in range(ITERATIONS_OVERALL):
                 # '--chunk_size', str(CHUNK_SIZE),
                 # '--pcm',
                 # '-q', '6', '-q', '13'
+                '-q', '3'
                 # '-q', '1', '-q', '3', '-q', '6', '-q', '7', '-q', '10', '-q', '13',
                 # '-q', '1', '-q', '3', '-q', '5', '-q', '6', '-q', '7', '-q', '9', '-q', '10', '-q', '13',
-                '-q', '1', '-q', '2', '-q', '3', '-q', '4', '-q', '5', '-q', '6', '-q', '7', '-q', '8', '-q', '9', '-q', '10', '-q', '11', '-q', '12', '-q', '13', '-q', '14', '-q', '16', '-q', '17', '-q', '18', '-q', '19', '-q', '21', '-q', '22',
+                # '-q', '1', '-q', '2', '-q', '3', '-q', '4', '-q', '5', '-q', '6', '-q', '7', '-q', '8', '-q', '9', '-q', '10', '-q', '11', '-q', '12', '-q', '13', '-q', '14', '-q', '16', '-q', '17', '-q', '18', '-q', '19', '-q', '21', '-q', '22',
                 ]
-            run(args, cwd=CWD, stdout=output, stderr=output)
-            # run(args, cwd=CWD)
+            # run(args, cwd=CWD, stdout=output, stderr=output)
+            run(args, cwd=CWD)
+        bot_sendtext('Core count ' + str(cc) + ' of ' + str(len(core_counts)) + ' complete!')
     bot_sendtext('Iteration ' + str(iteration + 1) + ' of ' + str(ITERATIONS_OVERALL) + ' complete!')
 
 with open(STATUS_FILE, 'a+') as status:
