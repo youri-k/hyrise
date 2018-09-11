@@ -30,6 +30,9 @@ class SegmentAccessor : public BaseSegmentAccessor<T> {
   const SegmentType& _segment;
 };
 
+template <typename T>
+std::unique_ptr<BaseSegmentAccessor<T>> create_segment_accessor(const std::shared_ptr<const BaseSegment>& segment);
+
 /**
  * Partial template specialization for ReferenceSegments.
  * Since ReferenceSegments don't know their 'T', this uses the subscript operator as a fallback.
@@ -45,11 +48,15 @@ class SegmentAccessor<T, ReferenceSegment> : public BaseSegmentAccessor<T> {
   explicit SegmentAccessor(const ReferenceSegment& segment) : _segment{segment} {}
   const std::optional<TempType<T>> access(ChunkOffset offset) const final {
     PerformanceWarning("SegmentAccessor used on ReferenceSegment");
-    const auto all_type_variant = _segment[offset];
-    if (variant_is_null(all_type_variant)) {
-      return std::nullopt;
-    }
-    return type_cast<T>(all_type_variant);
+
+    const auto& table = _segment.referenced_table();
+    const auto& referenced_row_id = (*_segment.pos_list())[offset];
+    const auto referenced_column_id = _segment.referenced_column_id();
+    const auto referenced_chunk_id = referenced_row_id.chunk_id;
+    const auto referenced_chunk_offset = referenced_row_id.chunk_offset;
+
+    const auto accessor = create_segment_accessor<T>(table->get_chunk(referenced_chunk_id)->get_segment(referenced_column_id));
+    return accessor->access(referenced_chunk_offset);
   }
 
  protected:

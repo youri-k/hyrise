@@ -70,7 +70,7 @@ class NonNullSegmentIteratorValue : public AbstractSegmentIteratorValue<T> {
  public:
   static constexpr bool Nullable = false;
 
-  NonNullSegmentIteratorValue(const T& value, const ChunkOffset& chunk_offset)
+  NonNullSegmentIteratorValue(const TempType<T>& value, const ChunkOffset& chunk_offset)
       : _value{value}, _chunk_offset{chunk_offset} {}
 
   const TempType<T>& value() const final { return _value; }
