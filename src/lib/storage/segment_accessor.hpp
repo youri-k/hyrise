@@ -47,8 +47,6 @@ class SegmentAccessor<T, ReferenceSegment> : public BaseSegmentAccessor<T> {
  public:
   explicit SegmentAccessor(const ReferenceSegment& segment) : _segment{segment} {}
   const std::optional<TempType<T>> access(ChunkOffset offset) const final {
-    PerformanceWarning("SegmentAccessor used on ReferenceSegment");
-
     const auto& table = _segment.referenced_table();
     const auto& referenced_row_id = (*_segment.pos_list())[offset];
     const auto referenced_column_id = _segment.referenced_column_id();
