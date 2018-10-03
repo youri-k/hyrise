@@ -17,12 +17,12 @@ class ValueSegment : public BaseValueSegment {
   explicit ValueSegment(bool nullable = false);
   explicit ValueSegment(const PolymorphicAllocator<T>& alloc, bool nullable = false);
 
-  // Create a ValueSegment with the given values. There is no point in passing an allocator if we want to move the
-  // vector into the segment.
-  explicit ValueSegment(pmr_concurrent_vector<T>&& values);
-  explicit ValueSegment(pmr_concurrent_vector<T>&& values, pmr_concurrent_vector<bool>&& null_values);
-  explicit ValueSegment(const std::vector<T>& values, const PolymorphicAllocator<T>& alloc = {});
-  explicit ValueSegment(const std::vector<T>& values, std::vector<bool>& null_values,
+  // Create a ValueSegment with the given values.
+  explicit ValueSegment(pmr_concurrent_vector<T>&& values, const PolymorphicAllocator<T>& alloc = {});
+  explicit ValueSegment(pmr_concurrent_vector<T>&& values, pmr_concurrent_vector<bool>&& null_values,
+                        const PolymorphicAllocator<T>& alloc = {});
+  explicit ValueSegment(std::vector<T>& values, const PolymorphicAllocator<T>& alloc = {});
+  explicit ValueSegment(std::vector<T>& values, std::vector<bool>& null_values,
                         const PolymorphicAllocator<T>& alloc = {});
 
   // Return the value at a certain position. If you want to write efficient operators, back off!
@@ -37,7 +37,7 @@ class ValueSegment : public BaseValueSegment {
   const T get(const ChunkOffset chunk_offset) const;
 
   // return the value at a certain position.
-  const std::optional<TempType<T>> get_typed_value(const ChunkOffset chunk_offset) const;
+  const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const;
 
   // Add a value to the end of the segment.
   void append(const AllTypeVariant& val) final;

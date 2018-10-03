@@ -27,19 +27,22 @@ ValueSegment<T>::ValueSegment(const PolymorphicAllocator<T>& alloc, bool nullabl
 }
 
 template <typename T>
-ValueSegment<T>::ValueSegment(pmr_concurrent_vector<T>&& values)
-    : BaseValueSegment(data_type_from_type<T>()), _values(std::move(values)) {}
+ValueSegment<T>::ValueSegment(pmr_concurrent_vector<T>&& values, const PolymorphicAllocator<T>& alloc)
+    : BaseValueSegment(data_type_from_type<T>()), _values(std::move(values), alloc) {}
 
 template <typename T>
-ValueSegment<T>::ValueSegment(pmr_concurrent_vector<T>&& values, pmr_concurrent_vector<bool>&& null_values)
-    : BaseValueSegment(data_type_from_type<T>()), _values(std::move(values)), _null_values(std::move(null_values)) {}
+ValueSegment<T>::ValueSegment(pmr_concurrent_vector<T>&& values, pmr_concurrent_vector<bool>&& null_values,
+                              const PolymorphicAllocator<T>& alloc)
+    : BaseValueSegment(data_type_from_type<T>()),
+      _values(std::move(values), alloc),
+      _null_values({std::move(null_values), alloc}) {}
 
 template <typename T>
-ValueSegment<T>::ValueSegment(const std::vector<T>& values, const PolymorphicAllocator<T>& alloc)
+ValueSegment<T>::ValueSegment(std::vector<T>& values, const PolymorphicAllocator<T>& alloc)
     : BaseValueSegment(data_type_from_type<T>()), _values(values, alloc) {}
 
 template <typename T>
-ValueSegment<T>::ValueSegment(const std::vector<T>& values, std::vector<bool>& null_values,
+ValueSegment<T>::ValueSegment(std::vector<T>& values, std::vector<bool>& null_values,
                               const PolymorphicAllocator<T>& alloc)
     : BaseValueSegment(data_type_from_type<T>()),
       _values(values, alloc),
@@ -55,11 +58,11 @@ const AllTypeVariant ValueSegment<T>::operator[](const ChunkOffset chunk_offset)
     return NULL_VALUE;
   }
 
-  return promote_temp_type(_values.at(chunk_offset));
+  return _values.at(chunk_offset);
 }
 
 template <typename T>
-const std::optional<TempType<T>> ValueSegment<T>::get_typed_value(const ChunkOffset chunk_offset) const {
+const std::optional<T> ValueSegment<T>::get_typed_value(const ChunkOffset chunk_offset) const {
   // Column supports null values and value is null
   if (is_nullable() && (*_null_values)[chunk_offset]) {
     return std::nullopt;

@@ -39,13 +39,12 @@ void BaseSingleColumnTableScanImpl::handle_segment(const ReferenceSegment& segme
   const ChunkID chunk_id = context->_chunk_id;
   auto& matches_out = context->_matches_out;
 
-  auto referenced_chunk_count = segment.referenced_table()->chunk_count();
-  auto chunk_offsets_by_chunk_id = split_pos_list_by_chunk_id(*segment.pos_list(), referenced_chunk_count);
+  auto chunk_offsets_by_chunk_id = split_pos_list_by_chunk_id(*segment.pos_list());
 
   // Visit each referenced segment
-  for (auto referenced_chunk_id = ChunkID{0}; referenced_chunk_id < referenced_chunk_count; ++referenced_chunk_id) {
-    auto& mapped_chunk_offsets = chunk_offsets_by_chunk_id[referenced_chunk_id];
-    if (mapped_chunk_offsets.empty()) continue;
+  for (auto& pair : chunk_offsets_by_chunk_id) {
+    const auto& referenced_chunk_id = pair.first;
+    auto& mapped_chunk_offsets = pair.second;
 
     const auto chunk = segment.referenced_table()->get_chunk(referenced_chunk_id);
     auto referenced_segment = chunk->get_segment(segment.referenced_column_id());
