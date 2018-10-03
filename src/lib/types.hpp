@@ -65,15 +65,24 @@ template <typename T>
 class pmr_concurrent_vector : public tbb::concurrent_vector<T> {
  public:
   pmr_concurrent_vector(PolymorphicAllocator<T> alloc = {}) : pmr_concurrent_vector(0, alloc) {}  // NOLINT
+
   pmr_concurrent_vector(std::initializer_list<T> init_list, PolymorphicAllocator<T> alloc = {})
       : tbb::concurrent_vector<T>(init_list), _alloc(alloc) {}         // NOLINT
+
   pmr_concurrent_vector(size_t n, PolymorphicAllocator<T> alloc = {})  // NOLINT
       : pmr_concurrent_vector(n, T{}, alloc) {}
+
   pmr_concurrent_vector(size_t n, T val, PolymorphicAllocator<T> alloc = {})  // NOLINT
       : tbb::concurrent_vector<T>(n, val), _alloc(alloc) {}
-  pmr_concurrent_vector(tbb::concurrent_vector<T> other, PolymorphicAllocator<T> alloc = {})  // NOLINT
+
+  pmr_concurrent_vector(const tbb::concurrent_vector<T>& other, PolymorphicAllocator<T> alloc = {})  // NOLINT
       : tbb::concurrent_vector<T>(other), _alloc(alloc) {}
-  pmr_concurrent_vector(std::vector<T>& values, PolymorphicAllocator<T> alloc = {})  // NOLINT
+
+  // There is no point in passing in an allocator when moving in an already existing vector
+  pmr_concurrent_vector(tbb::concurrent_vector<T>&& other)  // NOLINT
+      : tbb::concurrent_vector<T>(std::forward<tbb::concurrent_vector<T>>(other)) {}
+
+  pmr_concurrent_vector(const std::vector<T>& values, PolymorphicAllocator<T> alloc = {})  // NOLINT
       : tbb::concurrent_vector<T>(values.begin(), values.end()), _alloc(alloc) {}
 
   template <class I>
@@ -142,7 +151,7 @@ constexpr NodeID INVALID_NODE_ID{std::numeric_limits<NodeID::base_type>::max()};
 constexpr TaskID INVALID_TASK_ID{std::numeric_limits<TaskID>::max()};
 constexpr CpuID INVALID_CPU_ID{std::numeric_limits<CpuID::base_type>::max()};
 constexpr WorkerID INVALID_WORKER_ID{std::numeric_limits<WorkerID>::max()};
-constexpr ColumnID INVALID_column_id{std::numeric_limits<ColumnID::base_type>::max()};
+constexpr ColumnID INVALID_COLUMN_ID{std::numeric_limits<ColumnID::base_type>::max()};
 
 constexpr NodeID CURRENT_NODE_ID{std::numeric_limits<NodeID::base_type>::max() - 1};
 
