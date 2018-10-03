@@ -95,8 +95,8 @@ class TableBuilder {
         _data_vectors, boost::hana::make_tuple(std::forward<DataTypes>(column_values)...));
 
     // Add the values to their respective data vector
-    boost::hana::for_each(vectors_and_values, [](auto vector_and_value) {
-      vector_and_value[boost::hana::llong_c<0>].get().push_back(vector_and_value[boost::hana::llong_c<1>]);
+    boost::hana::for_each(vectors_and_values, [](auto&& vector_and_value) {
+      vector_and_value[boost::hana::llong_c<0>].get().push_back(std::move(vector_and_value[boost::hana::llong_c<1>]));
     });
 
     if (_current_chunk_row_count() >= _table->max_chunk_size()) {

@@ -71,15 +71,16 @@ std::enable_if_t<std::is_integral_v<T>, T> type_cast(const U& value) {
 }
 
 // Template specialization for string(_view) inputs (which we always need to cast)
-template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay<T>, std::decay<std::string>> && !std::is_same_v<std::decay<T>, std::decay<std::string_view>>>>
+template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay<T>, std::decay<std::string>> &&
+                                                  !std::is_same_v<std::decay<T>, std::decay<std::string_view>>>>
 T type_cast(const std::string& value) {
   return boost::lexical_cast<T>(value);
 }
 
-template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay<T>, std::decay<std::string>> && !std::is_same_v<std::decay<T>, std::decay<std::string_view>>>>
+template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay<T>, std::decay<std::string>> &&
+                                                  !std::is_same_v<std::decay<T>, std::decay<std::string_view>>>>
 T type_cast(const std::string_view& value) {
   return boost::lexical_cast<T>(value);
 }
-
 
 }  // namespace opossum

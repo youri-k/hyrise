@@ -90,6 +90,8 @@ using AllTypeVariant = detail::AllTypeVariant;
 
 // We use TempType so that we don't have to pass around std::strings (and, in the future, other expensive data types).
 // strings are replaced by string_views (meaning that the original string has to remain available, thus TEMPType).
+// Usually, this is not a problem, because a TempType points to a value in a value or an encoded segment whose life
+// time is guaranteed by the shared_ptr chain input_table->chunk(->reference_segment)->value_segment.
 // Use promote_temp_type to get the original DataType back.
 template <typename DataType>
 using TempType = std::conditional_t<std::is_same_v<DataType, std::string>, std::string_view, DataType>;

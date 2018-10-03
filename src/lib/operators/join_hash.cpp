@@ -98,12 +98,13 @@ The original value is used to detect hash collisions.
 */
 template <typename T>
 struct PartitionedElement {
-  PartitionedElement() : row_id(NULL_ROW_ID), partition_hash(0), value(T()) {}
-  PartitionedElement(RowID row, Hash hash, T&& val) : row_id(row), partition_hash(hash), value(std::forward<T>(val)) {}
+  PartitionedElement() : row_id(NULL_ROW_ID), partition_hash(0), value(TempType<T>()) {}
+  PartitionedElement(RowID row_id, Hash partition_hash, const TempType<T>& value)
+      : row_id(row_id), partition_hash(partition_hash), value(value) {}
 
   RowID row_id;
   Hash partition_hash{0};
-  T value;
+  TempType<T> value;
 };
 
 // Initializing the partition vector takes some time. This is not necessary, because it will be overwritten anyway.
@@ -249,11 +250,11 @@ std::shared_ptr<Partition<T>> materialize_input(const std::shared_ptr<const Tabl
             values from different inputs (important for Multi Joins).
             */
             if constexpr (std::is_same_v<std::decay<decltype(typed_segment)>, ReferenceSegment>) {
-              *(output_iterator++) = PartitionedElement<T>{RowID{chunk_id, reference_chunk_offset}, hashed_value,
-                                                           promote_temp_type(value.value())};
+              *(output_iterator++) =
+                  PartitionedElement<T>{RowID{chunk_id, reference_chunk_offset}, hashed_value, value.value()};
             } else {
-              *(output_iterator++) = PartitionedElement<T>{RowID{chunk_id, value.chunk_offset()}, hashed_value,
-                                                           promote_temp_type(value.value())};
+              *(output_iterator++) =
+                  PartitionedElement<T>{RowID{chunk_id, value.chunk_offset()}, hashed_value, value.value()};
             }
 
             const Hash radix = hashed_value & mask;
