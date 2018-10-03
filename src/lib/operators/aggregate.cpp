@@ -142,7 +142,7 @@ template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Min> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
     return [](const TempType<ColumnType>& new_value, std::optional<AggregateType>& current_aggregate) {
-      if (!current_aggregate || value_smaller(new_value, *current_aggregate)) {
+      if (!current_aggregate || value_smaller(new_value, TempType<AggregateType>{*current_aggregate})) {
         // New minimum found
         current_aggregate = promote_temp_type(new_value);
       }
@@ -155,7 +155,7 @@ template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Max> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
     return [](const TempType<ColumnType>& new_value, std::optional<AggregateType>& current_aggregate) {
-      if (!current_aggregate || value_greater(new_value, *current_aggregate)) {
+      if (!current_aggregate || value_greater(new_value, TempType<AggregateType>{*current_aggregate})) {
         // New maximum found
         current_aggregate = promote_temp_type(new_value);
       }
