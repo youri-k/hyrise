@@ -9,7 +9,7 @@ namespace opossum {
 template <>
 std::shared_ptr<BaseColumnStatistics> generate_column_statistics<std::string>(const Table& table,
                                                                               const ColumnID column_id) {
-  std::unordered_set<std::string> distinct_set;
+  std::unordered_set<std::string_view> distinct_set;
   // It would be nice to use string_view here, but the iterables hold copies of the values, not references themselves.
   // SegmentIteratorValue would have to be changed to `T& _value` and this brings a whole bunch of problems in iterators
   // that create stack copies of the accessed values (e.g., for ReferenceSegments)
@@ -29,7 +29,7 @@ std::shared_ptr<BaseColumnStatistics> generate_column_statistics<std::string>(co
         if (segment_value.is_null()) {
           ++null_value_count;
         } else {
-          distinct_set.emplace(promote_temp_type(segment_value.value()));
+          distinct_set.emplace(segment_value.value());
 
           // If the distinct_set.size() is 1, this is the first seen value and automatically both min and max
           if (distinct_set.size() == 1 || (segment_value.value() < min)) {
