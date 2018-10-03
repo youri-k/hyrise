@@ -16,8 +16,9 @@ std::shared_ptr<BaseColumnStatistics> generate_column_statistics<std::string>(co
 
   auto null_value_count = size_t{0};
 
-  auto min = std::string{};
-  auto max = std::string{};
+  // The base storage of these views is in the distinct_set
+  auto min = std::string_view{};
+  auto max = std::string_view{};
 
   for (ChunkID chunk_id{0}; chunk_id < table.chunk_count(); ++chunk_id) {
     const auto base_segment = table.get_chunk(chunk_id)->get_segment(column_id);
@@ -28,14 +29,15 @@ std::shared_ptr<BaseColumnStatistics> generate_column_statistics<std::string>(co
         if (segment_value.is_null()) {
           ++null_value_count;
         } else {
-          if (distinct_set.empty()) {
+          distinct_set.emplace(promote_temp_type(segment_value.value()));
+
+          // If the distinct_set.size() is 1, this is the first seen value and automatically both min and max
+          if (distinct_set.size() == 1 || (segment_value.value() < min)) {
             min = segment_value.value();
-            max = segment_value.value();
-          } else {
-            min = std::min(min, segment_value.value());
-            max = std::max(max, segment_value.value());
           }
-          distinct_set.insert(segment_value.value());
+          if (distinct_set.size() == 1 || (segment_value.value() > max)) {
+            max = segment_value.value();
+          }
         }
       });
     });
@@ -45,7 +47,8 @@ std::shared_ptr<BaseColumnStatistics> generate_column_statistics<std::string>(co
       table.row_count() > 0 ? static_cast<float>(null_value_count) / static_cast<float>(table.row_count()) : 0.0f;
   const auto distinct_count = static_cast<float>(distinct_set.size());
 
-  return std::make_shared<ColumnStatistics<std::string>>(null_value_ratio, distinct_count, min, max);
+  return std::make_shared<ColumnStatistics<std::string>>(null_value_ratio, distinct_count, std::string{min},
+                                                         std::string{max});
 }
 
 }  // namespace opossum

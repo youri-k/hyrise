@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "all_type_variant.hpp"
 #include "boost/variant.hpp"
 #include "utils/assert.hpp"
 
@@ -75,28 +76,28 @@ class LikeMatcher {
   void resolve(const bool invert_results, const Functor& functor) const {
     if (_pattern_variant.type() == typeid(StartsWithPattern)) {
       const auto& prefix = boost::get<StartsWithPattern>(_pattern_variant).string;
-      functor([&](const std::string& string) -> bool {
+      functor([&](const auto& string) -> bool {
         if (string.size() < prefix.size()) return invert_results;
         return (string.compare(0, prefix.size(), prefix) == 0) ^ invert_results;
       });
 
     } else if (_pattern_variant.type() == typeid(EndsWithPattern)) {
       const auto& suffix = boost::get<EndsWithPattern>(_pattern_variant).string;
-      functor([&](const std::string& string) -> bool {
+      functor([&](const auto& string) -> bool {
         if (string.size() < suffix.size()) return invert_results;
         return (string.compare(string.size() - suffix.size(), suffix.size(), suffix) == 0) ^ invert_results;
       });
 
     } else if (_pattern_variant.type() == typeid(ContainsPattern)) {
       const auto& contains_str = boost::get<ContainsPattern>(_pattern_variant).string;
-      functor([&](const std::string& string) -> bool {
+      functor([&](const auto& string) -> bool {
         return (string.find(contains_str) != std::string::npos) ^ invert_results;
       });
 
     } else if (_pattern_variant.type() == typeid(MultipleContainsPattern)) {
       const auto& contains_strs = boost::get<MultipleContainsPattern>(_pattern_variant).strings;
 
-      functor([&](const std::string& string) -> bool {
+      functor([&](const auto& string) -> bool {
         auto current_position = size_t{0};
         for (const auto& contains_str : contains_strs) {
           current_position = string.find(contains_str, current_position);
@@ -109,7 +110,11 @@ class LikeMatcher {
     } else if (_pattern_variant.type() == typeid(std::regex)) {
       const auto& regex = boost::get<std::regex>(_pattern_variant);
 
-      functor([&](const std::string& string) -> bool { return std::regex_match(string, regex) ^ invert_results; });
+      functor([&](const auto& string) -> bool {
+        // We need to do this useless promotion here because they forgot to implement std::regex_match on
+        // std::string_view. -.-
+        return std::regex_match(promote_temp_type(string), regex) ^ invert_results;
+      });
 
     } else {
       Fail("Pattern not implemented. Probably a bug.");

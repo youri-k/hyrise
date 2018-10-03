@@ -109,13 +109,14 @@ class Sort::SortImplMaterializeOutput {
           if (accessor) {
             const auto typed_value = accessor->access(chunk_offset);
             const auto is_null = !typed_value.has_value();
-            value_segment_value_vector.push_back(is_null ? ColumnDataType{} : typed_value.value());
-            value_segment_null_vector.push_back(is_null);
+            value_segment_value_vector.emplace_back(is_null ? ColumnDataType{}
+                                                            : promote_temp_type(typed_value.value()));
+            value_segment_null_vector.emplace_back(is_null);
           } else {
             const auto value = (*base_segment)[chunk_offset];
             const auto is_null = variant_is_null(value);
-            value_segment_value_vector.push_back(is_null ? ColumnDataType{} : type_cast<ColumnDataType>(value));
-            value_segment_null_vector.push_back(is_null);
+            value_segment_value_vector.emplace_back(is_null ? ColumnDataType{} : type_cast<ColumnDataType>(value));
+            value_segment_null_vector.emplace_back(is_null);
           }
 
           ++chunk_offset_out;
@@ -125,7 +126,7 @@ class Sort::SortImplMaterializeOutput {
             chunk_offset_out = 0u;
             auto value_segment = std::make_shared<ValueSegment<ColumnDataType>>(std::move(value_segment_value_vector),
                                                                                 std::move(value_segment_null_vector));
-            chunk_it->push_back(value_segment);
+            chunk_it->emplace_back(value_segment);
             value_segment_value_vector = pmr_concurrent_vector<ColumnDataType>();
             value_segment_null_vector = pmr_concurrent_vector<bool>();
             ++chunk_it;
@@ -136,7 +137,7 @@ class Sort::SortImplMaterializeOutput {
         if (chunk_offset_out > 0u) {
           auto value_segment = std::make_shared<ValueSegment<ColumnDataType>>(std::move(value_segment_value_vector),
                                                                               std::move(value_segment_null_vector));
-          chunk_it->push_back(value_segment);
+          chunk_it->emplace_back(value_segment);
         }
       });
     }

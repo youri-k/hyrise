@@ -131,7 +131,7 @@ the AggregateVisitor. It is a separate class because methods cannot be partially
 Therefore, we partially specialize the whole class and define the get_aggregate_function anew every time.
 */
 template <typename ColumnType, typename AggregateType>
-using AggregateFunctor = std::function<void(const ColumnType&, std::optional<AggregateType>&)>;
+using AggregateFunctor = std::function<void(const TempType<ColumnType>&, std::optional<AggregateType>&)>;
 
 template <typename ColumnType, typename AggregateType, AggregateFunction function>
 struct AggregateFunctionBuilder {
@@ -141,10 +141,10 @@ struct AggregateFunctionBuilder {
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Min> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](const ColumnType& new_value, std::optional<AggregateType>& current_aggregate) {
-      if (!current_aggregate || value_smaller(new_value, *current_aggregate)) {
+    return [](const TempType<ColumnType>& new_value, std::optional<AggregateType>& current_aggregate) {
+      if (!current_aggregate || value_smaller(new_value, TempType<AggregateType>{*current_aggregate})) {
         // New minimum found
-        current_aggregate = new_value;
+        current_aggregate = promote_temp_type(new_value);
       }
       return *current_aggregate;
     };
@@ -154,10 +154,10 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Mi
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Max> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](const ColumnType& new_value, std::optional<AggregateType>& current_aggregate) {
-      if (!current_aggregate || value_greater(new_value, *current_aggregate)) {
+    return [](const TempType<ColumnType>& new_value, std::optional<AggregateType>& current_aggregate) {
+      if (!current_aggregate || value_greater(new_value, TempType<AggregateType>{*current_aggregate})) {
         // New maximum found
-        current_aggregate = new_value;
+        current_aggregate = promote_temp_type(new_value);
       }
       return *current_aggregate;
     };
@@ -167,12 +167,12 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Ma
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Sum> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](const ColumnType& new_value, std::optional<AggregateType>& current_aggregate) {
+    return [](const TempType<ColumnType>& new_value, std::optional<AggregateType>& current_aggregate) {
       // add new value to sum
       if (current_aggregate) {
         *current_aggregate += new_value;
       } else {
-        current_aggregate = new_value;
+        current_aggregate = promote_temp_type(new_value);
       }
     };
   }
@@ -189,14 +189,14 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Av
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Count> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](const ColumnType&, std::optional<AggregateType>& current_aggregate) { return std::nullopt; };
+    return [](const TempType<ColumnType>&, std::optional<AggregateType>& current_aggregate) { return std::nullopt; };
   }
 };
 
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::CountDistinct> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](const ColumnType&, std::optional<AggregateType>& current_aggregate) { return std::nullopt; };
+    return [](const TempType<ColumnType>&, std::optional<AggregateType>& current_aggregate) { return std::nullopt; };
   }
 };
 
@@ -239,7 +239,7 @@ void Aggregate::_aggregate_segment(ChunkID chunk_id, ColumnID column_index, cons
             if constexpr (function == AggregateFunction::CountDistinct) {  // NOLINT
               // clang-tidy error: https://bugs.llvm.org/show_bug.cgi?id=35824
               // for the case of CountDistinct, insert this value into the set to keep track of distinct values
-              hash_entry.distinct_values.insert(value.value());
+              hash_entry.distinct_values.emplace(promote_temp_type(value.value()));
             }
           }
 
@@ -370,7 +370,7 @@ void Aggregate::_aggregate() {
                   keys_per_chunk[chunk_id][chunk_offset][group_column_index] = 0u;
                 }
               } else {
-                auto inserted = id_map.try_emplace(value.value(), id_counter);
+                auto inserted = id_map.try_emplace(promote_temp_type(value.value()), id_counter);
                 // store either the current id_counter or the existing ID of the value
                 if constexpr (std::is_same_v<AggregateKey, AggregateKeyEntry>) {
                   keys_per_chunk[chunk_id][chunk_offset] = inserted.first->second;

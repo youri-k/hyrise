@@ -31,11 +31,12 @@ const AllTypeVariant FixedStringDictionarySegment<T>::operator[](const ChunkOffs
   if (!typed_value.has_value()) {
     return NULL_VALUE;
   }
-  return *typed_value;
+  return promote_temp_type(*typed_value);
 }
 
 template <typename T>
-const std::optional<T> FixedStringDictionarySegment<T>::get_typed_value(const ChunkOffset chunk_offset) const {
+const std::optional<TempType<T>> FixedStringDictionarySegment<T>::get_typed_value(
+    const ChunkOffset chunk_offset) const {
   const auto value_id = _decoder->get(chunk_offset);
   if (value_id == _null_value_id) {
     return std::nullopt;

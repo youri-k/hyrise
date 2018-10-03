@@ -126,13 +126,12 @@ class RunLengthSegmentIterable : public PointAccessibleSegmentIterable<RunLength
 
       const auto current_index = std::distance(_end_positions.cbegin(), end_position_it);
 
-      const auto value = _values[current_index];
       const auto is_null = _null_values[current_index];
 
       _prev_chunk_offset = current_chunk_offset;
       _prev_index = current_index;
 
-      return SegmentIteratorValue<T>{value, is_null, chunk_offsets.into_referencing};
+      return SegmentIteratorValue<T>{_values[current_index], is_null, chunk_offsets.into_referencing};
     }
 
    private:

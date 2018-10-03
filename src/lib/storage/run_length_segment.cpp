@@ -40,11 +40,11 @@ const AllTypeVariant RunLengthSegment<T>::operator[](const ChunkOffset chunk_off
   if (!typed_value.has_value()) {
     return NULL_VALUE;
   }
-  return *typed_value;
+  return promote_temp_type(*typed_value);
 }
 
 template <typename T>
-const std::optional<T> RunLengthSegment<T>::get_typed_value(const ChunkOffset chunk_offset) const {
+const std::optional<TempType<T>> RunLengthSegment<T>::get_typed_value(const ChunkOffset chunk_offset) const {
   const auto end_position_it = std::lower_bound(_end_positions->cbegin(), _end_positions->cend(), chunk_offset);
   const auto index = std::distance(_end_positions->cbegin(), end_position_it);
 
