@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include <chrono>
+#include <ctime>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -30,7 +31,15 @@ std::shared_ptr<Worker> Worker::get_this_thread_worker() { return ::this_thread_
 
 Worker::Worker(const std::weak_ptr<ProcessingUnit>& processing_unit, const std::shared_ptr<TaskQueue>& queue,
                WorkerID id, CpuID cpu_id, SchedulePriority min_priority)
-    : _processing_unit(processing_unit), _queue(queue), _id(id), _cpu_id(cpu_id), _min_priority(min_priority) {}
+    : _processing_unit(processing_unit), _queue(queue), _id(id), _cpu_id(cpu_id), _min_priority(min_priority) {
+      const auto filename = "workers/cpu" + std::to_string(_cpu_id) + "_worker" + std::to_string(_id) + ".txt";
+      _file.open(filename);
+    }
+
+void Worker::shutdown() {
+  _file << std::endl;
+  _file.close();
+}
 
 WorkerID Worker::id() const { return _id; }
 
@@ -100,7 +109,11 @@ void Worker::operator()() {
       }
     }
 
+    const auto t_start = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch());
+    _file << task->description() << "|" << t_start.count() << "|";
     task->execute();
+    const auto t_end = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch());
+    _file << t_end.count() << "\n";
 
     // This is part of the Scheduler shutdown system. Count the number of tasks a ProcessingUnit executed to allow the
     // Scheduler to determine whether all tasks finished

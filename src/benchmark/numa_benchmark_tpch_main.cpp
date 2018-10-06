@@ -20,6 +20,7 @@
 #include "storage/storage_manager.hpp"
 #include "tpch/tpch_db_generator.hpp"
 #include "tpch/tpch_queries.hpp"
+#include "utils/filesystem.hpp"
 
 #include "cpucounters.h" // PCM lib
 
@@ -37,6 +38,8 @@
  */
 
 int main(int argc, char* argv[]) {
+  filesystem::remove_all("workers");
+  filesystem::create_directory("workers");
   auto cli_options = opossum::NumaBenchmarkRunner::get_basic_cli_options("TPCH Benchmark");
 
   // clang-format off
@@ -151,6 +154,8 @@ int main(int argc, char* argv[]) {
 
   // Run the benchmark
   opossum::NumaBenchmarkRunner(*config, queries, context).run();
+
+  opossum::CurrentScheduler::get()->finish();
 
   if (pcm) {
     // Deinitialize PCM lib (IMPORTANT!!)

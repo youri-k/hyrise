@@ -90,6 +90,9 @@ void ProcessingUnit::shutdown() {
     _shutdown_flag = true;
   }
   _hibernation_cv.notify_all();
+  for (auto& worker : _workers) {
+    worker->shutdown();
+  }
 }
 
 bool ProcessingUnit::shutdown_flag() const { return _shutdown_flag; }

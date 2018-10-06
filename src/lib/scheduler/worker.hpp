@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <fstream>
 
 #include "processing_unit.hpp"
 #include "types.hpp"
@@ -26,6 +27,7 @@ class Worker : public std::enable_shared_from_this<Worker>, private Noncopyable 
   Worker(const std::weak_ptr<ProcessingUnit>& processing_unit, const std::shared_ptr<TaskQueue>& queue, WorkerID id,
          CpuID cpu_id, SchedulePriority min_priority = SchedulePriority::Lowest);
 
+  void shutdown();
   /**
    * Unique ID of a worker. Currently not in use, but really helpful for debugging.
    */
@@ -69,6 +71,7 @@ class Worker : public std::enable_shared_from_this<Worker>, private Noncopyable 
   WorkerID _id;
   CpuID _cpu_id;
   SchedulePriority _min_priority;
+  std::ofstream _file;
 };
 
 }  // namespace opossum
