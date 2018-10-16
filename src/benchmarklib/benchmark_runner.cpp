@@ -294,7 +294,8 @@ void BenchmarkRunner::_create_report(std::ostream& stream) const {
     const auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(query_result.duration).count();
     const auto duration_seconds = static_cast<float>(duration_ns) / 1'000'000'000;
     const auto items_per_second = static_cast<float>(query_result.num_iterations) / duration_seconds;
-    const auto time_per_query = duration_ns / query_result.num_iterations;
+    const auto time_per_query =
+        query_result.num_iterations > 0 ? static_cast<float>(duration_ns) / query_result.num_iterations : std::nanf("");
 
     // Transform iteration Durations into numerical representation
     auto iteration_durations = std::vector<double>();
@@ -454,7 +455,7 @@ cxxopts::Options BenchmarkRunner::get_basic_cli_options(const std::string& bench
     ("help", "print this help message")
     ("v,verbose", "Print log messages", cxxopts::value<bool>()->default_value("false"))
     ("r,runs", "Maximum number of runs of a single query (set)", cxxopts::value<size_t>()->default_value("10000")) // NOLINT
-    ("c,chunk_size", "ChunkSize, default is 2^32-1", cxxopts::value<ChunkOffset>()->default_value(std::to_string(Chunk::MAX_SIZE))) // NOLINT
+    ("c,chunk_size", "ChunkSize, default is 100,000", cxxopts::value<ChunkOffset>()->default_value("100000")) // NOLINT
     ("t,time", "Maximum seconds that a query (set) is run", cxxopts::value<size_t>()->default_value("60")) // NOLINT
     ("o,output", "File to output results to, don't specify for stdout", cxxopts::value<std::string>()->default_value("")) // NOLINT
     ("m,mode", "IndividualQueries or PermutedQuerySet, default is IndividualQueries", cxxopts::value<std::string>()->default_value("IndividualQueries")) // NOLINT
