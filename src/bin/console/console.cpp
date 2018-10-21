@@ -357,7 +357,12 @@ int Console::_help(const std::string&) {
   out("Available commands:\n");
   out("  generate_tpcc [TABLENAME]               - Generate available TPC-C tables, or a specific table if TABLENAME is specified\n");  // NOLINT
   out("  generate_tpch SCALE_FACTOR [CHUNK_SIZE] - Generate all TPC-H tables\n");
-  out("  load FILE TABLENAME                     - Load table from disc specified by filepath FILE, store it with name TABLENAME\n");  // NOLINT
+  out("  load FILEPATH TABLENAME                 - Load table from disk specified by filepath FILEPATH, store it with name TABLENAME\n");  // NOLINT
+  out("                                               The import type is chosen by the type of FILEPATH.\n");
+  out("                                                 Supported types: '.bin', '.csv', '.tbl'\n");
+  out("  export TABLENAME FILEPATH               - Export table named TABLENAME from storage manager to filepath FILEPATH\n");  // NOLINT
+  out("                                               The export type is chosen by the type of FILEPATH.\n");
+  out("                                                 Supported types: '.bin', '.csv'\n");
   out("  script SCRIPTFILE                       - Execute script specified by SCRIPTFILE\n");
   out("  print TABLENAME                         - Fully print the given table (including MVCC data)\n");
   out("  visualize [options] [SQL]               - Visualize a SQL query\n");
@@ -580,11 +585,11 @@ int Console::_visualize(const std::string& input) {
   std::vector<std::string> input_words;
   boost::algorithm::split(input_words, input, boost::is_any_of(" \n"));
 
-  const std::string EXEC = "exec";
-  const std::string NOEXEC = "noexec";
-  const std::string PQP = "pqp";
-  const std::string LQP = "lqp";
-  const std::string UNOPTLQP = "unoptlqp";
+  constexpr char EXEC[] = "exec";
+  constexpr char NOEXEC[] = "noexec";
+  constexpr char PQP[] = "pqp";
+  constexpr char LQP[] = "lqp";
+  constexpr char UNOPTLQP[] = "unoptlqp";
 
   // Determine whether the specified query is to be executed before visualization
   auto no_execute = false;  // Default
