@@ -40,6 +40,9 @@ chunk_size_to_str = {
 }
 
 variable_parameters = [
+    ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_100k],
+    ['--scale 1', '--clients 100', '--chunk_size ' + chunk_size_100k],
+
     # ['--scale 1', '--clients 100', '--chunk_size ' + chunk_size_max],
     # ['--scale 1', '--clients 200', '--chunk_size ' + chunk_size_max],
     # ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_50k],
@@ -49,9 +52,9 @@ variable_parameters = [
     # ['--scale 10', '--clients 100', '--chunk_size ' + chunk_size_100k],
     # ['--scale 10', '--clients 200', '--chunk_size ' + chunk_size_100k],
 
-    ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_100k],
-    ['--scale 1', '--clients 100', '--chunk_size ' + chunk_size_100k],
-    ['--scale 1', '--clients 200', '--chunk_size ' + chunk_size_100k],
+    # ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_100k],
+    # ['--scale 1', '--clients 100', '--chunk_size ' + chunk_size_100k],
+    # ['--scale 1', '--clients 200', '--chunk_size ' + chunk_size_100k],
 
 
 
