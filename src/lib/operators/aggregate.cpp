@@ -11,7 +11,8 @@
 #include <vector>
 
 #include "aggregate/aggregate_traits.hpp"
-#include "bytell_hash_map.hpp"
+#include "flat_hash_map.hpp"
+#include "hopscotch_map.h"
 #include "constant_mappings.hpp"
 #include "resolve_type.hpp"
 #include "scheduler/abstract_task.hpp"
@@ -34,9 +35,14 @@ namespace opossum {
 // template <typename AggregateKey, typename AggregateValue>
 // using HashTable = std::unordered_map<AggregateKey, AggregateValue>;
 template <typename AggregateKey, typename AggregateValue>
-using HashTable = ska::flat_hash_map<AggregateKey, AggregateValue>;
+using HashTable = tsl::hopscotch_map<AggregateKey, AggregateValue>;
 template <typename ColumnDataType, typename AggregateKeyEntry, typename AllocatorType>
-using HashTableWithAllocator = ska::flat_hash_map<ColumnDataType, AggregateKeyEntry, std::hash<ColumnDataType>, std::equal_to<ColumnDataType>, AllocatorType>;
+using HashTableWithAllocator = tsl::hopscotch_map<ColumnDataType, AggregateKeyEntry, std::hash<ColumnDataType>, std::equal_to<ColumnDataType>, AllocatorType>;
+
+// template <typename AggregateKey, typename AggregateValue>
+// using HashTable = ska::flat_hash_map<AggregateKey, AggregateValue>;
+// template <typename ColumnDataType, typename AggregateKeyEntry, typename AllocatorType>
+// using HashTableWithAllocator = tsl::hopscotch_map<ColumnDataType, AggregateKeyEntry, std::hash<ColumnDataType>, std::equal_to<ColumnDataType>, AllocatorType>;
 
 Aggregate::Aggregate(const std::shared_ptr<AbstractOperator>& in,
                      const std::vector<AggregateColumnDefinition>& aggregates,
@@ -364,13 +370,13 @@ void Aggregate::_aggregate() {
         auto temp_buffer = boost::container::pmr::monotonic_buffer_resource(1'000'000);
         auto allocator = PolymorphicAllocator<std::pair<const ColumnDataType, AggregateKeyEntry>>{&temp_buffer};
 
-        auto id_map = HashTableWithAllocator<ColumnDataType, AggregateKeyEntry, decltype(allocator)>(allocator);
-        // auto id_map = std::unordered_map<ColumnDataType, AggregateKeyEntry, std::hash<ColumnDataType>,
-                                         // std::equal_to<ColumnDataType>, decltype(allocator)>(allocator);
+        // auto id_map = HashTableWithAllocator<ColumnDataType, AggregateKeyEntry, decltype(allocator)>(allocator);
+        auto id_map = std::unordered_map<ColumnDataType, AggregateKeyEntry, std::hash<ColumnDataType>,
+                                         std::equal_to<ColumnDataType>, decltype(allocator)>(allocator);
 
         // id_counter_to_set is a temporary copy of id_counter to avoid a second if statement within the hot loop
-        AggregateKeyEntry id_counter, id_counter_to_set = 1u;
-        // AggregateKeyEntry id_counter = 1u;
+        // AggregateKeyEntry id_counter, id_counter_to_set = 1u;
+        AggregateKeyEntry id_counter = 1u;
 
         for (ChunkID chunk_id{0}; chunk_id < input_table->chunk_count(); ++chunk_id) {
           const auto chunk_in = input_table->get_chunk(chunk_id);
@@ -388,32 +394,32 @@ void Aggregate::_aggregate() {
                   keys_per_chunk[chunk_id][chunk_offset][group_column_index] = 0u;
                 }
               } else {
-                // auto inserted = id_map.try_emplace(value.value(), id_counter);
-                // // store either the current id_counter or the existing ID of the value
-                // if constexpr (std::is_same_v<AggregateKey, AggregateKeyEntry>) {
-                //   keys_per_chunk[chunk_id][chunk_offset] = inserted.first->second;
-                // } else {
-                //   keys_per_chunk[chunk_id][chunk_offset][group_column_index] = inserted.first->second;
-                // }
-                // // if the id_map didn't have the value as a key and a new element was inserted
-                // if (inserted.second) ++id_counter;
-
-                const auto it = id_map.find(value.value());
-                id_counter_to_set = id_counter;
-                if (it == id_map.end()) {
-                  id_map.emplace(value.value(), id_counter);
-                  ++id_counter;
-                } else {
-                  // key was present, get value
-                  id_counter_to_set = it->second;
-                }
-
+                auto inserted = id_map.try_emplace(value.value(), id_counter);
                 // store either the current id_counter or the existing ID of the value
                 if constexpr (std::is_same_v<AggregateKey, AggregateKeyEntry>) {
-                  keys_per_chunk[chunk_id][chunk_offset] = id_counter_to_set;
+                  keys_per_chunk[chunk_id][chunk_offset] = inserted.first->second;
                 } else {
-                  keys_per_chunk[chunk_id][chunk_offset][group_column_index] = id_counter_to_set;
+                  keys_per_chunk[chunk_id][chunk_offset][group_column_index] = inserted.first->second;
                 }
+                // if the id_map didn't have the value as a key and a new element was inserted
+                if (inserted.second) ++id_counter;
+
+                // const auto it = id_map.find(value.value());
+                // id_counter_to_set = id_counter;
+                // if (it == id_map.end()) {
+                //   id_map.emplace(value.value(), id_counter);
+                //   ++id_counter;
+                // } else {
+                //   // key was present, get value
+                //   id_counter_to_set = it->second;
+                // }
+
+                // // store either the current id_counter or the existing ID of the value
+                // if constexpr (std::is_same_v<AggregateKey, AggregateKeyEntry>) {
+                //   keys_per_chunk[chunk_id][chunk_offset] = id_counter_to_set;
+                // } else {
+                //   keys_per_chunk[chunk_id][chunk_offset][group_column_index] = id_counter_to_set;
+                // }
               }
 
               ++chunk_offset;
