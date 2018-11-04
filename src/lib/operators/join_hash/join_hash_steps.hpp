@@ -40,8 +40,9 @@ struct PartitionedElement {
 // Initializing the partition vector takes some time. This is not necessary, because it will be overwritten anyway.
 // The uninitialized_vector behaves like a regular std::vector, but the entries are initially invalid.
 template <typename T>
-using Partition = std::conditional_t<std::is_trivially_destructible_v<T>, uninitialized_vector<PartitionedElement<T>>,
-                                     std::vector<PartitionedElement<T>>>;
+using Partition = std::vector<PartitionedElement<T>>;
+// using Partition = std::conditional_t<std::is_trivially_destructible_v<T>, uninitialized_vector<PartitionedElement<T>>,
+//                                      std::vector<PartitionedElement<T>>>;
 
 // The small_vector holds the first n values in local storage and only resorts to heap storage after that. 1 is chosen
 // as n because in many cases, we join on primary key attributes where by definition we have only one match on the
@@ -77,7 +78,8 @@ RadixContainer<T> materialize_input(const std::shared_ptr<const Table>& in_table
                                     std::vector<std::vector<size_t>>& histograms, const size_t radix_bits,
                                     bool keep_nulls = false) {
   // list of all elements that will be partitioned
-  auto elements = std::make_shared<Partition<T>>(in_table->row_count());
+  auto elements = std::make_shared<Partition<T>>();
+  elements->resize(in_table->row_count());
 
   // fan-out
   const size_t num_partitions = 1ull << radix_bits;
@@ -144,13 +146,13 @@ RadixContainer<T> materialize_input(const std::shared_ptr<const Table>& in_table
         });
       });
 
-      if constexpr (std::is_same_v<Partition<T>, uninitialized_vector<PartitionedElement<T>>>) {  // NOLINT
-        // Because the vector is uninitialized, we need to manually fill up all slots that we did not use
-        auto output_offset_end = chunk_id < chunk_offsets.size() - 1 ? chunk_offsets[chunk_id + 1] : elements->size();
-        while (output_iterator != elements->begin() + output_offset_end) {
-          *(output_iterator++) = PartitionedElement<T>{};
-        }
-      }
+      // if constexpr (std::is_same_v<Partition<T>, uninitialized_vector<PartitionedElement<T>>>) {  // NOLINT
+      //   // Because the vector is uninitialized, we need to manually fill up all slots that we did not use
+      //   auto output_offset_end = chunk_id < chunk_offsets.size() - 1 ? chunk_offsets[chunk_id + 1] : elements->size();
+      //   while (output_iterator != elements->begin() + output_offset_end) {
+      //     *(output_iterator++) = PartitionedElement<T>{};
+      //   }
+      // }
 
       histograms[chunk_id] = std::move(histogram);
     }));
