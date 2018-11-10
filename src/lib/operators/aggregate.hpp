@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/container/pmr/monotonic_buffer_resource.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <boost/container/scoped_allocator.hpp>
 #include <boost/functional/hash.hpp>
@@ -71,6 +72,10 @@ using AggregateKeys = pmr_vector<AggregateKey>;
 template <typename AggregateKey>
 using KeysPerChunk = pmr_vector<AggregateKeys<AggregateKey>>;
 
+template <typename AggregateKey, typename AggregateType, typename ColumnDataType>
+using TestAlloc = PolymorphicAllocator<std::pair<const AggregateKey, AggregateResult<AggregateType, ColumnDataType>>>;
+// using TestAlloc = std::allocator<std::pair<const AggregateKey, AggregateResult<AggregateType, ColumnDataType>>>;
+
 /**
  * Types that are used for the special COUNT(*) and DISTINCT implementations
  */
@@ -123,10 +128,11 @@ class Aggregate : public AbstractReadOnlyOperator {
 
   template <typename AggregateKey>
   std::shared_ptr<SegmentVisitorContext> _create_aggregate_context(const DataType data_type,
-                                                                   const AggregateFunction function) const;
+                                                                   const AggregateFunction function/*,
+                                                                   TestAlloc<AggregateKey> allocator*/) const;
 
   template <typename ColumnDataType, AggregateFunction aggregate_function, typename AggregateKey>
-  std::shared_ptr<SegmentVisitorContext> _create_aggregate_context_impl() const;
+  std::shared_ptr<SegmentVisitorContext> _create_aggregate_context_impl(/*TestAlloc<AggregateKey> allocator*/) const;
 
   const std::vector<AggregateColumnDefinition> _aggregates;
   const std::vector<ColumnID> _groupby_column_ids;
@@ -136,6 +142,8 @@ class Aggregate : public AbstractReadOnlyOperator {
 
   pmr_vector<std::shared_ptr<BaseValueSegment>> _groupby_segments;
   std::vector<std::shared_ptr<SegmentVisitorContext>> _contexts_per_column;
+
+  boost::container::pmr::monotonic_buffer_resource * _temp_buffer;
 };
 
 }  // namespace opossum
