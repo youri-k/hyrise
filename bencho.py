@@ -19,7 +19,7 @@ CWD = os.getcwd()
 OUTPUT_FILE = 'current_run.out'
 ERROR_FILE = 'current_run.err'
 
-NOTE = '' # '_something'
+NOTE = '_allimpro_nominheap' # '_something'
 
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
