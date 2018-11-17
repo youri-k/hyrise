@@ -1001,7 +1001,7 @@ PosList ExpressionEvaluator::evaluate_expression_to_pos_list(const AbstractExpre
 
                   if constexpr (ExpressionFunctorType::template supports<ExpressionEvaluator::Bool, LeftDataType,
                                                                          RightDataType>::value) {
-                    for (auto chunk_offset = ChunkOffset{0}; chunk_offset < _chunk->size(); ++chunk_offset) {
+                    for (auto chunk_offset = ChunkOffset{0}; chunk_offset < _output_row_count; ++chunk_offset) {
                       if (left_result.is_null(chunk_offset) || right_result.is_null(chunk_offset)) continue;
 
                       auto matches = ExpressionEvaluator::Bool{0};
