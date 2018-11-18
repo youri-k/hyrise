@@ -19,15 +19,15 @@ CWD = os.getcwd()
 OUTPUT_FILE = 'current_run.out'
 ERROR_FILE = 'current_run.err'
 
-NOTE = '_stdvector' # '_something'
+NOTE = '_nothing' # '_something'
 
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 static_parameters = [
     '--verbose',
     '--queries 1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,18,19,22',
-    # '--cores 224 168 112 56 28 14 7 2 1 0',
-    '--cores 0 1 2 7 14 28 56 84 112 140 168 196 224',
+    '--cores 56 84 112 140 168 196 224',
+    # '--cores 0 1 2 7 14 28 56 84 112 140 168 196 224',
     '--runs 10000',
     '--time 60',
     '--result-dir ma-results',
@@ -45,6 +45,7 @@ chunk_size_to_str = {
 
 variable_parameters = [
     ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_100k],
+    ['--scale 1', '--clients 100', '--chunk_size ' + chunk_size_100k],
 
     # ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_100k],
     # ['--scale 1', '--clients 100', '--chunk_size ' + chunk_size_100k],
