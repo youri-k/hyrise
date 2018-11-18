@@ -21,7 +21,6 @@ namespace opossum {
 class BenchmarkRunner {
  public:
   BenchmarkRunner(const BenchmarkConfig& config, const NamedQueries& queries, const nlohmann::json& context);
-  ~BenchmarkRunner();
 
   static BenchmarkRunner create(const BenchmarkConfig& config, const std::string& table_path,
                                 const std::string& query_path);

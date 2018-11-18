@@ -45,12 +45,6 @@ BenchmarkRunner::BenchmarkRunner(const BenchmarkConfig& config, const NamedQueri
   }
 }
 
-BenchmarkRunner::~BenchmarkRunner() {
-  if (CurrentScheduler::is_set()) {
-    CurrentScheduler::get()->finish();
-  }
-}
-
 void BenchmarkRunner::run() {
   _config.out << "\n- Starting Benchmark..." << std::endl;
 

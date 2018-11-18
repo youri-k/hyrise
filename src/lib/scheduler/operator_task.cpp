@@ -10,6 +10,7 @@
 #include "operators/abstract_read_write_operator.hpp"
 
 #include "scheduler/job_task.hpp"
+#include "scheduler/processing_unit.hpp"
 #include "scheduler/worker.hpp"
 #include "utils/tracing/probes.hpp"
 
