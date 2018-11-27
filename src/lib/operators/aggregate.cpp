@@ -146,7 +146,6 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Mi
         // New minimum found
         current_aggregate = new_value;
       }
-      return *current_aggregate;
     };
   }
 };
@@ -159,7 +158,6 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Ma
         // New maximum found
         current_aggregate = new_value;
       }
-      return *current_aggregate;
     };
   }
 };
@@ -189,14 +187,14 @@ struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Av
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::Count> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](const ColumnType&, std::optional<AggregateType>& current_aggregate) { return std::nullopt; };
+    return [](const ColumnType&, std::optional<AggregateType>& current_aggregate) { };
   }
 };
 
 template <typename ColumnType, typename AggregateType>
 struct AggregateFunctionBuilder<ColumnType, AggregateType, AggregateFunction::CountDistinct> {
   AggregateFunctor<ColumnType, AggregateType> get_aggregate_function() {
-    return [](const ColumnType&, std::optional<AggregateType>& current_aggregate) { return std::nullopt; };
+    return [](const ColumnType&, std::optional<AggregateType>& current_aggregate) {  };
   }
 };
 
@@ -261,25 +259,6 @@ void Aggregate::_aggregate() {
       boost::container::scoped_allocator_adaptor<PolymorphicAllocator<AggregateKeys<AggregateKey>>>;
 
   auto input_table = input_table_left();
-
-  for ([[maybe_unused]] const auto& groupby_column_id : _groupby_column_ids) {
-    DebugAssert(groupby_column_id < input_table->column_count(), "GroupBy column index out of bounds");
-  }
-
-  // check for invalid aggregates
-  for (const auto& aggregate : _aggregates) {
-    if (!aggregate.column) {
-      if (aggregate.function != AggregateFunction::Count) {
-        Fail("Aggregate: Asterisk is only valid with COUNT");
-      }
-    } else {
-      DebugAssert(*aggregate.column < input_table->column_count(), "Aggregate column index out of bounds");
-      if (input_table->column_data_type(*aggregate.column) == DataType::String &&
-          (aggregate.function == AggregateFunction::Sum || aggregate.function == AggregateFunction::Avg)) {
-        Fail("Aggregate: Cannot calculate SUM or AVG on string column");
-      }
-    }
-  }
 
   /*
   PARTITIONING PHASE
@@ -543,16 +522,6 @@ void Aggregate::_aggregate() {
     }
   }
 
-  // add group by columns
-  for (const auto& column_id : _groupby_column_ids) {
-    _output_column_definitions.emplace_back(input_table->column_name(column_id),
-                                            input_table->column_data_type(column_id));
-
-    auto groupby_segment =
-        make_shared_by_data_type<BaseSegment, ValueSegment>(input_table->column_data_type(column_id), true);
-    _groupby_segments.push_back(std::static_pointer_cast<BaseValueSegment>(groupby_segment));
-    _output_segments.push_back(groupby_segment);
-  }
   /**
    * Write group-by columns.
    *
@@ -591,6 +560,37 @@ void Aggregate::_aggregate() {
 }
 
 std::shared_ptr<const Table> Aggregate::_on_execute() {
+  for ([[maybe_unused]] const auto& groupby_column_id : _groupby_column_ids) {
+    DebugAssert(groupby_column_id < input_table_left()->column_count(), "GroupBy column index out of bounds");
+  }
+
+
+  // check for invalid aggregates
+  for (const auto& aggregate : _aggregates) {
+    if (!aggregate.column) {
+      if (aggregate.function != AggregateFunction::Count) {
+        Fail("Aggregate: Asterisk is only valid with COUNT");
+      }
+    } else {
+      DebugAssert(*aggregate.column < input_table_left()->column_count(), "Aggregate column index out of bounds");
+      if (input_table_left()->column_data_type(*aggregate.column) == DataType::String &&
+          (aggregate.function == AggregateFunction::Sum || aggregate.function == AggregateFunction::Avg)) {
+        Fail("Aggregate: Cannot calculate SUM or AVG on string column");
+      }
+    }
+  }
+
+  // add group by columns
+  for (const auto& column_id : _groupby_column_ids) {
+    _output_column_definitions.emplace_back(input_table_left()->column_name(column_id),
+                                            input_table_left()->column_data_type(column_id));
+
+    auto groupby_segment =
+    make_shared_by_data_type<BaseSegment, ValueSegment>(input_table_left()->column_data_type(column_id), true);
+    _groupby_segments.push_back(std::static_pointer_cast<BaseValueSegment>(groupby_segment));
+    _output_segments.push_back(groupby_segment);
+  }
+
   // We do not want the overhead of a vector with heap storage when we have a limited number of aggregate columns.
   // The reason we only have specializations up to 2 is because every specialization increases the compile time.
   // Also, we need to make sure that there are tests for at least the first case, one array case, and the fallback.

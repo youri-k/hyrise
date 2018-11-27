@@ -29,21 +29,22 @@ set(
     cost_model/cost.hpp
     cost_model/cost_model_logical.cpp
     cost_model/cost_model_logical.hpp
-    expression/abstract_expression.cpp
+    expression/expression_unity.cpp
+    #logi
     expression/abstract_expression.hpp
-    expression/abstract_predicate_expression.cpp
+    #expression/abstract_predicate_expression.cpp
     expression/abstract_predicate_expression.hpp
-    expression/aggregate_expression.cpp
+    #expression/aggregate_expression.cpp
     expression/aggregate_expression.hpp
-    expression/arithmetic_expression.cpp
+    #expression/arithmetic_expression.cpp
     expression/arithmetic_expression.hpp
-    expression/between_expression.cpp
+    #expression/between_expression.cpp
     expression/between_expression.hpp
-    expression/binary_predicate_expression.cpp
+    #expression/binary_predicate_expression.cpp
     expression/binary_predicate_expression.hpp
-    expression/case_expression.cpp
+    #expression/case_expression.cpp
     expression/case_expression.hpp
-    expression/cast_expression.cpp
+    #expression/cast_expression.cpp
     expression/cast_expression.hpp
     expression/evaluation/expression_evaluator.cpp
     expression/evaluation/expression_evaluator.hpp
@@ -52,38 +53,38 @@ set(
     expression/evaluation/expression_result_views.hpp
     expression/evaluation/like_matcher.cpp
     expression/evaluation/like_matcher.hpp
-    expression/exists_expression.cpp
+    #expression/exists_expression.cpp
     expression/exists_expression.hpp
     expression/expression_functional.cpp
     expression/expression_functional.hpp
     expression/expression_precedence.hpp
     expression/expression_utils.cpp
     expression/expression_utils.hpp
-    expression/extract_expression.cpp
+    #expression/extract_expression.cpp
     expression/extract_expression.hpp
-    expression/function_expression.cpp
+    #expression/function_expression.cpp
     expression/function_expression.hpp
-    expression/in_expression.cpp
+    #expression/in_expression.cpp
     expression/in_expression.hpp
-    expression/is_null_expression.cpp
+    #expression/is_null_expression.cpp
     expression/is_null_expression.hpp
-    expression/list_expression.cpp
+    #expression/list_expression.cpp
     expression/list_expression.hpp
-    expression/logical_expression.cpp
+    #expression/logical_expression.cpp
     expression/logical_expression.hpp
-    expression/lqp_column_expression.cpp
+    #expression/lqp_column_expression.cpp
     expression/lqp_column_expression.hpp
-    expression/lqp_select_expression.cpp
+    #expression/lqp_select_expression.cpp
     expression/lqp_select_expression.hpp
-    expression/parameter_expression.cpp
+    #expression/parameter_expression.cpp
     expression/parameter_expression.hpp
-    expression/pqp_column_expression.cpp
+    #expression/pqp_column_expression.cpp
     expression/pqp_column_expression.hpp
-    expression/pqp_select_expression.cpp
+    #expression/pqp_select_expression.cpp
     expression/pqp_select_expression.hpp
-    expression/unary_minus_expression.cpp
+    #expression/unary_minus_expression.cpp
     expression/unary_minus_expression.hpp
-    expression/value_expression.cpp
+    #expression/value_expression.cpp
     expression/value_expression.hpp
     import_export/binary.hpp
     import_export/csv_converter.cpp
@@ -458,6 +459,7 @@ set(
     storage/run_length_segment.hpp
     storage/run_length_segment/run_length_encoder.hpp
     storage/run_length_segment/run_length_segment_iterable.hpp
+    storage/segment_accessor.cpp
     storage/segment_accessor.hpp
     storage/segment_encoding_utils.cpp
     storage/segment_encoding_utils.hpp

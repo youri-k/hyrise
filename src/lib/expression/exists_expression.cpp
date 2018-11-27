@@ -26,6 +26,7 @@ std::string ExistsExpression::as_column_name() const {
   return stream.str();
 }
 
+
 std::shared_ptr<AbstractExpression> ExistsExpression::deep_copy() const {
   return std::make_shared<ExistsExpression>(select()->deep_copy(), exists_expression_type);
 }

@@ -13,6 +13,23 @@
 
 namespace opossum {
 
+struct AbstractRowIDValuePairWrapper {
+  virtual ~AbstractRowIDValuePairWrapper() = default;
+  virtual size_t size() const = 0;
+  virtual const RowID& row_id_at(size_t offset) const = 0;
+};
+
+template<typename T>
+struct RowIDValuePairWrapper : public AbstractRowIDValuePairWrapper {
+  RowIDValuePairWrapper(const std::vector<std::pair<RowID, T>>& row_id_value_pairs):
+    _row_id_value_pairs(row_id_value_pairs) {}
+
+  size_t size() const override {return _row_id_value_pairs.size();}
+  const RowID& row_id_at(size_t offset) const override {return _row_id_value_pairs[offset].first;}
+
+  std::vector<std::pair<RowID, T>> _row_id_value_pairs;
+};
+
 Sort::Sort(const std::shared_ptr<const AbstractOperator>& in, const ColumnID column_id, const OrderByMode order_by_mode,
            const size_t output_chunk_size)
     : AbstractReadOnlyOperator(OperatorType::Sort, in),
@@ -43,13 +60,13 @@ std::shared_ptr<const Table> Sort::_on_execute() {
 
 void Sort::_on_cleanup() { _impl.reset(); }
 
+
 // This class fulfills only the materialization task for a sorted row_id_value_vector.
-template <typename SortColumnType>
 class Sort::SortImplMaterializeOutput {
  public:
   // creates a new table with reference segments
   SortImplMaterializeOutput(const std::shared_ptr<const Table>& in,
-                            const std::shared_ptr<std::vector<std::pair<RowID, SortColumnType>>>& id_value_map,
+                            const AbstractRowIDValuePairWrapper& id_value_map,
                             const size_t output_chunk_size)
       : _table_in(in), _output_chunk_size(output_chunk_size), _row_id_value_vector(id_value_map) {}
 
@@ -64,7 +81,7 @@ class Sort::SortImplMaterializeOutput {
     // copied column by column for each output row. For each column in a row we visit the input segment with a reference
     // to the output segment. This enables for the SortImplMaterializeOutput class to ignore the column types during the
     // copying of the values.
-    const auto row_count_out = _row_id_value_vector->size();
+    const auto row_count_out = _row_id_value_vector.size();
 
     // Ceiling of integer division
     const auto div_ceil = [](auto x, auto y) { return (x + y - 1u) / y; };
@@ -78,17 +95,17 @@ class Sort::SortImplMaterializeOutput {
     for (ColumnID column_id{0u}; column_id < output->column_count(); ++column_id) {
       const auto column_data_type = output->column_data_type(column_id);
 
+      auto chunk_it = output_segments_by_chunk.begin();
+      auto chunk_offset_out = 0u;
+      auto value_segment_null_vector = pmr_concurrent_vector<bool>();
+      value_segment_null_vector.reserve(row_count_out);
+
       resolve_data_type(column_data_type, [&](auto type) {
         using ColumnDataType = typename decltype(type)::type;
 
-        auto chunk_it = output_segments_by_chunk.begin();
-        auto chunk_offset_out = 0u;
-
         auto value_segment_value_vector = pmr_concurrent_vector<ColumnDataType>();
-        auto value_segment_null_vector = pmr_concurrent_vector<bool>();
 
         value_segment_value_vector.reserve(row_count_out);
-        value_segment_null_vector.reserve(row_count_out);
 
         auto segment_ptr_and_accessor_by_chunk_id =
             std::unordered_map<ChunkID, std::pair<std::shared_ptr<const BaseSegment>,
@@ -96,7 +113,7 @@ class Sort::SortImplMaterializeOutput {
         segment_ptr_and_accessor_by_chunk_id.reserve(row_count_out);
 
         for (auto row_index = 0u; row_index < row_count_out; ++row_index) {
-          const auto [chunk_id, chunk_offset] = _row_id_value_vector->at(row_index).first;  // NOLINT
+          const auto [chunk_id, chunk_offset] = _row_id_value_vector.row_id_at(row_index);  // NOLINT
 
           auto& segment_ptr_and_typed_ptr_pair = segment_ptr_and_accessor_by_chunk_id[chunk_id];
           auto& base_segment = segment_ptr_and_typed_ptr_pair.first;
@@ -153,7 +170,7 @@ class Sort::SortImplMaterializeOutput {
  protected:
   const std::shared_ptr<const Table> _table_in;
   const size_t _output_chunk_size;
-  const std::shared_ptr<std::vector<std::pair<RowID, SortColumnType>>> _row_id_value_vector;
+  const AbstractRowIDValuePairWrapper& _row_id_value_vector;
 };
 
 // we need to use the impl pattern because the scan operator of the sort depends on the type of the column
@@ -198,9 +215,8 @@ class Sort::SortImpl : public AbstractReadOnlyOperatorImpl {
 
     // 3. Materialization of the result: We take the sorted ValueRowID Vector, create chunks fill them until they are
     // full and create the next one. Each chunk is filled row by row.
-    auto materialization = std::make_shared<SortImplMaterializeOutput<SortColumnType>>(_table_in, _row_id_value_vector,
-                                                                                       _output_chunk_size);
-    return materialization->execute();
+    return SortImplMaterializeOutput(_table_in, RowIDValuePairWrapper{*_row_id_value_vector},
+                                                                                       _output_chunk_size).execute();
   }
 
   // completely materializes the sort column to create a vector of RowID-Value pairs

@@ -8,6 +8,7 @@
 #include "storage/reference_segment.hpp"
 #include "storage/run_length_segment/run_length_segment_iterable.hpp"
 #include "storage/value_segment/value_segment_iterable.hpp"
+#include "resolve_type.hpp"
 
 namespace opossum {
 
@@ -62,6 +63,28 @@ template <typename T>
 auto create_iterable_from_segment(const ReferenceSegment& segment);
 
 /**@}*/
+
+template<typename ColumnDataType>
+AnySegmentIterable<ColumnDataType> create_any_segment_iterable(const BaseSegment& base_segment) {
+  auto any_segment_iterable = std::optional<AnySegmentIterable<ColumnDataType>>{};
+
+  resolve_segment_type<ColumnDataType>(base_segment, [&](const auto& segment) {
+    const auto iterable = create_iterable_from_segment(segment);
+    any_segment_iterable.emplace(erase_type_from_iterable(iterable));
+  });
+
+  return *any_segment_iterable;
+}
+
+template<typename ColumnDataType, typename Functor>
+void for_each_segment_value(const BaseSegment& base_segment, const Functor& functor) {
+#if IS_DEBUG
+  const auto iterable = create_any_segment_iterable<ColumnDataType>(base_segment);
+  iterable.for_each(functor);
+#else
+
+#endif
+}
 
 }  // namespace opossum
 
