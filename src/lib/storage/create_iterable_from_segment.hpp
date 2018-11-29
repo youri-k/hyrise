@@ -64,19 +64,6 @@ auto create_iterable_from_segment(const ReferenceSegment& segment);
 
 /**@}*/
 
-template<typename ColumnDataType>
-AnySegmentIterable<ColumnDataType> create_any_segment_iterable(const BaseSegment& base_segment);
-
-template<typename ColumnDataType, typename Functor>
-void for_each_segment_value(const BaseSegment& base_segment, const Functor& functor) {
-#if IS_DEBUG
-  const auto iterable = create_any_segment_iterable<ColumnDataType>(base_segment);
-  iterable.for_each(functor);
-#else
-
-#endif
-}
-
 }  // namespace opossum
 
 #include "create_iterable_from_segment.ipp"

@@ -396,7 +396,6 @@ set(
     storage/chunk_access_counter.hpp
     storage/chunk_encoder.cpp
     storage/chunk_encoder.hpp
-    storage/create_iterable_from_segment.cpp
     storage/create_iterable_from_segment.hpp
     storage/dictionary_segment.cpp
     storage/dictionary_segment.hpp
@@ -465,6 +464,7 @@ set(
     storage/segment_encoding_utils.cpp
     storage/segment_encoding_utils.hpp
     storage/segment_iterables.hpp
+    storage/segment_iterables/any_segment_iterable.cpp
     storage/segment_iterables/any_segment_iterable.hpp
     storage/segment_iterables/any_segment_iterator.hpp
     storage/segment_iterables/base_segment_iterators.hpp

@@ -116,4 +116,5 @@ class AnySegmentIterator : public BaseSegmentIterator<AnySegmentIterator<T>, Seg
   std::unique_ptr<opossum::detail::AnySegmentIteratorWrapperBase<T>> _wrapper;
 };
 
+
 }  // namespace opossum
