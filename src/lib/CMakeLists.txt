@@ -396,6 +396,7 @@ set(
     storage/chunk_access_counter.hpp
     storage/chunk_encoder.cpp
     storage/chunk_encoder.hpp
+    storage/create_iterable_from_segment.cpp
     storage/create_iterable_from_segment.hpp
     storage/dictionary_segment.cpp
     storage/dictionary_segment.hpp
@@ -472,6 +473,7 @@ set(
     storage/split_pos_list_by_chunk_id.cpp
     storage/split_pos_list_by_chunk_id.hpp
     storage/storage_manager.cpp
+    storage/segment_iteration.hpp
     storage/storage_manager.hpp
     storage/table.cpp
     storage/table.hpp

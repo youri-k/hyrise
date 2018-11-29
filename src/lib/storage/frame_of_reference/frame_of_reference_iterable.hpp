@@ -12,6 +12,8 @@ namespace opossum {
 template <typename T>
 class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfReferenceIterable<T>> {
  public:
+  using ColumnDataType = T;
+
   explicit FrameOfReferenceIterable(const FrameOfReferenceSegment<T>& segment) : _segment{segment} {}
 
   template <typename Functor>

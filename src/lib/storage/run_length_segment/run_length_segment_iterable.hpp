@@ -11,6 +11,8 @@ namespace opossum {
 template <typename T>
 class RunLengthSegmentIterable : public PointAccessibleSegmentIterable<RunLengthSegmentIterable<T>> {
  public:
+  using ColumnDataType = T;
+
   explicit RunLengthSegmentIterable(const RunLengthSegment<T>& segment) : _segment{segment} {}
 
   template <typename Functor>

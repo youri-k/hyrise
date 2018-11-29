@@ -5,6 +5,7 @@
 
 #include "storage/segment_iterables.hpp"
 #include "storage/segment_iterables/any_segment_iterator.hpp"
+#include "storage/reference_segment/reference_segment_iterable.hpp"
 
 namespace opossum {
 
@@ -33,15 +34,57 @@ decltype(auto) erase_type_from_iterable_if_debug(const IterableT& iterable);
  * @{
  */
 
-template <typename IterableT>
+template <typename ColumnDataType>
 struct is_any_segment_iterable : std::false_type {};
 
-template <typename IterableT>
-struct is_any_segment_iterable<AnySegmentIterable<IterableT>> : std::true_type {};
+template <typename ColumnDataType>
+struct is_any_segment_iterable<AnySegmentIterable<ColumnDataType>> : std::true_type {};
 
 template <typename IterableT>
 constexpr auto is_any_segment_iterable_v = is_any_segment_iterable<IterableT>::value;
 /**@}*/
+
+template<typename ColumnDataType>
+class BaseAnySegmentIterableWrapper {
+ public:
+  virtual ~BaseAnySegmentIterableWrapper() = default;
+  virtual std::pair<AnySegmentIterator<ColumnDataType>, AnySegmentIterator<ColumnDataType>> iterators() const = 0;
+  virtual std::pair<AnySegmentIterator<ColumnDataType>, AnySegmentIterator<ColumnDataType>> iterators(const std::shared_ptr<const PosList>& position_filter) const = 0;
+  virtual size_t _on_size() const = 0;
+};
+
+template<typename ColumnDataType, typename IterableT>
+class AnySegmentIterableWrapper : public BaseAnySegmentIterableWrapper<ColumnDataType> {
+ public:
+  explicit AnySegmentIterableWrapper(const IterableT& iterable): iterable(iterable) {}
+
+  std::pair<AnySegmentIterator<ColumnDataType>, AnySegmentIterator<ColumnDataType>> iterators() const override {
+    auto iterators = std::optional<std::pair<AnySegmentIterator<ColumnDataType>, AnySegmentIterator<ColumnDataType>>>{};
+    iterable.with_iterators([&](auto begin, auto end) {
+      iterators.emplace(begin, end);
+    });
+    return *iterators;
+  }
+
+  std::pair<AnySegmentIterator<ColumnDataType>, AnySegmentIterator<ColumnDataType>> iterators(const std::shared_ptr<const PosList>& position_filter) const override {
+    if constexpr (std::is_same_v<IterableT, ReferenceSegmentIterable<ColumnDataType>>) {
+      Fail("Nope");
+    } else {
+      auto iterators = std::optional<std::pair<AnySegmentIterator<ColumnDataType>, AnySegmentIterator<ColumnDataType>>>{};
+      iterable.with_iterators(position_filter, [&](auto begin, auto end) {
+        iterators.emplace(begin, end);
+      });
+      return *iterators;
+    }
+  }
+
+  size_t _on_size() const override {
+    return iterable._on_size();
+  }
+
+  IterableT iterable;
+};
+
 
 /**
  * @brief Makes any segment iterable return type-erased iterators
@@ -57,43 +100,38 @@ constexpr auto is_any_segment_iterable_v = is_any_segment_iterable<IterableT>::v
  * The iterators forwarded are of type AnySegmentIterator<T>. They wrap
  * any segment iterator with the cost of a virtual function call for each access.
  */
-template <typename IterableT>
-class AnySegmentIterable : public PointAccessibleSegmentIterable<AnySegmentIterable<IterableT>> {
-  static_assert(!is_any_segment_iterable_v<IterableT>, "Iterables should not be wrapped twice.");
-
+template <typename T>
+class AnySegmentIterable : public PointAccessibleSegmentIterable<AnySegmentIterable<T>> {
  public:
-  explicit AnySegmentIterable(const IterableT& iterable) : _iterable{iterable} {}
+  using ColumnDataType = T;
+
+  template<typename IterableT>
+  explicit AnySegmentIterable(const IterableT& iterable) :
+    _iterable_wrapper{std::make_shared<AnySegmentIterableWrapper<T, IterableT>>(iterable)} {
+    static_assert(!is_any_segment_iterable_v<IterableT>, "Iterables should not be wrapped twice.");
+  }
+
+  AnySegmentIterable(const AnySegmentIterable&) = default;
+  AnySegmentIterable(AnySegmentIterable&&) = default;
 
   template <typename Functor>
   void _on_with_iterators(const Functor& functor) const {
-    _iterable._on_with_iterators([&functor](auto it, auto end) {
-      using SegmentIteratorValueT = typename std::iterator_traits<decltype(it)>::value_type;
-      using DataTypeT = typename SegmentIteratorValueT::Type;
-
-      auto any_it = AnySegmentIterator<DataTypeT>{it};
-      auto any_end = AnySegmentIterator<DataTypeT>{end};
-
-      functor(any_it, any_end);
-    });
+    const auto [begin, end] = _iterable_wrapper->iterators();
+    functor(begin, end);
   }
 
   template <typename Functor>
   void _on_with_iterators(const PosList& position_filter, const Functor& functor) const {
-    _iterable._on_with_iterators(position_filter, [&functor](auto it, auto end) {
-      using SegmentIteratorValueT = typename std::iterator_traits<decltype(it)>::value_type;
-      using DataTypeT = typename SegmentIteratorValueT::Type;
-
-      auto any_it = AnySegmentIterator<DataTypeT>{it};
-      auto any_end = AnySegmentIterator<DataTypeT>{end};
-
-      functor(any_it, any_end);
-    });
+    auto cposition_filter = std::make_shared<PosList>(position_filter.begin(), position_filter.end());
+    if (position_filter.references_single_chunk()) cposition_filter->guarantee_single_chunk();
+    const auto [begin, end] = _iterable_wrapper->iterators(cposition_filter);
+    functor(begin, end);
   }
 
-  size_t _on_size() const { return _iterable._on_size(); }
+  size_t _on_size() const { return _iterable_wrapper->_on_size(); }
 
  private:
-  IterableT _iterable;
+  std::shared_ptr<BaseAnySegmentIterableWrapper<T>> _iterable_wrapper;
 };
 
 template <typename IterableT>
@@ -102,7 +140,7 @@ auto erase_type_from_iterable(const IterableT& iterable) {
   if constexpr(is_any_segment_iterable_v<IterableT>) {
     return iterable;
   } else {
-    return AnySegmentIterable{iterable};
+    return AnySegmentIterable<typename IterableT::ColumnDataType>{iterable};
   }
   // clang-format on
 }

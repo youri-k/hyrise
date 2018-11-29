@@ -11,6 +11,8 @@ namespace opossum {
 template <typename T>
 class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentIterable<T>> {
  public:
+  using ColumnDataType = T;
+
   explicit ValueSegmentIterable(const ValueSegment<T>& segment) : _segment{segment} {}
 
   template <typename Functor>
@@ -19,12 +21,11 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
       auto begin = Iterator{_segment.values().cbegin(), _segment.values().cbegin(), _segment.null_values().cbegin()};
       auto end = Iterator{_segment.values().cbegin(), _segment.values().cend(), _segment.null_values().cend()};
       functor(begin, end);
-      return;
+    } else {
+      auto begin = NonNullIterator{_segment.values().cbegin(), _segment.values().cbegin()};
+      auto end = NonNullIterator{_segment.values().cend(), _segment.values().cend()};
+      functor(begin, end);
     }
-
-    auto begin = NonNullIterator{_segment.values().cbegin(), _segment.values().cbegin()};
-    auto end = NonNullIterator{_segment.values().cend(), _segment.values().cend()};
-    functor(begin, end);
   }
 
   template <typename Functor>

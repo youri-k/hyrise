@@ -9,6 +9,8 @@ namespace opossum {
 
 class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeVectorIterable> {
  public:
+  using ColumnDataType = ValueID;
+
   explicit AttributeVectorIterable(const BaseCompressedVector& attribute_vector, const ValueID null_value_id)
       : _attribute_vector{attribute_vector}, _null_value_id{null_value_id} {}
 
@@ -36,6 +38,10 @@ class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeV
                                                          position_filter.cend()};
       functor(begin, end);
     });
+  }
+
+  size_t _on_size() const {
+    return _attribute_vector.size();
   }
 
  private:

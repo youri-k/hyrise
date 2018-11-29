@@ -14,6 +14,8 @@ namespace opossum {
  */
 class NullValueVectorIterable : public PointAccessibleSegmentIterable<NullValueVectorIterable> {
  public:
+  using ColumnDataType = bool;
+
   explicit NullValueVectorIterable(const pmr_concurrent_vector<bool>& null_values) : _null_values{null_values} {}
 
   template <typename Functor>

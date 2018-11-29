@@ -87,7 +87,7 @@ class AnySegmentIterable;
  */
 template <typename T>
 class AnySegmentIterator : public BaseSegmentIterator<AnySegmentIterator<T>, SegmentIteratorValue<T>> {
- private:
+ public:
   /**
    * Prevents AnySegmentIterator from being created
    * by anything else but AnySegmentIterable

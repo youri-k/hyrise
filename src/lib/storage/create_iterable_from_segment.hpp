@@ -65,16 +65,7 @@ auto create_iterable_from_segment(const ReferenceSegment& segment);
 /**@}*/
 
 template<typename ColumnDataType>
-AnySegmentIterable<ColumnDataType> create_any_segment_iterable(const BaseSegment& base_segment) {
-  auto any_segment_iterable = std::optional<AnySegmentIterable<ColumnDataType>>{};
-
-  resolve_segment_type<ColumnDataType>(base_segment, [&](const auto& segment) {
-    const auto iterable = create_iterable_from_segment(segment);
-    any_segment_iterable.emplace(erase_type_from_iterable(iterable));
-  });
-
-  return *any_segment_iterable;
-}
+AnySegmentIterable<ColumnDataType> create_any_segment_iterable(const BaseSegment& base_segment);
 
 template<typename ColumnDataType, typename Functor>
 void for_each_segment_value(const BaseSegment& base_segment, const Functor& functor) {
