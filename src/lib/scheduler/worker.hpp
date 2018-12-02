@@ -71,6 +71,8 @@ class Worker : public std::enable_shared_from_this<Worker>, private Noncopyable 
   CpuID _cpu_id;
   std::thread _thread;
   std::atomic<uint64_t> _num_finished_tasks{0};
+  uint32_t _sleep_ns{1};
+  const uint32_t _sleep_ns_max{10000000}; // 10 milliseconds
 };
 
 }  // namespace opossum

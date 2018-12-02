@@ -19,7 +19,7 @@ CWD = os.getcwd()
 OUTPUT_FILE = 'current_run.out'
 ERROR_FILE = 'current_run.err'
 
-NOTE = '_allimpro_nominheap' # '_something'
+NOTE = '_allimpro_nominheap_expbackoff' # '_something'
 
 timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -45,8 +45,8 @@ chunk_size_to_str = {
 }
 
 variable_parameters = [
-    ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_100k],
     ['--scale 1', '--clients 100', '--chunk_size ' + chunk_size_100k],
+    # ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_100k],
 
     # ['--scale 1', '--clients 10', '--chunk_size ' + chunk_size_100k],
     # ['--scale 1', '--clients 100', '--chunk_size ' + chunk_size_100k],
