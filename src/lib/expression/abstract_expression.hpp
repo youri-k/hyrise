@@ -28,6 +28,7 @@ enum class ExpressionType {
   PQPSelect,
   LQPSelect,
   UnaryMinus,
+  Validate,
   Value
 };
 

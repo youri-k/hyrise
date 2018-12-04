@@ -64,7 +64,6 @@
 #include "stored_table_node.hpp"
 #include "union_node.hpp"
 #include "update_node.hpp"
-#include "validate_node.hpp"
 
 using namespace std::string_literals;  // NOLINT
 
@@ -114,7 +113,6 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_by_node_type(
     case LQPNodeType::Delete:             return _translate_delete_node(node);
     case LQPNodeType::DummyTable:         return _translate_dummy_table_node(node);
     case LQPNodeType::Update:             return _translate_update_node(node);
-    case LQPNodeType::Validate:           return _translate_validate_node(node);
     case LQPNodeType::Union:              return _translate_union_node(node);
 
       // Maintenance operators
@@ -145,6 +143,10 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_predicate_node(
   const auto input_node = node->left_input();
   const auto input_operator = translate_node(input_node);
   const auto predicate_node = std::static_pointer_cast<PredicateNode>(node);
+
+  if (predicate_node->predicate()->type == ExpressionType::Validate) {
+    return std::make_shared<Validate>(input_operator  );
+  }
 
   switch (predicate_node->scan_type) {
     case ScanType::TableScan:
@@ -406,12 +408,6 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_union_node(
       return std::make_shared<UnionPositions>(input_operator_left, input_operator_right);
   }
   Fail("GCC thinks this is reachable");
-}
-
-std::shared_ptr<AbstractOperator> LQPTranslator::_translate_validate_node(
-    const std::shared_ptr<AbstractLQPNode>& node) const {
-  const auto input_operator = translate_node(node->left_input());
-  return std::make_shared<Validate>(input_operator);
 }
 
 std::shared_ptr<AbstractOperator> LQPTranslator::_translate_show_tables_node(

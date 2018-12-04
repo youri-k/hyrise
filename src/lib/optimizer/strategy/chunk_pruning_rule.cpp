@@ -38,11 +38,6 @@ bool ChunkPruningRule::apply_to(const std::shared_ptr<AbstractLQPNode>& node) co
     }
   }
 
-  // skip over validation nodes
-  if (current_node->type == LQPNodeType::Validate) {
-    current_node = current_node->left_input();
-  }
-
   if (current_node->type != LQPNodeType::StoredTable) {
     return _apply_to_inputs(node);
   }

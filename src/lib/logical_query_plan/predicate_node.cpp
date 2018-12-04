@@ -32,6 +32,12 @@ std::shared_ptr<TableStatistics> PredicateNode::derive_statistics_from(
     const std::shared_ptr<AbstractLQPNode>& left_input, const std::shared_ptr<AbstractLQPNode>& right_input) const {
   DebugAssert(left_input && !right_input, "PredicateNode need left_input and no right_input");
 
+  if (predicate()->type == ExpressionType::Validate) {
+    const auto input_statistics = left_input->get_statistics();
+    return std::make_shared<TableStatistics>(input_statistics->table_type(), input_statistics->approx_valid_row_count(),
+                                             input_statistics->column_statistics());
+  }
+
   /**
    * If the predicate is not a simple `<column> <predicate_condition> <value/column/placeholder>` predicate, 
    * then we have to fall back to a selectivity of 1 atm, because computing statistics for complex predicates

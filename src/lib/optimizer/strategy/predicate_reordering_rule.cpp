@@ -20,13 +20,12 @@ std::string PredicateReorderingRule::name() const { return "Predicate Reordering
 bool PredicateReorderingRule::apply_to(const std::shared_ptr<AbstractLQPNode>& node) const {
   auto reordered = false;
 
-  // Validate can be seen as a Predicate on the MVCC column
-  if (node->type == LQPNodeType::Predicate || node->type == LQPNodeType::Validate) {
+  if (node->type == LQPNodeType::Predicate) {
     std::vector<std::shared_ptr<AbstractLQPNode>> predicate_nodes;
 
     // Gather adjacent PredicateNodes
     auto current_node = node;
-    while (current_node->type == LQPNodeType::Predicate || current_node->type == LQPNodeType::Validate) {
+    while (current_node->type == LQPNodeType::Predicate) {
       // Once a node has multiple outputs, we're not talking about a Predicate chain anymore
       if (current_node->outputs().size() > 1) {
         break;

@@ -50,7 +50,6 @@
 #include "logical_query_plan/stored_table_node.hpp"
 #include "logical_query_plan/union_node.hpp"
 #include "logical_query_plan/update_node.hpp"
-#include "logical_query_plan/validate_node.hpp"
 #include "storage/lqp_view.hpp"
 #include "storage/storage_manager.hpp"
 #include "storage/table.hpp"
@@ -1064,7 +1063,7 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_validate_if_active(
     const std::shared_ptr<AbstractLQPNode>& input_node) {
   if (_use_mvcc == UseMvcc::No) return input_node;
 
-  return ValidateNode::make(input_node);
+  return PredicateNode::make(validate_(), input_node);
 }
 
 std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_predicate_expression(

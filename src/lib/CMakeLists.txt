@@ -83,6 +83,8 @@ set(
     expression/pqp_select_expression.hpp
     expression/unary_minus_expression.cpp
     expression/unary_minus_expression.hpp
+    expression/validate_expression.cpp
+    expression/validate_expression.hpp
     expression/value_expression.cpp
     expression/value_expression.hpp
     import_export/binary.hpp
@@ -149,8 +151,6 @@ set(
     logical_query_plan/union_node.hpp
     logical_query_plan/update_node.cpp
     logical_query_plan/update_node.hpp
-    logical_query_plan/validate_node.cpp
-    logical_query_plan/validate_node.hpp
     null_value.hpp
     operators/abstract_join_operator.cpp
     operators/abstract_join_operator.hpp

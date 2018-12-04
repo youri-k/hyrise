@@ -23,12 +23,13 @@
 #include "pqp_select_expression.hpp"
 #include "unary_minus_expression.hpp"
 #include "value_expression.hpp"
+#include "validate_expression.hpp"
 
 /**
  * This file provides convenience methods to create (nested) Expression objects with little boilerplate.
  *
- * NOTE: functions suffixed with "_" (e.g. equals_()) to alert the unsuspecting reader to the fact this is something
- *       different than the equality check he might expect when reading "equals" *
+ * NOTE: functions are suffixed with "_" (e.g. equals_()) to alert the unsuspecting reader to the fact this is something
+ *       different than the equality check he might expect when reading "equals()" *
  *
  * In Hyrise we say...
  *      case_(equals_(a, 123),
@@ -231,6 +232,8 @@ template <typename Argument>
 std::shared_ptr<CastExpression> cast_(const Argument& argument, const DataType data_type) {
   return std::make_shared<CastExpression>(to_expression(argument), data_type);
 }
+
+std::shared_ptr<ValidateExpression> validate_();
 
 }  // namespace expression_functional
 

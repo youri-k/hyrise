@@ -31,7 +31,6 @@
 #include "logical_query_plan/stored_table_node.hpp"
 #include "logical_query_plan/union_node.hpp"
 #include "logical_query_plan/update_node.hpp"
-#include "logical_query_plan/validate_node.hpp"
 #include "sql/create_sql_parser_error_message.hpp"
 #include "sql/sql_translator.hpp"
 #include "storage/storage_manager.hpp"
@@ -1422,7 +1421,7 @@ TEST_F(SQLTranslatorTest, DeleteSimple) {
   // clang-format off
   const auto expected_lqp =
   DeleteNode::make("int_float",
-    ValidateNode::make(
+    PredicateNode::make(validate_(),
       StoredTableNode::make("int_float")));
   // clang-format on
 
@@ -1436,7 +1435,7 @@ TEST_F(SQLTranslatorTest, DeleteConditional) {
   const auto expected_lqp =
   DeleteNode::make("int_float",
     PredicateNode::make(greater_than_(int_float_a, 5),
-      ValidateNode::make(
+      PredicateNode::make(validate_(),
         stored_table_node_int_float)));
   // clang-format on
 
@@ -1452,7 +1451,7 @@ TEST_F(SQLTranslatorTest, UpdateUnconditional) {
 
   // clang-format off
   const auto row_select_lqp =
-  ValidateNode::make(
+  PredicateNode::make(validate_(),
     stored_table_node_int_float);
 
   const auto expected_lqp =
@@ -1471,7 +1470,7 @@ TEST_F(SQLTranslatorTest, UpdateConditional) {
   // clang-format off
   const auto row_select_lqp =
   PredicateNode::make(greater_than_(int_float_a, 1),
-    ValidateNode::make(
+    PredicateNode::make(validate_(),
       stored_table_node_int_float));
 
   const auto expected_lqp =
@@ -1490,7 +1489,7 @@ TEST_F(SQLTranslatorTest, UpdateCast) {
   // clang-format off
   const auto row_select_lqp =
   PredicateNode::make(greater_than_(int_float_a, 1),
-    ValidateNode::make(
+    PredicateNode::make(validate_(),
       stored_table_node_int_float));
 
   const auto expected_lqp =

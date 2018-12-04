@@ -8,7 +8,6 @@
 #include "logical_query_plan/sort_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
 #include "logical_query_plan/union_node.hpp"
-#include "logical_query_plan/validate_node.hpp"
 #include "operators/jit_operator/operators/jit_aggregate.hpp"
 #include "operators/jit_operator/operators/jit_compute.hpp"
 #include "operators/jit_operator/operators/jit_filter.hpp"
@@ -360,7 +359,7 @@ TEST_F(JitAwareLQPTranslatorTest, UnionsGetTransformedToDisjunction) {
 }
 
 TEST_F(JitAwareLQPTranslatorTest, CheckOperatorOrderValidateAfterFilter) {
-  const auto lqp = ValidateNode::make(
+  const auto lqp = PredicateNode::make(validate_(),
       PredicateNode::make(greater_than_(a_a, a_b), PredicateNode::make(greater_than_(a_b, a_c), stored_table_node_a)));
 
   const auto jit_operator_wrapper = translate_lqp(lqp);
@@ -384,7 +383,7 @@ TEST_F(JitAwareLQPTranslatorTest, CheckOperatorOrderValidateAfterFilter) {
 
 TEST_F(JitAwareLQPTranslatorTest, CheckOperatorOrderValidateBeforeFilter) {
   const auto lqp = PredicateNode::make(
-      greater_than_(a_a, a_b), PredicateNode::make(greater_than_(a_b, a_c), ValidateNode::make(stored_table_node_a)));
+      greater_than_(a_a, a_b), PredicateNode::make(greater_than_(a_b, a_c), PredicateNode::make(validate_(), stored_table_node_a)));
 
   const auto jit_operator_wrapper = translate_lqp(lqp);
   ASSERT_NE(jit_operator_wrapper, nullptr);

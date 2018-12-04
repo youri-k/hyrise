@@ -191,6 +191,9 @@ std::shared_ptr<ExpressionResult<Result>> ExpressionEvaluator::evaluate_expressi
     case ExpressionType::LQPColumn:
     case ExpressionType::LQPSelect:
       Fail("Can't evaluate a LQP expression, those need to be translated by the LQPTranslator first.");
+
+    case ExpressionType::Validate:
+      Fail("Can't evaluate Validate expressions in the ExpressionEvaluator, use the Validate operator for this");
   }
   Fail("GCC thinks this is reachable");
 }

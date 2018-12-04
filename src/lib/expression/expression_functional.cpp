@@ -50,6 +50,11 @@ std::shared_ptr<ExistsExpression> exists_(const std::shared_ptr<AbstractExpressi
 std::shared_ptr<ExistsExpression> not_exists_(const std::shared_ptr<AbstractExpression>& select_expression) {  // NOLINT - clang-tidy doesn't like the suffix
   return std::make_shared<ExistsExpression>(select_expression, ExistsExpressionType::NotExists);
 }
+
+std::shared_ptr<ValidateExpression> validate_() {
+  return std::make_shared<ValidateExpression>();
+}
+
 // clang-format on
 
 }  // namespace expression_functional

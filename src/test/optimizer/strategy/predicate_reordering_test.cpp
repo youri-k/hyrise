@@ -16,7 +16,6 @@
 #include "logical_query_plan/sort_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
 #include "logical_query_plan/union_node.hpp"
-#include "logical_query_plan/validate_node.hpp"
 #include "optimizer/strategy/predicate_reordering_rule.hpp"
 #include "optimizer/strategy/strategy_base_test.hpp"
 #include "statistics/column_statistics.hpp"
@@ -256,10 +255,11 @@ TEST_F(PredicateReorderingTest, SimpleValidateReorderingTest) {
   // clang-format off
   const auto input_lqp =
     PredicateNode::make(greater_than_(a, 60),
-      ValidateNode::make(node));
+      PredicateNode::make(validate_(),
+        node));
 
   const auto expected_lqp =
-    ValidateNode::make(
+    PredicateNode::make(validate_(),
       PredicateNode::make(greater_than_(a, 60),
         node));
   // clang-format on
@@ -272,11 +272,13 @@ TEST_F(PredicateReorderingTest, SecondValidateReorderingTest) {
   // clang-format off
   const auto input_lqp =
     PredicateNode::make(greater_than_(a, 30),
-      ValidateNode::make(node));
+      PredicateNode::make(validate_(),
+        node));
 
   const auto expected_lqp =
     PredicateNode::make(greater_than_(a, 30),
-      ValidateNode::make(node));
+      PredicateNode::make(validate_(),
+        node));
   // clang-format on
 
   const auto reordered_input_lqp = StrategyBaseTest::apply_rule(_rule, input_lqp);

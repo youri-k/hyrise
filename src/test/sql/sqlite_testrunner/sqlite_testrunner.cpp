@@ -145,6 +145,9 @@ TEST_P(SQLiteTestRunner, CompareToSQLite) {
 
   auto sql_pipeline = SQLPipelineBuilder{sql}.with_lqp_translator(lqp_translator).create_pipeline();
 
+  sql_pipeline.get_unoptimized_logical_plans().at(0)->print();
+  sql_pipeline.get_optimized_logical_plans().at(0)->print();
+
   // Execute query in Hyrise and SQLite
   const auto result_table = sql_pipeline.get_result_table();
   const auto sqlite_result_table = _sqlite->execute_query(sql);

@@ -34,7 +34,6 @@ enum class LQPNodeType {
   StoredTable,
   Update,
   Union,
-  Validate,
   Mock
 };
 

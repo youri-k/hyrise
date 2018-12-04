@@ -97,8 +97,12 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   _visit(node, [&](auto& current_node) {
     const auto is_root_node = current_node == node;
     if (_node_is_jittable(current_node, is_root_node)) {
-      use_validate |= current_node->type == LQPNodeType::Validate;
-      validate_after_filter |= use_validate && current_node->type == LQPNodeType::Predicate;
+      if (lqp_is_validating_predicate_node(*current_node)) {
+        use_validate = true;
+      } else {
+        validate_after_filter |= use_validate && current_node->type == LQPNodeType::Predicate;
+      }
+
       if (requires_computation(current_node)) ++jittable_node_count;
       return true;
     } else {
@@ -112,8 +116,10 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
   //   - Always JIT AggregateNodes, as the JitAggregate is significantly faster than the Aggregate operator
   //   - Otherwise, JIT if there are two or more jittable nodes
   if (input_nodes.size() != 1 || jittable_node_count < 1) return nullptr;
-  if (jittable_node_count == 1 && (node->type == LQPNodeType::Projection || node->type == LQPNodeType::Validate)) {
-    return nullptr;
+  if (jittable_node_count == 1) {
+    if (node->type == LQPNodeType::Projection || lqp_is_validating_predicate_node(*node)) {
+      return nullptr;
+    }
   }
 
   // The input_node is not being integrated into the operator chain, but instead serves as the input to the JitOperators
@@ -125,7 +131,8 @@ std::shared_ptr<JitOperatorWrapper> JitAwareLQPTranslator::_try_translate_sub_pl
 
   // "filter_node". The root node of the subplan computed by a JitFilter.
   auto filter_node = node;
-  while (filter_node != input_node && filter_node->type != LQPNodeType::Predicate &&
+  while (filter_node != input_node &&
+  (filter_node->type != LQPNodeType::Predicate || lqp_is_validating_predicate_node(*filter_node)) &&
          filter_node->type != LQPNodeType::Union) {
     filter_node = filter_node->left_input();
   }
@@ -300,8 +307,7 @@ bool JitAwareLQPTranslator::_node_is_jittable(const std::shared_ptr<AbstractLQPN
     return predicate_node->scan_type == ScanType::TableScan;
   }
 
-  return node->type == LQPNodeType::Projection || node->type == LQPNodeType::Union ||
-         node->type == LQPNodeType::Validate;
+  return node->type == LQPNodeType::Projection || node->type == LQPNodeType::Union;
 }
 
 void JitAwareLQPTranslator::_visit(const std::shared_ptr<AbstractLQPNode>& node,

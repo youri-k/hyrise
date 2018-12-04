@@ -169,9 +169,14 @@ void lqp_insert_node(const std::shared_ptr<AbstractLQPNode>& parent_node, const 
   node->set_left_input(old_input);
 }
 
+bool lqp_is_validating_predicate_node(const AbstractLQPNode& node) {
+  return node.type == LQPNodeType::Predicate && static_cast<const PredicateNode&>(node).predicate()->type == ExpressionType::Validate;
+}
+
 bool lqp_is_validated(const std::shared_ptr<AbstractLQPNode>& lqp) {
   if (!lqp) return true;
-  if (lqp->type == LQPNodeType::Validate) return true;
+
+  if (lqp_is_validating_predicate_node(*lqp)) return true;
 
   if (!lqp->left_input() && !lqp->right_input()) return false;
 
@@ -195,7 +200,6 @@ std::set<std::string> lqp_find_modified_tables(const std::shared_ptr<AbstractLQP
       case LQPNodeType::CreateTable:
       case LQPNodeType::CreatePreparedPlan:
       case LQPNodeType::DropTable:
-      case LQPNodeType::Validate:
       case LQPNodeType::Aggregate:
       case LQPNodeType::Alias:
       case LQPNodeType::CreateView:
@@ -222,9 +226,11 @@ std::set<std::string> lqp_find_modified_tables(const std::shared_ptr<AbstractLQP
 
 std::shared_ptr<AbstractExpression> lqp_subplan_to_boolean_expression(const std::shared_ptr<AbstractLQPNode>& lqp) {
   static const auto whitelist =
-      std::set<LQPNodeType>{LQPNodeType::Projection, LQPNodeType::Sort, LQPNodeType::Validate};
+      std::set<LQPNodeType>{LQPNodeType::Projection, LQPNodeType::Sort};
 
-  if (whitelist.count(lqp->type)) return lqp_subplan_to_boolean_expression(lqp->left_input());
+  if (whitelist.count(lqp->type) || lqp_is_validating_predicate_node(*lqp)) {
+    return lqp_subplan_to_boolean_expression(lqp->left_input());
+  }
 
   switch (lqp->type) {
     case LQPNodeType::Predicate: {

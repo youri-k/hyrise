@@ -76,7 +76,7 @@ bool ExistsReformulationRule::apply_to(const std::shared_ptr<AbstractLQPNode>& n
     // Play it safe. We do not know how to handle complicated LQPs (that include Joins/Unions) here
     // TODO(anybody): Projection/AliasNodes are only a problem since they might prune the column we want to join with
     //                That's fixable problem, however.
-    if (subselect_node->type != LQPNodeType::Predicate && subselect_node->type != LQPNodeType::Validate &&
+    if (subselect_node->type != LQPNodeType::Predicate &&
         subselect_node->type != LQPNodeType::StoredTable && subselect_node->type != LQPNodeType::Sort) {
       return LQPVisitation::DoNotVisitInputs;
     }

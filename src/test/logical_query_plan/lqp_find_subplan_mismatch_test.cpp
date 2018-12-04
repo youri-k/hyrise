@@ -21,7 +21,6 @@
 #include "logical_query_plan/stored_table_node.hpp"
 #include "logical_query_plan/union_node.hpp"
 #include "logical_query_plan/update_node.hpp"
-#include "logical_query_plan/validate_node.hpp"
 #include "statistics/column_statistics.hpp"
 #include "statistics/table_statistics.hpp"
 #include "storage/storage_manager.hpp"
@@ -36,7 +35,7 @@ namespace opossum {
 class LQPFindSubplanMismatchTest : public ::testing::Test {
  protected:
   struct QueryNodes {
-    std::shared_ptr<ValidateNode> validate_node;
+    std::shared_ptr<PredicateNode> validate_node;
     std::shared_ptr<StoredTableNode> stored_table_node_a;
     std::shared_ptr<MockNode> mock_node_a;
     std::shared_ptr<MockNode> mock_node_b;
@@ -66,7 +65,7 @@ class LQPFindSubplanMismatchTest : public ::testing::Test {
 
   void _init_query_nodes(QueryNodes& query_nodes) const {
     query_nodes.stored_table_node_a = StoredTableNode::make("table_a");
-    query_nodes.validate_node = ValidateNode::make();
+    query_nodes.validate_node = PredicateNode::make(validate_());
     query_nodes.mock_node_a = MockNode::make(MockNode::ColumnDefinitions{{DataType::Int, "a"}});
     query_nodes.mock_node_b = MockNode::make(MockNode::ColumnDefinitions{{DataType::Int, "b"}, {DataType::Int, "c"}});
 
