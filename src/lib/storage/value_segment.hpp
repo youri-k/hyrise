@@ -44,6 +44,8 @@ class ValueSegment : public BaseValueSegment {
 
   // Add a value to the end of the segment.
   void append(const AllTypeVariant& val) final;
+  void append_direct(const std::optional<T> val);
+  void append_direct(const T& val);
 
   // Allocate enough space to hold at least @param capacity entries
   void reserve(const size_t capacity) final;

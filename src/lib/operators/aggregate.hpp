@@ -49,18 +49,6 @@ For implementation details, please check the wiki: https://github.com/hyrise/hyr
 */
 
 /*
-Current aggregated value and the number of rows that were used.
-The latter is used for AVG and COUNT.
-*/
-template <typename AggregateType, typename ColumnDataType>
-struct AggregateResult {
-  std::optional<AggregateType> current_aggregate;
-  size_t aggregate_count = 0;
-  std::set<ColumnDataType> distinct_values;
-  RowID row_id;
-};
-
-/*
 The key type that is used for the aggregation map.
 */
 using AggregateKeyEntry = uint64_t;

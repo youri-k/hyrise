@@ -99,14 +99,31 @@ void ValueSegment<T>::append(const AllTypeVariant& val) {
   bool is_null = variant_is_null(val);
 
   if (is_nullable()) {
-    (*_null_values).push_back(is_null);
-    _values.push_back(is_null ? T{} : type_cast_variant<T>(val));
+    (*_null_values).emplace_back(is_null);
+    _values.emplace_back(is_null ? T{} : type_cast_variant<T>(val));
     return;
   }
 
   Assert(!is_null, "ValueSegments is not nullable but value passed is null.");
 
-  _values.push_back(type_cast_variant<T>(val));
+  _values.emplace_back(type_cast_variant<T>(val));
+}
+
+template <typename T>
+void ValueSegment<T>::append_direct(const std::optional<T> val) {
+  if (val) {
+    append(*val);
+  } else {
+    DebugAssert(is_nullable(), "Trying to insert NULL into non-NULLable value segment");
+    _values.emplace_back(T{});
+    _null_values->emplace_back(true);
+  }
+}
+
+template <typename T>
+void ValueSegment<T>::append_direct(const T& val) {
+  _values.emplace_back(val);
+  if (is_nullable()) _null_values->emplace_back(false);
 }
 
 template <typename T>

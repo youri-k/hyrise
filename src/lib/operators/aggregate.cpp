@@ -23,6 +23,22 @@
 #include "utils/assert.hpp"
 #include "utils/performance_warning.hpp"
 
+namespace {
+  using namespace opossum;  // NOLINT
+
+  /*
+  Current aggregated value and the number of rows that were used.
+  The latter is used for AVG and COUNT.
+  */
+  template <typename AggregateType, typename ColumnDataType>
+  struct AggregateResult {
+    std::optional<AggregateType> current_aggregate;
+    size_t aggregate_count = 0;
+    std::set<ColumnDataType> distinct_values;
+    RowID row_id;
+  };
+}
+
 namespace opossum {
 
 Aggregate::Aggregate(const std::shared_ptr<AbstractOperator>& in,
@@ -712,15 +728,23 @@ std::enable_if_t<func == AggregateFunction::Avg && !std::is_arithmetic_v<Aggrega
 void Aggregate::_write_groupby_output(PosList& pos_list) {
   auto input_table = input_table_left();
 
-  for (size_t group_column_index = 0; group_column_index < _groupby_column_ids.size(); ++group_column_index) {
-    auto base_segments = std::vector<std::shared_ptr<const BaseSegment>>();
-    for (const auto& chunk : input_table->chunks()) {
-      base_segments.push_back(chunk->get_segment(_groupby_column_ids[group_column_index]));
-    }
-    _groupby_segments[group_column_index]->reserve(pos_list.size());
-    for (const auto& row_id : pos_list) {
-      _groupby_segments[group_column_index]->append((*base_segments[row_id.chunk_id])[row_id.chunk_offset]);
-    }
+  for (auto group_column_index = ColumnID{0}; group_column_index < _groupby_column_ids.size(); ++group_column_index) {
+    const auto column_id = _groupby_column_ids[group_column_index];
+    resolve_data_type(input_table->column_data_type(column_id), [&](const auto data_type) {
+      using ColumnDataType = typename decltype(data_type)::type;
+
+      auto accessors = std::vector<std::unique_ptr<BaseSegmentAccessor<ColumnDataType>>>{input_table->chunk_count()};
+      for (auto chunk_id = ChunkID{0}; chunk_id < input_table->chunk_count(); ++chunk_id) {
+        accessors[chunk_id] = create_segment_accessor<ColumnDataType>(input_table->get_chunk(chunk_id)->get_segment(column_id));
+      }
+
+      _groupby_segments[group_column_index]->reserve(pos_list.size());
+
+      for (const auto& row_id : pos_list) {
+        const auto& value = accessors[row_id.chunk_id]->access(row_id.chunk_offset);
+        std::static_pointer_cast<ValueSegment<ColumnDataType>>(_groupby_segments[group_column_index])->append_direct(value);
+      }
+    });
   }
 }
 

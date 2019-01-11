@@ -69,6 +69,8 @@ class MultipleChunkReferenceSegmentAccessor : public BaseSegmentAccessor<T> {
     const auto referenced_chunk_id = referenced_row_id.chunk_id;
     const auto referenced_chunk_offset = referenced_row_id.chunk_offset;
 
+    if (referenced_row_id.is_null()) return std::nullopt;  // TODO write test
+
     const auto accessor =
         create_segment_accessor<T>(table->get_chunk(referenced_chunk_id)->get_segment(referenced_column_id));
     return accessor->access(referenced_chunk_offset);
