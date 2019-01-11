@@ -97,7 +97,7 @@ class Sort::SortImplMaterializeOutput {
         segment_ptr_and_accessor_by_chunk_id.reserve(row_count_out);
 
         for (auto row_index = 0u; row_index < row_count_out; ++row_index) {
-          const auto [chunk_id, chunk_offset] = _row_id_value_vector->at(row_index).first;  // NOLINT
+          const auto [chunk_id, chunk_offset] = (*_row_id_value_vector)[row_index].first;
 
           auto& segment_ptr_and_typed_ptr_pair = segment_ptr_and_accessor_by_chunk_id[chunk_id];
           auto& base_segment = segment_ptr_and_typed_ptr_pair.first;
@@ -112,13 +112,13 @@ class Sort::SortImplMaterializeOutput {
           if (accessor) {
             const auto typed_value = accessor->access(chunk_offset);
             const auto is_null = !typed_value.has_value();
-            value_segment_value_vector.push_back(is_null ? ColumnDataType{} : typed_value.value());
-            value_segment_null_vector.push_back(is_null);
+            value_segment_value_vector.emplace_back(is_null ? ColumnDataType{} : std::move(typed_value.value()));
+            value_segment_null_vector.emplace_back(is_null);
           } else {
             const auto value = (*base_segment)[chunk_offset];
             const auto is_null = variant_is_null(value);
-            value_segment_value_vector.push_back(is_null ? ColumnDataType{} : type_cast_variant<ColumnDataType>(value));
-            value_segment_null_vector.push_back(is_null);
+            value_segment_value_vector.emplace_back(is_null ? ColumnDataType{} : std::move(type_cast_variant<ColumnDataType>(value)));
+            value_segment_null_vector.emplace_back(is_null);
           }
 
           ++chunk_offset_out;
@@ -128,7 +128,7 @@ class Sort::SortImplMaterializeOutput {
             chunk_offset_out = 0u;
             auto value_segment = std::make_shared<ValueSegment<ColumnDataType>>(std::move(value_segment_value_vector),
                                                                                 std::move(value_segment_null_vector));
-            chunk_it->push_back(value_segment);
+            chunk_it->emplace_back(value_segment);
             value_segment_value_vector = pmr_concurrent_vector<ColumnDataType>();
             value_segment_null_vector = pmr_concurrent_vector<bool>();
             ++chunk_it;
@@ -139,7 +139,7 @@ class Sort::SortImplMaterializeOutput {
         if (chunk_offset_out > 0u) {
           auto value_segment = std::make_shared<ValueSegment<ColumnDataType>>(std::move(value_segment_value_vector),
                                                                               std::move(value_segment_null_vector));
-          chunk_it->push_back(value_segment);
+          chunk_it->emplace_back(value_segment);
         }
       });
     }
@@ -220,7 +220,7 @@ class Sort::SortImpl : public AbstractReadOnlyOperatorImpl {
         if (position.is_null()) {
           null_value_rows.emplace_back(RowID{chunk_id, position.chunk_offset()}, SortColumnType{});
         } else {
-          row_id_value_vector.emplace_back(RowID{chunk_id, position.chunk_offset()}, position.value());
+          row_id_value_vector.emplace_back(RowID{chunk_id, position.chunk_offset()}, std::move(position.value()));
         }
       });
     }
