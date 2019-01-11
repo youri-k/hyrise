@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "types.hpp"
+#include "uninitialized_vector.hpp"
 #include "utils/assert.hpp"
 
 namespace opossum {
@@ -15,9 +16,9 @@ namespace opossum {
 // inheritance. By making the inheritance private and this class final, we can assure that the problems that come with
 // a non-virtual destructor do not occur.
 
-struct PosList final : private pmr_vector<RowID> {
+struct PosList final : private uninitialized_vector<RowID> {
  public:
-  using Vector = pmr_vector<RowID>;
+  using Vector = uninitialized_vector<RowID>;
 
   using value_type = Vector::value_type;
   using allocator_type = Vector::allocator_type;
@@ -36,7 +37,7 @@ struct PosList final : private pmr_vector<RowID> {
   /* (1 ) */ explicit PosList(const allocator_type& allocator) noexcept : Vector(allocator) {}
   /* (2 ) */ PosList(size_type count, const RowID& value, const allocator_type& alloc = allocator_type())
       : Vector(count, value, alloc) {}
-  /* (3 ) */ explicit PosList(size_type count, const allocator_type& alloc = allocator_type()) : Vector(count, alloc) {}
+  /* (3 ) */ explicit PosList(size_type count, const allocator_type& alloc = allocator_type()) : Vector(alloc) {resize(count);}
   /* (4 ) */ template <class InputIt>
   PosList(InputIt first, InputIt last, const allocator_type& alloc = allocator_type())
       : Vector(std::move(first), std::move(last)) {}
@@ -117,7 +118,6 @@ struct PosList final : private pmr_vector<RowID> {
   using Vector::pop_back;
   using Vector::push_back;
   using Vector::resize;
-  using Vector::swap;
 
   friend bool operator==(const PosList& lhs, const PosList& rhs);
   friend bool operator==(const PosList& lhs, const pmr_vector<RowID>& rhs);
@@ -128,15 +128,7 @@ struct PosList final : private pmr_vector<RowID> {
 };
 
 inline bool operator==(const PosList& lhs, const PosList& rhs) {
-  return static_cast<const pmr_vector<RowID>&>(lhs) == static_cast<const pmr_vector<RowID>&>(rhs);
-}
-
-inline bool operator==(const PosList& lhs, const pmr_vector<RowID>& rhs) {
-  return static_cast<const pmr_vector<RowID>&>(lhs) == rhs;
-}
-
-inline bool operator==(const pmr_vector<RowID>& lhs, const PosList& rhs) {
-  return lhs == static_cast<const pmr_vector<RowID>&>(rhs);
+  return static_cast<const uninitialized_vector<RowID>&>(lhs) == static_cast<const uninitialized_vector<RowID>&>(rhs);
 }
 
 }  // namespace opossum
