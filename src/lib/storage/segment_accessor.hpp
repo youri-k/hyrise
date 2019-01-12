@@ -53,14 +53,16 @@ class SegmentAccessor : public BaseSegmentAccessor<T> {
 /**
  * For ReferenceSegments, we don't use the SegmentAccessor but either the MultipleChunkReferenceSegmentAccessor or the.
  * SingleChunkReferenceSegmentAccessor. The first one is generally applicable. For each offset that is accessed, a new
- * accessor has to be created. This is because we cannot be sure that two consecutive offsets reference the same chunk.
- * In the SingleChunkReferenceSegmentAccessor, we know that the same chunk is referenced, so we create the accessor
- * only once.
+ * accessor has to be created (if it has not been cached). This is because we cannot be sure that two consecutive
+ * offsets reference the same chunk. In the SingleChunkReferenceSegmentAccessor, we know that the same chunk is
+ * referenced, so we create the accessor only once.
  */
 template <typename T>
 class MultipleChunkReferenceSegmentAccessor : public BaseSegmentAccessor<T> {
  public:
-  explicit MultipleChunkReferenceSegmentAccessor(const ReferenceSegment& segment) : _segment{segment} {}
+  explicit MultipleChunkReferenceSegmentAccessor(const ReferenceSegment& segment) : _segment{segment} {
+    _accessor_cache.resize(segment.referenced_table()->chunk_count());
+  }
 
   const std::optional<T> access(ChunkOffset offset) const final {
     const auto& referenced_row_id = (*_segment.pos_list())[offset];
@@ -71,13 +73,15 @@ class MultipleChunkReferenceSegmentAccessor : public BaseSegmentAccessor<T> {
     const auto referenced_chunk_id = referenced_row_id.chunk_id;
     const auto referenced_chunk_offset = referenced_row_id.chunk_offset;
 
-    const auto accessor =
-        create_segment_accessor<T>(table->get_chunk(referenced_chunk_id)->get_segment(referenced_column_id));
+    auto& accessor = _accessor_cache[referenced_chunk_id];
+    if (!accessor) accessor = create_segment_accessor<T>(table->get_chunk(referenced_chunk_id)->get_segment(referenced_column_id));
+
     return accessor->access(referenced_chunk_offset);
   }
 
  protected:
   const ReferenceSegment& _segment;
+  mutable std::vector<std::unique_ptr<BaseSegmentAccessor<T>>> _accessor_cache;
 };
 
 // Accessor for ReferenceSegments that reference single chunks - see comment above
