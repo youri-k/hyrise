@@ -54,7 +54,7 @@ class SegmentAccessorTest : public BaseTest {
 };
 
 TEST_F(SegmentAccessorTest, TestValueSegmentInt) {
-  auto vc_int_base_accessor = create_segment_accessor<int>(vc_int);
+  auto vc_int_base_accessor = create_segment_accessor<int>(*vc_int);
   ASSERT_NE(vc_int_base_accessor, nullptr);
   EXPECT_EQ(vc_int_base_accessor->access(ChunkOffset{0}), 4);
   EXPECT_EQ(vc_int_base_accessor->access(ChunkOffset{1}), 6);
@@ -62,7 +62,7 @@ TEST_F(SegmentAccessorTest, TestValueSegmentInt) {
 }
 
 TEST_F(SegmentAccessorTest, TestValueSegmentString) {
-  auto vc_str_accessor = create_segment_accessor<std::string>(vc_str);
+  auto vc_str_accessor = create_segment_accessor<std::string>(*vc_str);
   ASSERT_NE(vc_str_accessor, nullptr);
   EXPECT_EQ(vc_str_accessor->access(ChunkOffset{0}), "Hello,");
   EXPECT_EQ(vc_str_accessor->access(ChunkOffset{1}), "world");
@@ -70,7 +70,7 @@ TEST_F(SegmentAccessorTest, TestValueSegmentString) {
 }
 
 TEST_F(SegmentAccessorTest, TestDictionarySegmentInt) {
-  auto dc_int_accessor = create_segment_accessor<int>(dc_int);
+  auto dc_int_accessor = create_segment_accessor<int>(*dc_int);
   ASSERT_NE(dc_int_accessor, nullptr);
   EXPECT_EQ(dc_int_accessor->access(ChunkOffset{0}), 4);
   EXPECT_EQ(dc_int_accessor->access(ChunkOffset{1}), 6);
@@ -78,7 +78,7 @@ TEST_F(SegmentAccessorTest, TestDictionarySegmentInt) {
 }
 
 TEST_F(SegmentAccessorTest, TestDictionarySegmentString) {
-  auto dc_str_accessor = create_segment_accessor<std::string>(dc_str);
+  auto dc_str_accessor = create_segment_accessor<std::string>(*dc_str);
   ASSERT_NE(dc_str_accessor, nullptr);
   EXPECT_EQ(dc_str_accessor->access(ChunkOffset{0}), "Hello,");
   EXPECT_EQ(dc_str_accessor->access(ChunkOffset{1}), "world");
@@ -86,7 +86,7 @@ TEST_F(SegmentAccessorTest, TestDictionarySegmentString) {
 }
 
 TEST_F(SegmentAccessorTest, TestReferenceSegmentToValueSegmentInt) {
-  auto rc_int_accessor = create_segment_accessor<int>(rc_int);
+  auto rc_int_accessor = create_segment_accessor<int>(*rc_int);
   ASSERT_NE(rc_int_accessor, nullptr);
   EXPECT_EQ(rc_int_accessor->access(ChunkOffset{0}), 6);
   EXPECT_EQ(rc_int_accessor->access(ChunkOffset{1}), 3);
@@ -94,7 +94,7 @@ TEST_F(SegmentAccessorTest, TestReferenceSegmentToValueSegmentInt) {
 }
 
 TEST_F(SegmentAccessorTest, TestReferenceSegmentToDictionarySegmentString) {
-  auto rc_str_accessor = create_segment_accessor<std::string>(rc_str);
+  auto rc_str_accessor = create_segment_accessor<std::string>(*rc_str);
   ASSERT_NE(rc_str_accessor, nullptr);
   EXPECT_EQ(rc_str_accessor->access(ChunkOffset{0}), "world");
   EXPECT_EQ(rc_str_accessor->access(ChunkOffset{1}), "!");

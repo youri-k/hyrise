@@ -38,10 +38,10 @@ class ReferenceSegmentIterable : public SegmentIterable<ReferenceSegmentIterable
         using SegmentType = std::decay_t<decltype(typed_segment)>;
 
         if constexpr (!std::is_same_v<SegmentType, ReferenceSegment>) {
-          auto accessor = SegmentAccessor<T, SegmentType>(typed_segment);
+          auto accessor = create_segment_accessor<T>(typed_segment);
 
-          auto begin = SingleChunkIterator<decltype(accessor)>{accessor, begin_it, begin_it};
-          auto end = SingleChunkIterator<decltype(accessor)>{accessor, begin_it, end_it};
+          auto begin = SingleChunkIterator<decltype(*accessor)>{*accessor, begin_it, begin_it};
+          auto end = SingleChunkIterator<decltype(*accessor)>{*accessor, begin_it, end_it};
           functor(begin, end);
         } else {
           Fail("Found ReferenceSegment pointing to ReferenceSegment");
@@ -152,7 +152,7 @@ class ReferenceSegmentIterable : public SegmentIterable<ReferenceSegmentIterable
 
     void _create_accessor(const ChunkID chunk_id) const {
       auto segment = _referenced_table->get_chunk(chunk_id)->get_segment(_referenced_column_id);
-      auto accessor = std::move(create_segment_accessor<T>(segment));
+      auto accessor = std::move(create_segment_accessor<T>(*segment));
       _accessors[chunk_id] = std::move(accessor);
     }
 

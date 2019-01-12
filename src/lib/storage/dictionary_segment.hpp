@@ -5,6 +5,7 @@
 
 #include "base_dictionary_segment.hpp"
 #include "storage/vector_compression/base_compressed_vector.hpp"
+#include "utils/performance_warning.hpp"
 #include "types.hpp"
 
 namespace opossum {
@@ -33,7 +34,20 @@ class DictionarySegment : public BaseDictionarySegment {
 
   const AllTypeVariant operator[](const ChunkOffset chunk_offset) const final;
 
-  const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const;
+  template <typename Decompressor = void>
+  const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const {
+    ValueID value_id;
+    if constexpr (std::is_same_v<Decompressor, void>) {
+      PerformanceWarning("Using get_typed_value without pre-resolved Decompressor");
+      value_id = _decompressor->get(chunk_offset);
+    } else {
+      value_id = static_cast<Decompressor&>(*_decompressor).get(chunk_offset);  // TODO optimize the other types
+    }
+    if (value_id == _null_value_id) {
+      return std::nullopt;
+    }
+    return (*_dictionary)[value_id];
+  }
 
   size_t size() const final;
 

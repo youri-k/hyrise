@@ -735,7 +735,7 @@ void Aggregate::_write_groupby_output(PosList& pos_list) {
 
       auto accessors = std::vector<std::unique_ptr<BaseSegmentAccessor<ColumnDataType>>>{input_table->chunk_count()};
       for (auto chunk_id = ChunkID{0}; chunk_id < input_table->chunk_count(); ++chunk_id) {
-        accessors[chunk_id] = create_segment_accessor<ColumnDataType>(input_table->get_chunk(chunk_id)->get_segment(column_id));
+        accessors[chunk_id] = create_segment_accessor<ColumnDataType>(*input_table->get_chunk(chunk_id)->get_segment(column_id));
       }
 
       _groupby_segments[group_column_index]->reserve(pos_list.size());

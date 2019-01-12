@@ -53,7 +53,7 @@ constexpr auto compressed_vector_for_type = hana::make_map(
  * Effectively a reverse lookup in compressed_vector_for_type
  */
 template <typename CompressedVectorT>
-CompressedVectorType get_compressed_vector_type() {
+CompressedVectorType compressed_vector_type() {
   auto compression_type = std::optional<CompressedVectorType>{};
 
   hana::fold(compressed_vector_for_type, false, [&](auto match_found, auto pair) {

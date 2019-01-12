@@ -98,7 +98,7 @@ class CompressedVector : public BaseCompressedVector {
   size_t size() const final { return _self().on_size(); }
   size_t data_size() const final { return _self().on_data_size(); }
 
-  CompressedVectorType type() const final { return get_compressed_vector_type<Derived>(); }
+  CompressedVectorType type() const final { return compressed_vector_type<Derived>(); }
 
   std::unique_ptr<BaseVectorDecompressor> create_base_decompressor() const final {
     return _self().on_create_base_decompressor();
