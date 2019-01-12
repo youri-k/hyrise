@@ -19,7 +19,7 @@ namespace detail {
 template <typename T>
 class CreateSegmentAccessor {
  public:
-  static std::unique_ptr<BaseSegmentAccessor<T>> create(const std::shared_ptr<const BaseSegment>& segment);
+  static std::unique_ptr<BaseSegmentAccessor<T>> create(const BaseSegment& segment);
 };
 
 }  // namespace detail
@@ -28,7 +28,7 @@ class CreateSegmentAccessor {
  * Utility method to create a SegmentAccessor for a given BaseSegment.
  */
 template <typename T>
-std::unique_ptr<BaseSegmentAccessor<T>> create_segment_accessor(const std::shared_ptr<const BaseSegment>& segment) {
+std::unique_ptr<BaseSegmentAccessor<T>> create_segment_accessor(const BaseSegment& segment) {
   return opossum::detail::CreateSegmentAccessor<T>::create(segment);
 }
 
@@ -36,15 +36,18 @@ std::unique_ptr<BaseSegmentAccessor<T>> create_segment_accessor(const std::share
  * A SegmentAccessor is templated per SegmentType and DataType (T).
  * It requires that the underlying segment implements an implicit interface:
  *
+ *   template <typename Decompressor = void>
  *   const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const;
  *
+ * The optional Decompressor type can be used by the get_typed_value to skip the virtual method call.
+ *
  */
-template <typename T, typename SegmentType>
+template <typename T, typename SegmentType, typename Decompressor = void>
 class SegmentAccessor : public BaseSegmentAccessor<T> {
  public:
   explicit SegmentAccessor(const SegmentType& segment) : BaseSegmentAccessor<T>{}, _segment{segment} {}
 
-  const std::optional<T> access(ChunkOffset offset) const final { return _segment.get_typed_value(offset); }
+  const std::optional<T> access(ChunkOffset offset) const final { return _segment.template get_typed_value<Decompressor>(offset); }
 
  protected:
   const SegmentType& _segment;
@@ -74,7 +77,7 @@ class MultipleChunkReferenceSegmentAccessor : public BaseSegmentAccessor<T> {
     const auto referenced_chunk_offset = referenced_row_id.chunk_offset;
 
     auto& accessor = _accessor_cache[referenced_chunk_id];
-    if (!accessor) accessor = create_segment_accessor<T>(table->get_chunk(referenced_chunk_id)->get_segment(referenced_column_id));
+    if (!accessor) accessor = create_segment_accessor<T>(*table->get_chunk(referenced_chunk_id)->get_segment(referenced_column_id));
 
     return accessor->access(referenced_chunk_offset);
   }
@@ -96,7 +99,7 @@ class SingleChunkReferenceSegmentAccessor : public BaseSegmentAccessor<T> {
         // Therefore, we can safely assume that all other entries are also NULL and always return std::nullopt.
         _accessor((*_segment.pos_list())[ChunkOffset{0}].is_null()
                       ? std::make_unique<NullAccessor>()
-                      : create_segment_accessor<T>(segment.referenced_table()->get_chunk(_chunk_id)->get_segment(
+                      : create_segment_accessor<T>(*segment.referenced_table()->get_chunk(_chunk_id)->get_segment(
                             _segment.referenced_column_id()))) {}
 
   const std::optional<T> access(ChunkOffset offset) const final {

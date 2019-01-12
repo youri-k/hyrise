@@ -713,7 +713,7 @@ void Aggregate::_write_groupby_output(PosList& pos_list) {
         auto& accessor = accessors[row_id.chunk_id];
         if (!accessor) {
           accessor =
-              create_segment_accessor<ColumnDataType>(input_table->get_chunk(row_id.chunk_id)->get_segment(column_id));
+              create_segment_accessor<ColumnDataType>(*input_table->get_chunk(row_id.chunk_id)->get_segment(column_id));
         }
 
         const auto& optional_value = accessor->access(row_id.chunk_offset);

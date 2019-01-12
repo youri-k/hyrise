@@ -268,7 +268,7 @@ TEST_F(IterablesTest, ReferenceSegmentIteratorWithIteratorsSingleChunk) {
 }
 
 TEST_F(IterablesTest, ReferenceSegmentIteratorWithIteratorsReadingParallel) {
-  // Ensure that two independant reference segment iterators referencing one chunk use the correct accessor after they
+  // Ensure that two independent reference segment iterators referencing one chunk use the correct accessor after they
   // have been created with the function: <IterableClass>.with_iterators(<Callback>)
 
   const auto table = load_table("resources/test_data/tbl/int_int.tbl");

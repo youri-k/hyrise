@@ -41,4 +41,24 @@ void resolve_compressed_vector_type(const BaseCompressedVector& vector, const Fu
   });
 }
 
+
+// TODO doc
+template <typename Functor>
+void resolve_decompressor_type(const CompressedVectorType& type, const Functor& functor) {
+  hana::fold(compressed_vector_for_type, false, [&](auto match_found, auto pair) {
+    const auto vector_type_c = hana::first(pair);
+    const auto vector_t = hana::second(pair);
+
+    if (!match_found && (hana::value(vector_type_c) == type)) {
+      using CompressedVectorType = typename decltype(vector_t)::type;
+      using DecompressorType = decltype(std::declval<CompressedVectorType>().on_create_decompressor());
+      functor(DecompressorType{});
+
+      return true;
+    }
+
+    return match_found;
+  });
+}
+
 }  // namespace opossum

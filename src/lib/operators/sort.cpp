@@ -105,7 +105,7 @@ class Sort::SortImplMaterializeOutput {
 
           if (!base_segment) {
             base_segment = _table_in->get_chunk(chunk_id)->get_segment(column_id);
-            accessor = create_segment_accessor<ColumnDataType>(base_segment);
+            accessor = create_segment_accessor<ColumnDataType>(*base_segment);
           }
 
           // If the input segment is not a ReferenceSegment, we can take a fast(er) path

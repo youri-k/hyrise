@@ -38,7 +38,14 @@ class FixedStringDictionarySegment : public BaseDictionarySegment {
 
   const AllTypeVariant operator[](const ChunkOffset chunk_offset) const final;
 
-  const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const;
+  template <typename Decompressor = void>
+  const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const {
+    const auto value_id = _decompressor->get(chunk_offset);
+    if (value_id == _null_value_id) {
+      return std::nullopt;
+    }
+    return _dictionary->get_string_at(value_id);
+  }
 
   size_t size() const final;
 

@@ -35,15 +35,6 @@ const AllTypeVariant FixedStringDictionarySegment<T>::operator[](const ChunkOffs
 }
 
 template <typename T>
-const std::optional<T> FixedStringDictionarySegment<T>::get_typed_value(const ChunkOffset chunk_offset) const {
-  const auto value_id = _decompressor->get(chunk_offset);
-  if (value_id == _null_value_id) {
-    return std::nullopt;
-  }
-  return _dictionary->get_string_at(value_id);
-}
-
-template <typename T>
 std::shared_ptr<const pmr_vector<std::string>> FixedStringDictionarySegment<T>::dictionary() const {
   return _dictionary->dictionary();
 }

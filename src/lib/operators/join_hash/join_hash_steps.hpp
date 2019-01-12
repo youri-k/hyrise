@@ -91,6 +91,7 @@ RadixContainer<T> materialize_input(const std::shared_ptr<const Table>& in_table
                                     std::vector<std::vector<size_t>>& histograms, const size_t radix_bits) {
   const std::hash<HashedType> hash_function;
   // list of all elements that will be partitioned
+  // TODO reuse row_count
   auto elements = std::make_shared<Partition<T>>(in_table->row_count());
 
   [[maybe_unused]] auto null_value_bitvector = std::make_shared<std::vector<bool>>();
