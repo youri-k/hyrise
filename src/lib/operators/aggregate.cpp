@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "aggregate/aggregate_traits.hpp"
+#include "bytell_hash_map.hpp"
 #include "constant_mappings.hpp"
 #include "resolve_type.hpp"
 #include "scheduler/abstract_task.hpp"
@@ -138,7 +139,7 @@ struct AggregateContext : SegmentVisitorContext {
   }
 
   std::shared_ptr<GroupByContext<AggregateKey>> groupby_context;
-  std::shared_ptr<std::unordered_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>
+  std::shared_ptr<ska::bytell_hash_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>
       results;
 };
 
@@ -358,7 +359,7 @@ void Aggregate::_aggregate() {
         auto temp_buffer = boost::container::pmr::monotonic_buffer_resource(1'000'000);
         auto allocator = PolymorphicAllocator<std::pair<const ColumnDataType, AggregateKeyEntry>>{&temp_buffer};
 
-        auto id_map = std::unordered_map<ColumnDataType, AggregateKeyEntry, std::hash<ColumnDataType>,
+        auto id_map = ska::bytell_hash_map<ColumnDataType, AggregateKeyEntry, std::hash<ColumnDataType>,
                                          std::equal_to<ColumnDataType>, decltype(allocator)>(allocator);
         AggregateKeyEntry id_counter = 1u;
 
@@ -375,7 +376,7 @@ void Aggregate::_aggregate() {
                 keys_per_chunk[chunk_id][chunk_offset][group_column_index] = 0u;
               }
             } else {
-              auto inserted = id_map.try_emplace(position.value(), id_counter);
+              auto inserted = id_map.emplace(position.value(), id_counter);
               // store either the current id_counter or the existing ID of the value
               if constexpr (std::is_same_v<AggregateKey, AggregateKeyEntry>) {
                 keys_per_chunk[chunk_id][chunk_offset] = inserted.first->second;
@@ -412,7 +413,7 @@ void Aggregate::_aggregate() {
     */
     auto context = std::make_shared<AggregateContext<DistinctColumnType, DistinctAggregateType, AggregateKey>>();
     context->results =
-        std::make_shared<std::unordered_map<AggregateKey, AggregateResult<DistinctAggregateType, DistinctColumnType>,
+        std::make_shared<ska::bytell_hash_map<AggregateKey, AggregateResult<DistinctAggregateType, DistinctColumnType>,
                                             std::hash<AggregateKey>>>();
 
     _contexts_per_column.push_back(context);
@@ -429,7 +430,7 @@ void Aggregate::_aggregate() {
       // SELECT COUNT(*) - we know the template arguments, so we don't need a visitor
       auto context = std::make_shared<AggregateContext<CountColumnType, CountAggregateType, AggregateKey>>();
       context->results =
-          std::make_shared<std::unordered_map<AggregateKey, AggregateResult<CountAggregateType, CountColumnType>,
+          std::make_shared<ska::bytell_hash_map<AggregateKey, AggregateResult<CountAggregateType, CountColumnType>,
                                               std::hash<AggregateKey>>>();
       _contexts_per_column[column_id] = context;
       continue;
@@ -608,6 +609,14 @@ std::shared_ptr<const Table> Aggregate::_on_execute() {
       // We need to explicitly list all array sizes that we want to support
       _aggregate<std::array<AggregateKeyEntry, 2>>();
       break;
+    case 3:
+      // We need to explicitly list all array sizes that we want to support
+      _aggregate<std::array<AggregateKeyEntry, 3>>();
+      break;
+    case 4:
+      // We need to explicitly list all array sizes that we want to support
+      _aggregate<std::array<AggregateKeyEntry, 4>>();
+      break;
     default:
       PerformanceWarning("No std::array implementation initialized - falling back to vector");
       _aggregate<pmr_vector<AggregateKeyEntry>>();
@@ -630,7 +639,7 @@ template <typename ColumnType, typename AggregateType, AggregateFunction func, t
 std::enable_if_t<func == AggregateFunction::Min || func == AggregateFunction::Max || func == AggregateFunction::Sum,
                  void>
 write_aggregate_values(std::shared_ptr<ValueSegment<AggregateType>> segment,
-                       std::shared_ptr<std::unordered_map<AggregateKey, AggregateResult<AggregateType, ColumnType>,
+                       std::shared_ptr<ska::bytell_hash_map<AggregateKey, AggregateResult<AggregateType, ColumnType>,
                                                           std::hash<AggregateKey>>>
                            results) {
   DebugAssert(segment->is_nullable(), "Aggregate: Output segment needs to be nullable");
@@ -657,7 +666,7 @@ template <typename ColumnType, typename AggregateType, AggregateFunction func, t
 std::enable_if_t<func == AggregateFunction::Count, void> write_aggregate_values(
     std::shared_ptr<ValueSegment<AggregateType>> segment,
     std::shared_ptr<
-        std::unordered_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>
+        ska::bytell_hash_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>
         results) {
   DebugAssert(!segment->is_nullable(), "Aggregate: Output segment for COUNT shouldn't be nullable");
 
@@ -676,7 +685,7 @@ template <typename ColumnType, typename AggregateType, AggregateFunction func, t
 std::enable_if_t<func == AggregateFunction::CountDistinct, void> write_aggregate_values(
     std::shared_ptr<ValueSegment<AggregateType>> segment,
     std::shared_ptr<
-        std::unordered_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>
+        ska::bytell_hash_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>
         results) {
   DebugAssert(!segment->is_nullable(), "Aggregate: Output segment for COUNT shouldn't be nullable");
 
@@ -695,7 +704,7 @@ template <typename ColumnType, typename AggregateType, AggregateFunction func, t
 std::enable_if_t<func == AggregateFunction::Avg && std::is_arithmetic_v<AggregateType>, void> write_aggregate_values(
     std::shared_ptr<ValueSegment<AggregateType>> segment,
     std::shared_ptr<
-        std::unordered_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>
+        ska::bytell_hash_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>
         results) {
   DebugAssert(segment->is_nullable(), "Aggregate: Output segment needs to be nullable");
 
@@ -721,30 +730,22 @@ template <typename ColumnType, typename AggregateType, AggregateFunction func, t
 std::enable_if_t<func == AggregateFunction::Avg && !std::is_arithmetic_v<AggregateType>, void> write_aggregate_values(
     std::shared_ptr<ValueSegment<AggregateType>>,
     std::shared_ptr<
-        std::unordered_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>) {
+        ska::bytell_hash_map<AggregateKey, AggregateResult<AggregateType, ColumnType>, std::hash<AggregateKey>>>) {
   Fail("Invalid aggregate");
 }
 
 void Aggregate::_write_groupby_output(PosList& pos_list) {
   auto input_table = input_table_left();
 
-  for (auto group_column_index = ColumnID{0}; group_column_index < _groupby_column_ids.size(); ++group_column_index) {
-    const auto column_id = _groupby_column_ids[group_column_index];
-    resolve_data_type(input_table->column_data_type(column_id), [&](const auto data_type) {
-      using ColumnDataType = typename decltype(data_type)::type;
-
-      auto accessors = std::vector<std::unique_ptr<BaseSegmentAccessor<ColumnDataType>>>{input_table->chunk_count()};
-      for (auto chunk_id = ChunkID{0}; chunk_id < input_table->chunk_count(); ++chunk_id) {
-        accessors[chunk_id] = create_segment_accessor<ColumnDataType>(*input_table->get_chunk(chunk_id)->get_segment(column_id));
-      }
-
-      _groupby_segments[group_column_index]->reserve(pos_list.size());
-
-      for (const auto& row_id : pos_list) {
-        const auto& value = accessors[row_id.chunk_id]->access(row_id.chunk_offset);
-        std::static_pointer_cast<ValueSegment<ColumnDataType>>(_groupby_segments[group_column_index])->append_direct(value);
-      }
-    });
+  for (size_t group_column_index = 0; group_column_index < _groupby_column_ids.size(); ++group_column_index) {
+    auto base_segments = std::vector<std::shared_ptr<const BaseSegment>>();
+    for (const auto& chunk : input_table->chunks()) {
+      base_segments.push_back(chunk->get_segment(_groupby_column_ids[group_column_index]));
+    }
+    _groupby_segments[group_column_index]->reserve(pos_list.size());
+    for (const auto& row_id : pos_list) {
+      _groupby_segments[group_column_index]->append((*base_segments[row_id.chunk_id])[row_id.chunk_offset]);
+    }
   }
 }
 
