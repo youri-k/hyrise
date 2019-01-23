@@ -31,7 +31,7 @@ class TPCHDataMicroBenchmarkFixture : public MicroBenchmarkBasicFixture {
  public:
   void SetUp(::benchmark::State& state) {
     auto& sm = StorageManager::get();
-    const auto scale_factor = 0.001f;
+    const auto scale_factor = 1.0f;
     const auto default_encoding = EncodingType::Dictionary;
 
     auto benchmark_config = BenchmarkConfig::get_default_config();
@@ -126,6 +126,35 @@ class TPCHDataMicroBenchmarkFixture : public MicroBenchmarkBasicFixture {
   LQPColumnReference _orders_orderpriority, _orders_orderdate, _orders_orderkey;
   LQPColumnReference _lineitem_orderkey, _lineitem_commitdate, _lineitem_receiptdate;
 };
+
+BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_TPCHQ20Like)(benchmark::State& state) {
+  auto& sm = StorageManager::get();
+  auto part_table = sm.get_table("part");
+  auto operand = pqp_column_(ColumnID{1}, part_table->column_data_type(ColumnID{1}),
+                                     part_table->column_is_nullable(ColumnID{1}), "");
+  auto predicate = std::make_shared<BinaryPredicateExpression>(PredicateCondition::Like,
+                                                                 operand, value_("chiffon%"));
+
+  for (auto _ : state) {
+    const auto table_scan = std::make_shared<TableScan>(_table_wrapper_map.at("part"), predicate);
+    table_scan->execute();
+    // std::cout << table_scan->get_output()->row_count() << std::endl;
+  }
+}
+
+BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_TPCHQ20LikeRewritten)(benchmark::State& state) {
+  auto& sm = StorageManager::get();
+  auto part_table = sm.get_table("part");
+  auto operand = pqp_column_(ColumnID{1}, part_table->column_data_type(ColumnID{1}),
+                                     part_table->column_is_nullable(ColumnID{1}), "");
+  auto predicate = std::make_shared<BetweenExpression>(operand, value_("chiffon"), value_("chiffoo"));
+
+  for (auto _ : state) {
+    const auto table_scan = std::make_shared<TableScan>(_table_wrapper_map.at("part"), predicate);
+    table_scan->execute();
+    // std::cout << table_scan->get_output()->row_count() << std::endl;
+  }
+}
 
 BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_TPCHQ6FirstScanPredicate)(benchmark::State& state) {
   for (auto _ : state) {
