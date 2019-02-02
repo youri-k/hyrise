@@ -395,6 +395,23 @@ void probe(const RadixContainer<RightType>& radix_container,
             "Hash join probe called with NULL consideration but inputs do not store any NULL value information");
       }
 
+      // We use this helper method instead of simply calling emplace_back on the PosLists because it allows us to
+      // check the capacity only once, not twice. Also, we grow the vectors a bit more aggressively than usual.
+      auto pos_list_index = pos_list_left_local.size();
+      auto emplace_into_poslists = [&](const auto& left, const auto& right) {
+        auto current_size = pos_list_left_local.size();
+        if (pos_list_index == current_size) {
+          auto new_size = 10 + current_size * 3;
+          pos_list_left_local.resize(new_size);
+          pos_list_right_local.resize(new_size);
+        }
+
+        pos_list_left_local[pos_list_index] = left;
+        pos_list_right_local[pos_list_index] = right;
+
+        ++pos_list_index;
+      };
+
       if (hashtables[current_partition_id].has_value()) {
         const auto& hashtable = hashtables.at(current_partition_id).value();
 
@@ -402,8 +419,8 @@ void probe(const RadixContainer<RightType>& radix_container,
         // a more conservative pre-allocation would be the size of the left cluster
         const size_t expected_output_size =
             static_cast<size_t>(std::max(10.0, std::ceil((partition_end - partition_begin) / 2)));
-        pos_list_left_local.reserve(static_cast<size_t>(expected_output_size));
-        pos_list_right_local.reserve(static_cast<size_t>(expected_output_size));
+        pos_list_left_local.resize(static_cast<size_t>(expected_output_size));
+        pos_list_right_local.resize(static_cast<size_t>(expected_output_size));
 
         for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
           auto& row = partition[partition_offset];
@@ -429,8 +446,7 @@ void probe(const RadixContainer<RightType>& radix_container,
             if constexpr (consider_null_values) {
               if ((*radix_container.null_value_bitvector)[partition_offset]) {
                 if (mode == JoinMode::Left || mode == JoinMode::Right) {
-                  pos_list_left_local.emplace_back(NULL_ROW_ID);
-                  pos_list_right_local.emplace_back(row.row_id);
+                  emplace_into_poslists(NULL_ROW_ID, row.row_id);
                 }
                 // ignore found matches and continue with next probe item
                 continue;
@@ -439,8 +455,7 @@ void probe(const RadixContainer<RightType>& radix_container,
 
             // If NULL values are discarded, the matching row pairs will be written to the result pos lists.
             for (const auto& row_id : matching_rows) {
-              pos_list_left_local.emplace_back(row_id);
-              pos_list_right_local.emplace_back(row.row_id);
+              emplace_into_poslists(row_id, row.row_id);
             }
           } else {
             // We have not found matching items. Only continue for non-equi join modes.
@@ -449,8 +464,7 @@ void probe(const RadixContainer<RightType>& radix_container,
             // relation since the relations are swapped upfront.
             if constexpr (consider_null_values) {
               if (mode == JoinMode::Left || mode == JoinMode::Right) {
-                pos_list_left_local.emplace_back(NULL_ROW_ID);
-                pos_list_right_local.emplace_back(row.row_id);
+                emplace_into_poslists(NULL_ROW_ID, row.row_id);
               }
             }
           }
@@ -469,17 +483,16 @@ void probe(const RadixContainer<RightType>& radix_container,
             Hence we are going to write NULL values for each row.
             */
 
-            pos_list_left_local.reserve(partition_end - partition_begin);
-            pos_list_right_local.reserve(partition_end - partition_begin);
-
             for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
               auto& row = partition[partition_offset];
-              pos_list_left_local.emplace_back(NULL_ROW_ID);
-              pos_list_right_local.emplace_back(row.row_id);
+              emplace_into_poslists(NULL_ROW_ID, row.row_id);
             }
           }
         }
       }
+
+      pos_list_left_local.resize(pos_list_index);
+      pos_list_right_local.resize(pos_list_index);
 
       if (!pos_list_left_local.empty()) {
         pos_lists_left[current_partition_id] = std::move(pos_list_left_local);
