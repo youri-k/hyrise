@@ -150,8 +150,6 @@ RadixContainer<T> materialize_input(const std::shared_ptr<const Table>& in_table
           ++it;
 
           if (!value.is_null() || consider_null_values) {
-            const Hash hashed_value = hash_function(type_cast<HashedType>(value.value()));
-
             /*
             For ReferenceSegments we do not use the RowIDs from the referenced tables.
             Instead, we use the index in the ReferenceSegment itself. This way we can later correctly dereference
@@ -168,11 +166,12 @@ RadixContainer<T> materialize_input(const std::shared_ptr<const Table>& in_table
               if (value.is_null()) {
                 *null_value_bitvector_iterator = true;
               }
+              ++null_value_bitvector_iterator;
             }
 
+            const Hash hashed_value = hash_function(type_cast<HashedType>(value.value()));
             const Hash radix = hashed_value & mask;
             ++histogram[radix];
-            ++null_value_bitvector_iterator;
           }
           // reference_chunk_offset is only used for ReferenceSegments
           if constexpr (std::is_same_v<IterableType, ReferenceSegmentIterable<T>>) {
