@@ -3,6 +3,7 @@
 #include <utility>
 #include <vector>
 
+#include "memory/kind_memory_manager.hpp"
 #include "types.hpp"
 #include "utils/assert.hpp"
 
@@ -32,13 +33,13 @@ struct PosList final : private pmr_vector<RowID> {
   using reverse_iterator = Vector::reverse_iterator;
   using const_reverse_iterator = Vector::const_reverse_iterator;
 
-  /* (1 ) */ PosList() noexcept(noexcept(allocator_type())) {}
+  /* (1 ) */ PosList() : Vector(&KindMemoryManager::get().get_resource("pos_list")) {}
   /* (1 ) */ explicit PosList(const allocator_type& allocator) noexcept : Vector(allocator) {}
-  /* (2 ) */ PosList(size_type count, const RowID& value, const allocator_type& alloc = allocator_type())
+  /* (2 ) */ PosList(size_type count, const RowID& value, const allocator_type& alloc = &KindMemoryManager::get().get_resource("pos_list"))
       : Vector(count, value, alloc) {}
-  /* (3 ) */ explicit PosList(size_type count, const allocator_type& alloc = allocator_type()) : Vector(count, alloc) {}
+  /* (3 ) */ explicit PosList(size_type count, const allocator_type& alloc = &KindMemoryManager::get().get_resource("pos_list")) : Vector(count, alloc) {}
   /* (4 ) */ template <class InputIt>
-  PosList(InputIt first, InputIt last, const allocator_type& alloc = allocator_type())
+  PosList(InputIt first, InputIt last, const allocator_type& alloc = &KindMemoryManager::get().get_resource("pos_list"))
       : Vector(std::move(first), std::move(last)) {}
   /* (5 ) */  // PosList(const Vector& other) : Vector(other); - Oh no, you don't.
   /* (5 ) */  // PosList(const Vector& other, const allocator_type& alloc) : Vector(other, alloc);
@@ -48,7 +49,7 @@ struct PosList final : private pmr_vector<RowID> {
   /* (7 ) */ PosList(PosList&& other, const allocator_type& alloc)
       : Vector(std::move(other), alloc), _references_single_chunk{other._references_single_chunk} {}
   /* (7+) */ PosList(Vector&& other, const allocator_type& alloc) : Vector(std::move(other), alloc) {}
-  /* (8 ) */ PosList(std::initializer_list<RowID> init, const allocator_type& alloc = allocator_type())
+  /* (8 ) */ PosList(std::initializer_list<RowID> init, const allocator_type& alloc = &KindMemoryManager::get().get_resource("pos_list"))
       : Vector(std::move(init), alloc) {}
 
   PosList& operator=(PosList&& other) = default;

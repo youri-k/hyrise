@@ -13,6 +13,7 @@
 #include "aggregate/aggregate_traits.hpp"
 #include "constant_mappings.hpp"
 #include "resolve_type.hpp"
+#include "memory/kind_memory_manager.hpp"
 #include "scheduler/abstract_task.hpp"
 #include "scheduler/current_scheduler.hpp"
 #include "scheduler/job_task.hpp"
@@ -293,7 +294,7 @@ void Aggregate::_aggregate() {
                          input_table->row_count() * needed_size_per_aggregate_key;
     needed_size *= 1.1;  // Give it a little bit more, just in case
 
-    auto temp_buffer = boost::container::pmr::monotonic_buffer_resource(needed_size);
+    auto temp_buffer = boost::container::pmr::monotonic_buffer_resource(needed_size, &KindMemoryManager::get().get_resource("tmp:aggregate"));
     auto allocator = AggregateKeysAllocator{PolymorphicAllocator<AggregateKeys<AggregateKey>>{&temp_buffer}};
     allocator.allocate(1);  // Make sure that the buffer is initialized
     const auto start_next_buffer_size = temp_buffer.next_buffer_size();

@@ -154,8 +154,14 @@ set(
     logical_query_plan/validate_node.cpp
     logical_query_plan/validate_node.hpp
     memory/boost_default_memory_resource.cpp
+    memory/dram_memory_resource.cpp
+    memory/dram_memory_resource.hpp
+    memory/kind_memory_manager.cpp
+    memory/kind_memory_manager.hpp
     memory/numa_memory_resource.cpp
     memory/numa_memory_resource.hpp
+    memory/nvm_memory_resource.cpp
+    memory/nvm_memory_resource.hpp
     null_value.hpp
     operators/abstract_join_operator.cpp
     operators/abstract_join_operator.hpp
@@ -590,7 +596,8 @@ set(
     sqlparser
     cqf
     uninitialized_vector
-    custom_jemalloc
+#    custom_jemalloc
+    memkind
     ${FILESYSTEM_LIBRARY}
     ${Boost_CONTAINER_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
@@ -690,7 +697,7 @@ endif()
 
 # -rdynamic tells the linker to export the library's symbols so that plugins can use them.
 target_link_libraries(hyrise ${LIBRARIES} -rdynamic)
-target_include_directories(hyrise PUBLIC ${CMAKE_BINARY_DIR})
+target_include_directories(hyrise PUBLIC ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/third_party/jemalloc/include/)
 
 # -fPIC generates position independent code which is necessary because plugins might access hyrise functions.
 target_compile_options(hyrise PRIVATE -fPIC)
