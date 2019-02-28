@@ -1,0 +1,424 @@
+{
+  "table_specifications": [
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable1.tbl",
+      "table_name": "SomeJoinTable1",
+      "table_size": 1
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable2.tbl",
+      "table_name": "SomeJoinTable2",
+      "table_size": 2
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable3.tbl",
+      "table_name": "SomeJoinTable3",
+      "table_size": 3
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable4.tbl",
+      "table_name": "SomeJoinTable4",
+      "table_size": 4
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable5.tbl",
+      "table_name": "SomeJoinTable5",
+      "table_size": 5
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable6.tbl",
+      "table_name": "SomeJoinTable6",
+      "table_size": 6
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable7.tbl",
+      "table_name": "SomeJoinTable7",
+      "table_size": 7
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable8.tbl",
+      "table_name": "SomeJoinTable8",
+      "table_size": 8
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable9.tbl",
+      "table_name": "SomeJoinTable9",
+      "table_size": 9
+    },{
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable10.tbl",
+      "table_name": "SomeJoinTable10",
+      "table_size": 10
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable20.tbl",
+      "table_name": "SomeJoinTable20",
+      "table_size": 20
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable30.tbl",
+      "table_name": "SomeJoinTable30",
+      "table_size": 30
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable40.tbl",
+      "table_name": "SomeJoinTable40",
+      "table_size": 40
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable50.tbl",
+      "table_name": "SomeJoinTable50",
+      "table_size": 50
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable60.tbl",
+      "table_name": "SomeJoinTable60",
+      "table_size": 60
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable70.tbl",
+      "table_name": "SomeJoinTable70",
+      "table_size": 70
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable80.tbl",
+      "table_name": "SomeJoinTable80",
+      "table_size": 80
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable90.tbl",
+      "table_name": "SomeJoinTable90",
+      "table_size": 90
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable100.tbl",
+      "table_name": "SomeJoinTable100",
+      "table_size": 100
+    },{
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable200.tbl",
+      "table_name": "SomeJoinTable200",
+      "table_size": 200
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable300.tbl",
+      "table_name": "SomeJoinTable300",
+      "table_size": 300
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable400.tbl",
+      "table_name": "SomeJoinTable400",
+      "table_size": 400
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable500.tbl",
+      "table_name": "SomeJoinTable500",
+      "table_size": 500
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable600.tbl",
+      "table_name": "SomeJoinTable600",
+      "table_size": 600
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable700.tbl",
+      "table_name": "SomeJoinTable700",
+      "table_size": 700
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable800.tbl",
+      "table_name": "SomeJoinTable800",
+      "table_size": 800
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable900.tbl",
+      "table_name": "SomeJoinTable900",
+      "table_size": 900
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable1000.tbl",
+      "table_name": "SomeJoinTable1000",
+      "table_size": 1000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable2000.tbl",
+      "table_name": "SomeJoinTable2000",
+      "table_size": 2000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable3000.tbl",
+      "table_name": "SomeJoinTable3000",
+      "table_size": 3000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable4000.tbl",
+      "table_name": "SomeJoinTable4000",
+      "table_size": 4000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable5000.tbl",
+      "table_name": "SomeJoinTable5000",
+      "table_size": 5000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable6000.tbl",
+      "table_name": "SomeJoinTable6000",
+      "table_size": 6000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable7000.tbl",
+      "table_name": "SomeJoinTable7000",
+      "table_size": 7000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable8000.tbl",
+      "table_name": "SomeJoinTable8000",
+      "table_size": 8000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable9000.tbl",
+      "table_name": "SomeJoinTable9000",
+      "table_size": 9000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable10000.tbl",
+      "table_name": "SomeJoinTable10000",
+      "table_size": 10000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable20000.tbl",
+      "table_name": "SomeJoinTable20000",
+      "table_size": 20000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable30000.tbl",
+      "table_name": "SomeJoinTable30000",
+      "table_size": 30000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable40000.tbl",
+      "table_name": "SomeJoinTable40000",
+      "table_size": 40000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable50000.tbl",
+      "table_name": "SomeJoinTable50000",
+      "table_size": 50000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable60000.tbl",
+      "table_name": "SomeJoinTable60000",
+      "table_size": 60000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable70000.tbl",
+      "table_name": "SomeJoinTable70000",
+      "table_size": 70000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable80000.tbl",
+      "table_name": "SomeJoinTable80000",
+      "table_size": 80000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable90000.tbl",
+      "table_name": "SomeJoinTable90000",
+      "table_size": 90000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable100000.tbl",
+      "table_name": "SomeJoinTable100000",
+      "table_size": 100000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable200000.tbl",
+      "table_name": "SomeJoinTable200000",
+      "table_size": 200000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable300000.tbl",
+      "table_name": "SomeJoinTable300000",
+      "table_size": 300000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable400000.tbl",
+      "table_name": "SomeJoinTable400000",
+      "table_size": 400000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable500000.tbl",
+      "table_name": "SomeJoinTable500000",
+      "table_size": 500000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable600000.tbl",
+      "table_name": "SomeJoinTable600000",
+      "table_size": 600000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable700000.tbl",
+      "table_name": "SomeJoinTable700000",
+      "table_size": 700000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable800000.tbl",
+      "table_name": "SomeJoinTable800000",
+      "table_size": 800000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable900000.tbl",
+      "table_name": "SomeJoinTable900000",
+      "table_size": 900000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable1000000.tbl",
+      "table_name": "SomeJoinTable1000000",
+      "table_size": 1000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable2000000.tbl",
+      "table_name": "SomeJoinTable2000000",
+      "table_size": 2000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable3000000.tbl",
+      "table_name": "SomeJoinTable3000000",
+      "table_size": 3000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable4000000.tbl",
+      "table_name": "SomeJoinTable4000000",
+      "table_size": 4000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable5000000.tbl",
+      "table_name": "SomeJoinTable5000000",
+      "table_size": 5000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable6000000.tbl",
+      "table_name": "SomeJoinTable6000000",
+      "table_size": 6000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable7000000.tbl",
+      "table_name": "SomeJoinTable7000000",
+      "table_size": 7000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable8000000.tbl",
+      "table_name": "SomeJoinTable8000000",
+      "table_size": 8000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable9000000.tbl",
+      "table_name": "SomeJoinTable9000000",
+      "table_size": 9000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable10000000.tbl",
+      "table_name": "SomeJoinTable10000000",
+      "table_size": 10000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable20000000.tbl",
+      "table_name": "SomeJoinTable20000000",
+      "table_size": 20000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable30000000.tbl",
+      "table_name": "SomeJoinTable30000000",
+      "table_size": 30000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable40000000.tbl",
+      "table_name": "SomeJoinTable40000000",
+      "table_size": 40000000
+    },
+    {
+      "table_path": "/mnt/hyrise/tables/join/SomeJoinTable50000000.tbl",
+      "table_name": "SomeJoinTable50000000",
+      "table_size": 50000000
+    }
+  ],
+  "columns": [
+	  {
+          "column_name": "column_pk_unencoded",
+          "type": "int",
+          "encoding": "Unencoded",
+          "fraction": 1
+        },
+        {
+          "column_name": "foreign_key_10_unencoded",
+          "type": "int",
+          "encoding": "Unencoded",
+          "fraction": 10
+        },
+        {
+          "column_name": "foreign_key_100_unencoded",
+          "type": "int",
+          "encoding": "Unencoded",
+          "fraction": 100
+        },
+        {
+          "column_name": "foreign_key_1000_unencoded",
+          "type": "int",
+          "encoding": "Unencoded",
+          "fraction": 1000
+        },
+        {
+          "column_name": "column_pk_dictionary",
+          "type": "int",
+          "encoding": "Dictionary",
+          "fraction": 1
+        },
+        {
+          "column_name": "foreign_key_10_dictionary",
+          "type": "int",
+          "encoding": "Dictionary",
+          "fraction": 10
+        },
+        {
+          "column_name": "foreign_key_100_dictionary",
+          "type": "int",
+          "encoding": "Dictionary",
+          "fraction": 100
+        },
+        {
+          "column_name": "foreign_key_1000_dictionary",
+          "type": "int",
+          "encoding": "Dictionary",
+          "fraction": 1000
+        },
+        {
+          "column_name": "column_pk_runlength",
+          "type": "int",
+          "encoding": "RunLength",
+          "fraction": 1
+        },
+        {
+          "column_name": "foreign_key_10_runlength",
+          "type": "int",
+          "encoding": "RunLength",
+          "fraction": 10
+        },
+        {
+          "column_name": "foreign_key_100_runlength",
+          "type": "int",
+          "encoding": "RunLength",
+          "fraction": 100
+        },
+        {
+          "column_name": "foreign_key_1000_runlength",
+          "type": "int",
+          "encoding": "RunLength",
+          "fraction": 1000
+        }
+      ],
+  "tpch_output_path": "/mnt/hyrise/calibration_results/join/tpch_results.csv",
+  "output_path": "/mnt/hyrise/calibration_results/join/calibration_results.csv",
+  "calibration_runs": 3,
+  "encodings": ["Unencoded", "Dictionary", "RunLength"],
+  "data_types": ["int"],
+  "selectivities": [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+  "use_scan":false,
+  "run_tpch":false
+}
