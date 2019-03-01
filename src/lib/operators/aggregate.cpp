@@ -13,6 +13,7 @@
 #include "aggregate/aggregate_traits.hpp"
 #include "constant_mappings.hpp"
 #include "resolve_type.hpp"
+#include "memory/kind_memory_manager.hpp"
 #include "scheduler/abstract_task.hpp"
 #include "scheduler/current_scheduler.hpp"
 #include "scheduler/job_task.hpp"
@@ -284,7 +285,7 @@ void Aggregate::_aggregate() {
 
   {
     // Allocate a temporary memory buffer, for more details see aggregate.hpp
-    // This calculation assumes that we use pmr_vector<AggregateKeyEntry> - other data structures use less space, but
+    // This calculation assumes that we use std::vector<AggregateKeyEntry> - other data structures use less space, but
     // that is fine
     size_t needed_size_per_aggregate_key =
         aligned_size<AggregateKey>() + _groupby_column_ids.size() * aligned_size<AggregateKeyEntry>();
@@ -293,7 +294,7 @@ void Aggregate::_aggregate() {
                          input_table->row_count() * needed_size_per_aggregate_key;
     needed_size *= 1.1;  // Give it a little bit more, just in case
 
-    auto temp_buffer = boost::container::pmr::monotonic_buffer_resource(needed_size);
+    auto temp_buffer = boost::container::pmr::monotonic_buffer_resource(needed_size, &KindMemoryManager::get().get_resource("tmp:aggregate"));
     auto allocator = AggregateKeysAllocator{PolymorphicAllocator<AggregateKeys<AggregateKey>>{&temp_buffer}};
     allocator.allocate(1);  // Make sure that the buffer is initialized
     const auto start_next_buffer_size = temp_buffer.next_buffer_size();
@@ -302,7 +303,7 @@ void Aggregate::_aggregate() {
     keys_per_chunk = KeysPerChunk<AggregateKey>{allocator};
     keys_per_chunk.reserve(input_table->chunk_count());
     for (ChunkID chunk_id{0}; chunk_id < input_table->chunk_count(); ++chunk_id) {
-      if constexpr (std::is_same_v<AggregateKey, pmr_vector<AggregateKeyEntry>>) {
+      if constexpr (std::is_same_v<AggregateKey, std::vector<AggregateKeyEntry>>) {
         keys_per_chunk.emplace_back(input_table->get_chunk(chunk_id)->size(), AggregateKey(_groupby_column_ids.size()));
       } else {
         keys_per_chunk.emplace_back(input_table->get_chunk(chunk_id)->size(), AggregateKey{});
@@ -545,7 +546,7 @@ std::shared_ptr<const Table> Aggregate::_on_execute() {
       break;
     default:
       PerformanceWarning("No std::array implementation initialized - falling back to vector");
-      _aggregate<pmr_vector<AggregateKeyEntry>>();
+      _aggregate<std::vector<AggregateKeyEntry>>();
       break;
   }
 

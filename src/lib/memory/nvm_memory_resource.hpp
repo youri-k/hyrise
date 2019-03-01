@@ -1,7 +1,7 @@
 #pragma once
 
+#include <memkind.h>
 #include <boost/container/pmr/memory_resource.hpp>
-#include <libpmemobj++/pool.hpp>
 #include <utils/singleton.hpp>
 
 namespace opossum {
@@ -14,13 +14,15 @@ class NVMMemoryResource : public boost::container::pmr::memory_resource, public 
 
   virtual bool do_is_equal(const memory_resource& other) const noexcept;
 
- protected:
-  friend class Singleton;
-  NVMMemoryResource();
-  struct nvm_root {};
-  pmem::obj::pool<nvm_root> _nvm_pool;
+  memkind_t kind() const;
 
-  size_t _total_alloc;
+ protected:
+  NVMMemoryResource();
+  ~NVMMemoryResource();
+
+  friend class Singleton;
+
+  memkind_t _nvm_kind;
 };
 
 }  // namespace opossum

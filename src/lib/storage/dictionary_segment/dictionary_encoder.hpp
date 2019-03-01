@@ -4,6 +4,7 @@
 #include <limits>
 #include <memory>
 
+#include "memory/kind_memory_manager.hpp"
 #include "storage/base_segment_encoder.hpp"
 #include "storage/dictionary_segment.hpp"
 #include "storage/fixed_string_dictionary_segment.hpp"
@@ -12,7 +13,6 @@
 #include "storage/vector_compression/vector_compression.hpp"
 #include "types.hpp"
 #include "utils/enum_constant.hpp"
-#include "utils/nvm_memory_resource.hpp"
 
 namespace opossum {
 
@@ -35,13 +35,14 @@ class DictionaryEncoder : public SegmentEncoder<DictionaryEncoder<Encoding>> {
     const auto& values = value_segment->values();
 
     if constexpr (Encoding == EncodingType::FixedStringDictionary) {
-      // Encode a segment with a FixedStringVector as dictionary. std::string is the only supported type
+      // Encode a segment with a FixedStringVector as dictionary. pmr_string is the only supported type
       return _encode_dictionary_segment(
           FixedStringVector{values.cbegin(), values.cend(), _calculate_fixed_string_length(values), values.size()},
           value_segment);
     } else {
       // Encode a segment with a pmr_vector<T> as dictionary
-      return _encode_dictionary_segment(pmr_vector<T>{values.cbegin(), values.cend(), values.get_allocator()},
+      const auto dict_alloc = PolymorphicAllocator<T>{&KindMemoryManager::get().get_resource("dict:dict")};
+      return _encode_dictionary_segment(pmr_vector<T>{values.cbegin(), values.cend(), dict_alloc},
                                         value_segment);
     }
   }
@@ -57,7 +58,6 @@ class DictionaryEncoder : public SegmentEncoder<DictionaryEncoder<Encoding>> {
   std::shared_ptr<BaseEncodedSegment> _encode_dictionary_segment(
       U dictionary, const std::shared_ptr<const ValueSegment<T>>& value_segment) {
     const auto& values = value_segment->values();
-    const auto alloc = PolymorphicAllocator<T>(&NVMMemoryResource::get());
 
     // Remove null values from value vector
     if (value_segment->is_nullable()) {
@@ -80,7 +80,8 @@ class DictionaryEncoder : public SegmentEncoder<DictionaryEncoder<Encoding>> {
     dictionary.erase(std::unique(dictionary.begin(), dictionary.end()), dictionary.end());
     dictionary.shrink_to_fit();
 
-    auto attribute_vector = pmr_vector<uint32_t>{alloc};
+    const auto attribute_alloc = PolymorphicAllocator<T>(&KindMemoryManager::get().get_resource("dict:attributes"));
+    auto attribute_vector = pmr_vector<uint32_t>{attribute_alloc};
     attribute_vector.reserve(values.size());
 
     const auto null_value_id = static_cast<uint32_t>(dictionary.size());
@@ -115,20 +116,29 @@ class DictionaryEncoder : public SegmentEncoder<DictionaryEncoder<Encoding>> {
     const auto max_value = dictionary.size() + 1u;
 
     auto encoded_attribute_vector = compress_vector(
-        attribute_vector, SegmentEncoder<DictionaryEncoder<Encoding>>::vector_compression_type(), alloc, {max_value});
-    auto dictionary_sptr = std::allocate_shared<U>(alloc, std::move(dictionary));
+        attribute_vector, SegmentEncoder<DictionaryEncoder<Encoding>>::vector_compression_type(), attribute_alloc, {max_value});
     auto attribute_vector_sptr = std::shared_ptr<const BaseCompressedVector>(std::move(encoded_attribute_vector));
 
+    const auto dict_alloc = PolymorphicAllocator<T>(&KindMemoryManager::get().get_resource("dict:dict"));
+    auto dictionary_sptr = std::allocate_shared<U>(dict_alloc, std::move(dictionary));
+
+    // if constexpr (Encoding != EncodingType::FixedStringDictionary) {
+    //   std::cout << "dict[0] : " << KindMemoryManager::locate(&(*dictionary_sptr)[0]) << std::endl;
+    //   if constexpr (std::is_same_v<T, pmr_string>) {
+    //     std::cout << "dict[0].c_str() : " << (*dictionary_sptr)[0] << " / " << KindMemoryManager::locate((*dictionary_sptr)[0].c_str()) << std::endl;
+    //   }
+    // }
+
     if constexpr (Encoding == EncodingType::FixedStringDictionary) {
-      return std::allocate_shared<FixedStringDictionarySegment<T>>(alloc, dictionary_sptr, attribute_vector_sptr,
+      return std::allocate_shared<FixedStringDictionarySegment<T>>(dict_alloc, dictionary_sptr, attribute_vector_sptr,
                                                                    ValueID{null_value_id});
     } else {
-      return std::allocate_shared<DictionarySegment<T>>(alloc, dictionary_sptr, attribute_vector_sptr,
+      return std::allocate_shared<DictionarySegment<T>>(dict_alloc, dictionary_sptr, attribute_vector_sptr,
                                                         ValueID{null_value_id});
     }
   }
 
-  size_t _calculate_fixed_string_length(const pmr_concurrent_vector<std::string>& values) const {
+  size_t _calculate_fixed_string_length(const pmr_concurrent_vector<pmr_string>& values) const {
     size_t max_string_length = 0;
     for (const auto& value : values) {
       if (value.size() > max_string_length) max_string_length = value.size();
