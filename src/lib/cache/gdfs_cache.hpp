@@ -103,6 +103,13 @@ class GDFSCache : public AbstractCacheImpl<Key, Value> {
     return entry.value;
   }
 
+  size_t get_access_frequency_of_key(const Key& key) {
+    auto it = _map.find(key);
+    Handle handle = it->second;
+    GDFSCacheEntry& entry = (*handle);
+    return entry.frequency;
+  }
+
   bool has(const Key& key) const { return _map.find(key) != _map.end(); }
 
   size_t size() const { return _map.size(); }
