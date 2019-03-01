@@ -314,7 +314,7 @@ const std::shared_ptr<AbstractExpression> CalibrationQueryGeneratorPredicate::ge
   const auto stored_table = StorageManager::get().get_table(table->table_name);
   std::uniform_int_distribution<uint64_t> row_id_dist(0, stored_table->row_count() - 1);
   const auto row_id = row_id_dist(engine);
-  const auto value = stored_table->get_value<std::string>(column_id, row_id);
+  const auto value = stored_table->get_value<pmr_string>(column_id, row_id);
 
   return equals_(filter_column, value);
 }
@@ -381,7 +381,7 @@ const std::shared_ptr<ValueExpression> CalibrationQueryGeneratorPredicate::_gene
     case DataType::Long:
       return value_(int_value);
     case DataType::String: {
-      const auto character = std::string(1, static_cast<char>('A' + string_value));
+      const auto character = pmr_string(1, static_cast<char>('A' + string_value));
       if (trailing_like) {
         return value_(character + '%');
       }
