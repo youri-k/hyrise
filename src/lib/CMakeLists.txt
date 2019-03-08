@@ -580,7 +580,6 @@ set(
     LIBRARIES
     pthread
     sqlparser
-    cqf
     uninitialized_vector
     lz4
     custom_jemalloc
