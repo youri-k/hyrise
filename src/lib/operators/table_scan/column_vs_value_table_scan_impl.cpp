@@ -60,7 +60,7 @@ void ColumnVsValueTableScanImpl::_scan_generic_segment(const BaseSegment& segmen
       auto comparator = [predicate_comparator, typed_value](const auto& position) {
         return predicate_comparator(position.value(), typed_value);
       };
-      _scan_with_iterators<true>(comparator, it, end, chunk_id, matches);
+      _scan_with_iterators<ScanCheckForNull::Yes, ScanUseSIMD::Yes>(comparator, it, end, chunk_id, matches);
     });
   });
 }
@@ -104,7 +104,7 @@ void ColumnVsValueTableScanImpl::_scan_dictionary_segment(const BaseDictionarySe
     iterable.with_iterators(position_filter, [&](auto it, auto end) {
       static const auto always_true = [](const auto&) { return true; };
       // Matches all, so include all rows except those with NULLs in the result.
-      _scan_with_iterators<true>(always_true, it, end, chunk_id, matches);
+      _scan_with_iterators<ScanCheckForNull::Yes, ScanUseSIMD::Yes>(always_true, it, end, chunk_id, matches);
     });
 
     return;
@@ -125,9 +125,9 @@ void ColumnVsValueTableScanImpl::_scan_dictionary_segment(const BaseDictionarySe
       if (_predicate_condition == PredicateCondition::Equals ||
           _predicate_condition == PredicateCondition::LessThanEquals ||
           _predicate_condition == PredicateCondition::LessThan) {
-        _scan_with_iterators<false>(comparator, it, end, chunk_id, matches);
+        _scan_with_iterators<ScanCheckForNull::No, ScanUseSIMD::Yes>(comparator, it, end, chunk_id, matches);
       } else {
-        _scan_with_iterators<true>(comparator, it, end, chunk_id, matches);
+        _scan_with_iterators<ScanCheckForNull::Yes, ScanUseSIMD::Yes>(comparator, it, end, chunk_id, matches);
       }
     });
   });

@@ -136,13 +136,16 @@ std::shared_ptr<PosList> ColumnVsColumnTableScanImpl::_typed_scan_chunk(ChunkID 
             return predicate_comparator(left.value(), right.value());
           };
 
+          // Activate SIMD only if we're compiling the "fast" path
+          constexpr auto scan_use_simd = erase_comparator_type == EraseTypes::Always ? ScanUseSIMD::No : ScanUseSIMD::Yes;
+
           if (condition_was_flipped) {
             const auto erased_comparator = conditionally_erase_comparator_type(comparator, right_it, left_it);
-            AbstractTableScanImpl::_scan_with_iterators<true>(erased_comparator, right_it, right_end, chunk_id_copy,
+            AbstractTableScanImpl::_scan_with_iterators<ScanCheckForNull::Yes, scan_use_simd>(erased_comparator, right_it, right_end, chunk_id_copy,
                                                               *matches_out_ref, left_it);
           } else {
             const auto erased_comparator = conditionally_erase_comparator_type(comparator, left_it, right_it);
-            AbstractTableScanImpl::_scan_with_iterators<true>(erased_comparator, left_it, left_end, chunk_id_copy,
+            AbstractTableScanImpl::_scan_with_iterators<ScanCheckForNull::Yes, scan_use_simd>(erased_comparator, left_it, left_end, chunk_id_copy,
                                                               *matches_out_ref, right_it);
           }
         });
