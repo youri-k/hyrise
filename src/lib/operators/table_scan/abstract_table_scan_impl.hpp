@@ -54,7 +54,7 @@ class AbstractTableScanImpl {
 
     // If enabled, the major part of the table is scanned using SIMD. Only the remainder is handled in this method.
     // For a description of the SIMD code, have a look at the comments in that method.
-    if constexpr (use_simd == ScanUseSIMD::Yes) {
+    if constexpr (use_simd == ScanUseSIMD::Yes && !std::is_same_v<pmr_string, typename LeftIterator::ValueType>) {
       _simd_scan_with_iterators<check_for_null>(func, left_it, left_end, chunk_id, matches_out, right_it);
     }
 
