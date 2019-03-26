@@ -38,9 +38,12 @@ void extract_logical_query_plan_cache_data(const TableIdentifierMap& table_name_
   std::ofstream plan_cache_csv_file("plan_cache.csv");
   plan_cache_csv_file << "QUERY_HASH,EXECUTION_COUNT,QUERY_STRING\n";
 
-  std::ofstream sequential_accesses_csv_file("sequential_accesses.csv");
+  std::ofstream sequential_accesses_csv_file("sortable_sequential_accesses.csv");
   sequential_accesses_csv_file << "QUERY_HASH,COLUMN_ID,OPERATION,PREDICATE,SELECTIVITY_IN_LQP,SELECTIITY_INDEPENDENT,"
                                   "ORDER_IN_LQP,IS_REFERENCE_ACCESS\n";
+
+  std::ofstream point_accesses_csv_file("point_accesses.csv");
+  sequential_accesses_csv_file << "QUERY_HASH,COLUMN_ID,OPERATION,PRIMARY_PREDICATE,ACCESS_RATIO\n";
 
   for (const auto& [query_string, lqp_node] : SQLLogicalPlanCache::get()) {
     if (lqp_node->type == LQPNodeType::CreatePreparedPlan) {
@@ -156,6 +159,11 @@ void extract_logical_query_plan_cache_data(const TableIdentifierMap& table_name_
         } else {
           std::cout << "An error occured." << std::endl;
         }
+      } else if (node->type == LQPNodeType::Join) {
+        std::cout << "JOIN" << std::endl;
+        std::cout << "JOIN" << std::endl;
+        std::cout << "JOIN" << std::endl;
+        std::cout << "JOIN" << std::endl;
       }
       return LQPVisitation::VisitInputs;
     });
@@ -213,8 +221,32 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
         const auto encoded_segment = std::dynamic_pointer_cast<const BaseEncodedSegment>(segment);
         const auto encoding_type = encoded_segment->encoding_type();
 
-        segment_meta_data_csv_file << encoded_segment->estimate_memory_usage() << "," <<
-              encoding_type_to_string.left.at(encoding_type) << "\n";
+        segment_meta_data_csv_file << attr_table_id.str() << "," << table_name << "," << column_name << "," << chunk_id << "," << encoding_type_to_string.left.at(encoding_type) << ",";
+
+        if (encoded_segment->compressed_vector_type()) {
+          switch (*encoded_segment->compressed_vector_type()) {
+            case CompressedVectorType::FixedSize4ByteAligned: {
+              segment_meta_data_csv_file << "FixedSize4ByteAligned";
+              break;
+            }
+            case CompressedVectorType::FixedSize2ByteAligned: {
+              segment_meta_data_csv_file << "FixedSize2ByteAligned";
+              break;
+            }
+            case CompressedVectorType::FixedSize1ByteAligned: {
+              segment_meta_data_csv_file << "FixedSize1ByteAligned";
+              break;
+            }
+            case CompressedVectorType::SimdBp128: {
+              segment_meta_data_csv_file << "SimdBp128";
+              break;
+            }
+            default:
+              segment_meta_data_csv_file << "NONE";
+          }
+        }
+
+        segment_meta_data_csv_file << "," << encoded_segment->estimate_memory_usage() << "\n";
       }
     }
   }
@@ -228,7 +260,7 @@ int main() {
   const auto scale_factor = 0.01f;
   auto config = BenchmarkConfig::get_default_config();
   config.max_num_query_runs = 1;
-  const std::vector<QueryID> tpch_query_ids = {QueryID{5}};
+  const std::vector<QueryID> tpch_query_ids = {QueryID{5}, QueryID{8}};
 
   BenchmarkRunner(config, std::make_unique<TPCHQueryGenerator>(true, scale_factor, tpch_query_ids),
                   std::make_unique<TpchTableGenerator>(scale_factor, std::make_shared<BenchmarkConfig>(config)),
