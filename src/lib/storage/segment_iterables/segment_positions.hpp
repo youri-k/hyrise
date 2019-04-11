@@ -28,6 +28,7 @@ class AbstractSegmentPosition {
   AbstractSegmentPosition(const AbstractSegmentPosition&) = default;
   virtual ~AbstractSegmentPosition() = default;
 
+  // This reference is only valid for as long as the iterator remains on the current position
   virtual const T& value() const = 0;
   virtual bool is_null() const = 0;
 

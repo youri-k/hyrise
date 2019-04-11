@@ -142,7 +142,7 @@ class LZ4Iterable : public PointAccessibleSegmentIterable<LZ4Iterable<T>> {
 
     SegmentPosition<T> dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
-      const auto value = _data[chunk_offsets.offset_in_poslist];
+      const auto& value = _data[chunk_offsets.offset_in_poslist];
       const auto is_null = *_null_values && (**_null_values)[chunk_offsets.offset_in_referenced_chunk];
       return SegmentPosition<T>{value, is_null, chunk_offsets.offset_in_poslist};
     }

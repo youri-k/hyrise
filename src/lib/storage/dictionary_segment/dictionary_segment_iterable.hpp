@@ -95,9 +95,16 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
       const auto value_id = static_cast<ValueID>(*_attribute_it);
       const auto is_null = (value_id == _null_value_id);
 
-      if (is_null) return SegmentPosition<T>{T{}, true, _chunk_offset};
+      if (is_null) {
+        return SegmentPosition<T>{_current_value, true, _chunk_offset};
+      }
 
-      return SegmentPosition<T>{*(_dictionary_begin_it + value_id), false, _chunk_offset};
+      if constexpr(std::is_same_v<Dictionary, FixedStringVector>) {
+        _current_value = *(_dictionary_begin_it + value_id);
+        return SegmentPosition<T>{_current_value, false, _chunk_offset};
+      } else {
+        return SegmentPosition<T>{*(_dictionary_begin_it + value_id), false, _chunk_offset};
+      }
     }
 
    private:
@@ -105,6 +112,9 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
     ValueID _null_value_id;
     ZsIteratorType _attribute_it;
     ChunkOffset _chunk_offset;
+
+    // Used only if we can't return a reference to an already existing object
+    mutable T _current_value = T{};
   };
 
   template <typename ZsDecompressorType, typename DictionaryIteratorType>
@@ -134,15 +144,25 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
       const auto value_id = _attribute_decompressor->get(chunk_offsets.offset_in_referenced_chunk);
       const auto is_null = (value_id == _null_value_id);
 
-      if (is_null) return SegmentPosition<T>{T{}, true, chunk_offsets.offset_in_poslist};
+      if (is_null) {
+        return SegmentPosition<T>{_current_value, true, chunk_offsets.offset_in_poslist};
+      }
 
-      return SegmentPosition<T>{T{*(_dictionary_begin_it + value_id)}, false, chunk_offsets.offset_in_poslist};
+      if constexpr(std::is_same_v<Dictionary, FixedStringVector>) {
+        _current_value = *(_dictionary_begin_it + value_id);
+        return SegmentPosition<T>{_current_value, false, chunk_offsets.offset_in_poslist};
+      } else {
+        return SegmentPosition<T>{*(_dictionary_begin_it + value_id), false, chunk_offsets.offset_in_poslist};
+      }
     }
 
    private:
     DictionaryIteratorType _dictionary_begin_it;
     ValueID _null_value_id;
     std::shared_ptr<ZsDecompressorType> _attribute_decompressor;
+
+    // Used only if we can't return a reference to an already existing object
+    mutable T _current_value = T{};
   };
 
  private:

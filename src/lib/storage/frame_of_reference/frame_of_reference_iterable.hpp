@@ -119,8 +119,8 @@ class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfRe
     std::ptrdiff_t distance_to(const Iterator& other) const { return other._offset_value_it - _offset_value_it; }
 
     SegmentPosition<T> dereference() const {
-      const auto value = static_cast<T>(*_offset_value_it) + *_block_minimum_it;
-      return SegmentPosition<T>{value, *_null_value_it, _chunk_offset};
+      _current_value = static_cast<T>(*_offset_value_it) + *_block_minimum_it;
+      return SegmentPosition<T>{_current_value, *_null_value_it, _chunk_offset};
     }
 
    private:
@@ -129,6 +129,8 @@ class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfRe
     NullValueIterator _null_value_it;
     size_t _index_within_frame;
     ChunkOffset _chunk_offset;
+
+    mutable T _current_value = T{};
   };
 
   template <typename OffsetValueDecompressorT>
@@ -166,15 +168,17 @@ class FrameOfReferenceIterable : public PointAccessibleSegmentIterable<FrameOfRe
       const auto is_null = (*_null_values)[chunk_offsets.offset_in_referenced_chunk];
       const auto block_minimum = (*_block_minima)[chunk_offsets.offset_in_referenced_chunk / block_size];
       const auto offset_value = _offset_value_decompressor->get(chunk_offsets.offset_in_referenced_chunk);
-      const auto value = static_cast<T>(offset_value) + block_minimum;
+      _current_value = static_cast<T>(offset_value) + block_minimum;
 
-      return SegmentPosition<T>{value, is_null, chunk_offsets.offset_in_poslist};
+      return SegmentPosition<T>{_current_value, is_null, chunk_offsets.offset_in_poslist};
     }
 
    private:
     const pmr_vector<T>* _block_minima;
     const pmr_vector<bool>* _null_values;
     std::shared_ptr<OffsetValueDecompressorT> _offset_value_decompressor;
+
+    mutable T _current_value = T{};
   };
 };
 
