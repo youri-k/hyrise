@@ -59,7 +59,7 @@ class SegmentPosition : public AbstractSegmentPosition<T> {
 
  private:
   // The alignment improves the suitability of the iterator for (auto-)vectorization
-  alignas(8) const T _value;
+  alignas(8) const T& _value;
   alignas(8) const bool _null_value;
   alignas(8) const ChunkOffset _chunk_offset;
 };
@@ -83,7 +83,7 @@ class NonNullSegmentPosition : public AbstractSegmentPosition<T> {
 
  private:
   // The alignment improves the suitability of the iterator for (auto-)vectorization
-  alignas(8) const T _value;
+  alignas(8) const T& _value;
   alignas(8) const ChunkOffset _chunk_offset;
 };
 

@@ -97,7 +97,7 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
 
       if (is_null) return SegmentPosition<T>{T{}, true, _chunk_offset};
 
-      return SegmentPosition<T>{T{*(_dictionary_begin_it + value_id)}, false, _chunk_offset};
+      return SegmentPosition<T>{*(_dictionary_begin_it + value_id), false, _chunk_offset};
     }
 
    private:
