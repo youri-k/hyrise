@@ -99,7 +99,7 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
         return SegmentPosition<T>{_current_value, true, _chunk_offset};
       }
 
-      if constexpr(std::is_same_v<Dictionary, FixedStringVector>) {
+      if constexpr (std::is_same_v<Dictionary, FixedStringVector>) {
         _current_value = *(_dictionary_begin_it + value_id);
         return SegmentPosition<T>{_current_value, false, _chunk_offset};
       } else {
@@ -148,7 +148,7 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
         return SegmentPosition<T>{_current_value, true, chunk_offsets.offset_in_poslist};
       }
 
-      if constexpr(std::is_same_v<Dictionary, FixedStringVector>) {
+      if constexpr (std::is_same_v<Dictionary, FixedStringVector>) {
         _current_value = *(_dictionary_begin_it + value_id);
         return SegmentPosition<T>{_current_value, false, chunk_offsets.offset_in_poslist};
       } else {

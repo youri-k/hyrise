@@ -76,16 +76,18 @@ class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeV
     std::ptrdiff_t distance_to(const Iterator& other) const { return other._attribute_it - _attribute_it; }
 
     SegmentPosition<ValueID> dereference() const {
-      const auto value_id = static_cast<ValueID>(*_attribute_it);
-      const auto is_null = (value_id == _null_value_id);
+      _current_value_id = static_cast<ValueID>(*_attribute_it);
+      const auto is_null = (_current_value_id == _null_value_id);
 
-      return {value_id, is_null, _chunk_offset};
+      return {_current_value_id, is_null, _chunk_offset};
     }
 
    private:
     const ValueID _null_value_id;
     ZsIteratorType _attribute_it;
     ChunkOffset _chunk_offset;
+
+    mutable ValueID _current_value_id = ValueID{};
   };
 
   template <typename ZsDecompressorType>
@@ -106,16 +108,17 @@ class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeV
     SegmentPosition<ValueID> dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
 
-      const auto value_id =
-          static_cast<ValueID>(_attribute_decompressor->get(chunk_offsets.offset_in_referenced_chunk));
-      const auto is_null = (value_id == _null_value_id);
+      _current_value_id = static_cast<ValueID>(_attribute_decompressor->get(chunk_offsets.offset_in_referenced_chunk));
+      const auto is_null = (_current_value_id == _null_value_id);
 
-      return {value_id, is_null, chunk_offsets.offset_in_poslist};
+      return {_current_value_id, is_null, chunk_offsets.offset_in_poslist};
     }
 
    private:
     const ValueID _null_value_id;
     std::shared_ptr<ZsDecompressorType> _attribute_decompressor;
+
+    mutable ValueID _current_value_id = ValueID{};
   };
 };
 
