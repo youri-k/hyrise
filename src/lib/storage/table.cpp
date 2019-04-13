@@ -199,8 +199,13 @@ std::vector<IndexInfo> Table::get_indexes() const { return _indexes; }
 size_t Table::estimate_memory_usage() const {
   auto bytes = size_t{sizeof(*this)};
 
-  for (const auto& chunk : _chunks) {
-    bytes += chunk->estimate_memory_usage();
+  for (auto c = ColumnID{0}; c < column_count(); ++c) {
+    auto i = ChunkID{0};
+    for (const auto& chunk : _chunks) {
+      std::cout << column_name(c) << "\t";
+      std::cout << "chunk_" << i++ << "\t";
+      bytes += chunk->get_segment(c)->estimate_memory_usage();
+    }
   }
 
   for (const auto& column_definition : _column_definitions) {

@@ -1,6 +1,9 @@
 #include "dictionary_segment.hpp"
 
+#include <malloc/malloc.h>
+
 #include <memory>
+#include <random>
 #include <string>
 
 #include "resolve_type.hpp"
@@ -65,8 +68,26 @@ std::shared_ptr<BaseSegment> DictionarySegment<T>::copy_using_allocator(
 
 template <typename T>
 size_t DictionarySegment<T>::estimate_memory_usage() const {
-  return sizeof(*this) + _dictionary->size() * sizeof(typename decltype(_dictionary)::element_type::value_type) +
-         _attribute_vector->data_size();
+  size_t string_heap_size = 0;
+  if constexpr (std::is_same_v<T, pmr_string>) {
+    const auto sample_size = std::min(size_t{100}, _dictionary->size());
+    std::vector<pmr_string> string_samples;
+    std::sample(_dictionary->cbegin(), _dictionary->cend(), std::back_inserter(string_samples), sample_size, std::mt19937{std::random_device{}()});
+
+    const auto small_string_optimization_limit = std::string{}.capacity();
+    for (const auto& string : string_samples) {
+      if (string.capacity() > small_string_optimization_limit) string_heap_size += malloc_size(string.c_str());
+    }
+    string_heap_size *= _dictionary->size();
+    string_heap_size /= sample_size;
+  }
+
+  std::cout << _dictionary->capacity() * sizeof(typename decltype(_dictionary)::element_type::value_type) << "\t";
+  std::cout << _attribute_vector->data_size() << "\t";
+  std::cout << string_heap_size << std::endl;
+
+  return sizeof(*this) + _dictionary->capacity() * sizeof(typename decltype(_dictionary)::element_type::value_type) +
+         _attribute_vector->data_size() + string_heap_size;
 }
 
 template <typename T>

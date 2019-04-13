@@ -469,7 +469,7 @@ void BenchmarkRunner::_create_report(std::ostream& stream) const {
   }
 
   nlohmann::json summary{
-      {"table_size_in_bytes", table_size},
+      {"estimated_table_size_in_bytes", table_size},
       {"total_run_duration", std::chrono::duration_cast<std::chrono::nanoseconds>(_total_run_duration).count()}};
 
   nlohmann::json report{{"context", _context},
