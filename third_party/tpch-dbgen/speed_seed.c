@@ -137,7 +137,7 @@ void NthElement (DSS_HUGE N, DSS_HUGE *StartSeed)
    }
 
 
-/* updates Seed[column] using the a_rnd algorithm */
+/* updates Seed[column] using the tpch_dbgen_a_rnd algorithm */
 void
 fake_a_rnd(int min, int max, int column)
 {

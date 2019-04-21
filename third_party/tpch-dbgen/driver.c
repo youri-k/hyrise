@@ -249,33 +249,33 @@ child_table:
 void
 load_dists (void)
 {
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "p_cntr", &p_cntr_set);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "colors", &colors);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "p_types", &p_types_set);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "nations", &nations);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "regions", &regions);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "o_oprio",
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "p_cntr", &p_cntr_set);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "colors", &colors);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "p_types", &p_types_set);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "nations", &nations);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "regions", &regions);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "o_oprio",
 		&o_priority_set);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "instruct",
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "instruct",
 		&l_instruct_set);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "smode", &l_smode_set);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "category",
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "smode", &l_smode_set);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "category",
 		&l_category_set);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "rflag", &l_rflag_set);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "msegmnt", &c_mseg_set);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "rflag", &l_rflag_set);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "msegmnt", &c_mseg_set);
 
 	/* load the distributions that contain text generation */
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "nouns", &nouns);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "verbs", &verbs);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "adjectives", &adjectives);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "adverbs", &adverbs);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "auxillaries", &auxillaries);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "terminators", &terminators);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "articles", &articles);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "prepositions", &prepositions);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "grammar", &grammar);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "np", &np);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "vp", &vp);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "nouns", &nouns);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "verbs", &verbs);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "adjectives", &adjectives);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "adverbs", &adverbs);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "auxillaries", &auxillaries);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "terminators", &terminators);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "articles", &articles);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "prepositions", &prepositions);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "grammar", &grammar);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "np", &np);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "vp", &vp);
 
 }
 
@@ -344,7 +344,7 @@ gen_tbl (int tnum, DSS_HUGE start, DSS_HUGE count, long upd_num)
 				tdefs[tnum].loader(&supp, upd_num);
 			break;
 		case CUST:
-			mk_cust (i, &cust);
+      tpch_dbgen_mk_cust(i, &cust);
 			if (set_seeds == 0)
 				tdefs[tnum].loader(&cust, upd_num);
 			break;
@@ -436,7 +436,7 @@ partial (int tbl, int s)
 
 	set_files (tbl, s);
 
-	rowcnt = set_state(tbl, scale, children, s, &extra);
+	rowcnt = tpch_dbgen_set_state(tbl, scale, children, s, &extra);
 
 	if (s == children)
 		gen_tbl (tbl, rowcnt * (s - 1) + 1, rowcnt + extra, upd_num);
@@ -735,7 +735,7 @@ tpch_dbgen_main (int ac, char **av)
 		/*
 		 * set RNG to start generating rows beyond SF=scale
 		 */
-		set_state (ORDER, scale, 100, 101, &i);
+      tpch_dbgen_set_state(ORDER, scale, 100, 101, &i);
 		rowcnt = (int)(tdefs[ORDER_LINE].base / 10000 * scale * UPD_PCT);
 		if (step > 0)
 			{

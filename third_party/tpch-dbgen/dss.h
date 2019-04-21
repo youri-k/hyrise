@@ -20,7 +20,7 @@
 * add release.h changes
 *
 * Revision 1.5  2005/10/27 18:13:03  jms
-* a_rnd() prototype correction
+* tpch_dbgen_a_rnd() prototype correction
 *
 * Revision 1.4  2005/10/25 17:58:59  jms
 * update version stamp
@@ -188,23 +188,23 @@ typedef struct SEED_T {
 #endif
 
 /* bm_utils.c */
-char	*env_config PROTO((char *var, char *dflt));
-long	yes_no PROTO((char *prompt));
-void     a_rnd PROTO((int min, int max, int column, char *dest));
+char	*tpch_dbgen_env_config PROTO((char *var, char *dflt));
+long	tpch_dbgen_yes_no PROTO((char *prompt));
+void     tpch_dbgen_a_rnd PROTO((int min, int max, int column, char *dest));
 int     tx_rnd PROTO((long min, long max, long column, char *tgt));
-long	julian PROTO((long date));
-long	unjulian PROTO((long date));
-FILE	*tbl_open PROTO((int tbl, char *mode));
-long	dssncasecmp PROTO((char *s1, char *s2, int n));
-long	dsscasecmp PROTO((char *s1, char *s2));
-int		pick_str PROTO((distribution * s, int c, char *target));
-void	agg_str PROTO((distribution *set, long count, long col, char *dest));
-void	read_dist PROTO((char *path, char *name, distribution * target));
+long	tpch_dbgen_julian PROTO((long date));
+long	tpch_dbgen_unjulian PROTO((long date));
+FILE	*tpch_dbgen_tbl_open PROTO((int tbl, char *mode));
+long	tpch_dbgen_dssncasecmp PROTO((char *s1, char *s2, int n));
+long	tpch_dbgen_dsscasecmp PROTO((char *s1, char *s2));
+int		tpch_dbgen_pick_str PROTO((distribution * s, int c, char *target));
+void	tpch_dbgen_agg_str PROTO((distribution *set, long count, long col, char *dest));
+void	tpch_dbgen_read_dist PROTO((char *path, char *name, distribution * target));
 void	embed_str PROTO((distribution *d, int min, int max, int stream, char *dest));
 #ifndef STDLIB_HAS_GETOPT
 int		getopt PROTO((int arg_cnt, char **arg_vect, char *oprions));
 #endif /* STDLIB_HAS_GETOPT */
-DSS_HUGE	set_state PROTO((int t, long scale, long procs, long step, DSS_HUGE *e));
+DSS_HUGE	tpch_dbgen_set_state PROTO((int t, long scale, long procs, long step, DSS_HUGE *e));
 
 /* rnd.c */
 DSS_HUGE	NextRand PROTO((DSS_HUGE nSeed));

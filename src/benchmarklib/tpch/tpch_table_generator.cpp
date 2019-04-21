@@ -16,7 +16,7 @@ extern "C" {
 #include "storage/chunk.hpp"
 #include "storage/storage_manager.hpp"
 
-extern char** asc_date;
+extern char** tpch_dbgen_asc_date;
 extern seed_t seed[];
 
 #pragma clang diagnostic ignored "-Wshorten-64-to-32"
@@ -187,13 +187,13 @@ void dbgen_cleanup() {
     distribution->permute = nullptr;
   }
 
-  if (asc_date) {
+  if (tpch_dbgen_asc_date) {
     for (size_t idx = 0; idx < TOTDATE; ++idx) {
-      free(asc_date[idx]);  // NOLINT
+      free(tpch_dbgen_asc_date[idx]);  // NOLINT
     }
-    free(asc_date);  // NOLINT
+    free(tpch_dbgen_asc_date);  // NOLINT
   }
-  asc_date = nullptr;
+  tpch_dbgen_asc_date = nullptr;
 }
 
 std::shared_ptr<BenchmarkConfig> create_benchmark_config_with_chunk_size(uint32_t chunk_size) {
@@ -256,7 +256,7 @@ std::unordered_map<std::string, BenchmarkTableInfo> TpchTableGenerator::generate
    */
 
   for (size_t row_idx = 0; row_idx < customer_count; row_idx++) {
-    auto customer = call_dbgen_mk<customer_t>(row_idx + 1, mk_cust, TpchTable::Customer);
+    auto customer = call_dbgen_mk<customer_t>(row_idx + 1, tpch_dbgen_mk_cust, TpchTable::Customer);
     customer_builder.append_row(customer.custkey, customer.name, customer.address, customer.nation_code, customer.phone,
                                 convert_money(customer.acctbal), customer.mktsegment, customer.comment);
   }

@@ -70,13 +70,13 @@ print_prep(int table, int update)
 				else 
 					this_segment=++insert_lineitem_segment;
 				sprintf(upath, "%s%c%s.u%d.%d", 
-					env_config(PATH_TAG, PATH_DFLT),
+					tpch_dbgen_env_config(PATH_TAG, PATH_DFLT),
 					PATH_SEP, tdefs[table].name, update%10000,this_segment);
 				}
 			else
 				{
 				sprintf(upath, "%s%c%s.u%d",
-				env_config(PATH_TAG, PATH_DFLT),
+				tpch_dbgen_env_config(PATH_TAG, PATH_DFLT),
 				PATH_SEP, tdefs[table].name, update);
 				}
 		else /* deletes */
@@ -84,17 +84,17 @@ print_prep(int table, int update)
 				{
 				++delete_segment;
 				sprintf(upath, "%s%cdelete.u%d.%d",
-					env_config(PATH_TAG, PATH_DFLT), PATH_SEP, -update%10000,
+					tpch_dbgen_env_config(PATH_TAG, PATH_DFLT), PATH_SEP, -update%10000,
 					delete_segment);
 				}
 			else
 				{
 				sprintf(upath, "%s%cdelete.%d",
-				env_config(PATH_TAG, PATH_DFLT), PATH_SEP, -update);
+				tpch_dbgen_env_config(PATH_TAG, PATH_DFLT), PATH_SEP, -update);
 				}
 		return(fopen(upath, "w"));
         }
-    res = tbl_open(table, "w");
+    res = tpch_dbgen_tbl_open(table, "w");
     OPEN_CHECK(res, tdefs[table].name);
     return(res);
 }

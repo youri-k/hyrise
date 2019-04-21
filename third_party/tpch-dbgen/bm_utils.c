@@ -40,16 +40,16 @@
  *
  * Various routines that handle distributions, value selections and
  * seed value management for the DSS benchmark. Current functions:
- * env_config -- set config vars with optional environment override
- * yes_no -- ask simple yes/no question and return boolean result
- * a_rnd(min, max) -- random alphanumeric within length range
- * pick_str(size, set) -- select a string from the set of size
- * read_dist(file, name, distribution *) -- read named dist from file
- * tbl_open(path, mode) -- std fopen with lifenoise
- * julian(date) -- julian date correction
+ * tpch_dbgen_env_config -- set config vars with optional environment override
+ * tpch_dbgen_yes_no -- ask simple yes/no question and return boolean result
+ * tpch_dbgen_a_rnd(min, max) -- random alphanumeric within length range
+ * tpch_dbgen_pick_str(size, set) -- select a string from the set of size
+ * tpch_dbgen_read_dist(file, name, distribution *) -- read named dist from file
+ * tpch_dbgen_tbl_open(path, mode) -- std fopen with lifenoise
+ * tpch_dbgen_julian(date) -- tpch_dbgen_julian date correction
  * rowcnt(tbl) -- proper scaling of given table
- * e_str(set, min, max) -- build an embedded str
- * agg_str() -- build a string from the named set
+ * tpch_dbgen_e_str(set, min, max) -- build an embedded str
+ * tpch_dbgen_agg_str() -- build a string from the named set
  * dsscasecmp() -- version of strcasecmp()
  * dssncasecmp() -- version of strncasecmp()
  * getopt()
@@ -122,11 +122,11 @@ long *permute_dist(distribution *d, long stream);
 extern seed_t Seed[];
 
 /*
- * env_config: look for a environmental variable setting and return its
+ * tpch_dbgen_env_config: look for a environmental variable setting and return its
  * value; otherwise return the default supplied
  */
 char     *
-env_config(char *var, char *dflt)
+tpch_dbgen_env_config(char *var, char *dflt)
 {
    static char *evar;
 
@@ -140,7 +140,7 @@ env_config(char *var, char *dflt)
  * return the answer to a yes/no question as a boolean
  */
 long
-yes_no(char *prompt)
+tpch_dbgen_yes_no(char *prompt)
 {
     char      reply[128];
 
@@ -176,7 +176,7 @@ yes_no(char *prompt)
  * and comma)
  */
 void
-a_rnd(int min, int max, int column, char *dest)
+tpch_dbgen_a_rnd(int min, int max, int column, char *dest)
 {
    DSS_HUGE      i,
              len,
@@ -200,14 +200,14 @@ a_rnd(int min, int max, int column, char *dest)
  * position
  */
 void
-e_str(distribution *d, int min, int max, int stream, char *dest)
+tpch_dbgen_e_str(distribution *d, int min, int max, int stream, char *dest)
 {
     char strtmp[MAXAGG_LEN + 1];
     DSS_HUGE loc;
     int len;
 
-    a_rnd(min, max, stream, dest);
-    pick_str(d, stream, strtmp);
+    tpch_dbgen_a_rnd(min, max, stream, dest);
+    tpch_dbgen_pick_str(d, stream, strtmp);
     len = (int)strlen(strtmp);
     RANDOM(loc, 0, ((int)strlen(dest) - 1 - len), stream);
     strncpy(dest + loc, strtmp, len);
@@ -222,7 +222,7 @@ e_str(distribution *d, int min, int max, int stream, char *dest)
  * being queried
  */
 int
-pick_str(distribution *s, int c, char *target)
+tpch_dbgen_pick_str(distribution *s, int c, char *target)
 {
     long      i = 0;
     DSS_HUGE      j;
@@ -237,10 +237,10 @@ pick_str(distribution *s, int c, char *target)
 }
 
 /*
- * unjulian (long date) -- return(date - STARTDATE)
+ * tpch_dbgen_unjulian (long date) -- return(date - STARTDATE)
  */
 long
-unjulian(long date)
+tpch_dbgen_unjulian(long date)
 {
     int i;
     long res = 0;
@@ -253,7 +253,7 @@ unjulian(long date)
 }
 
 long
-julian(long date)
+tpch_dbgen_julian(long date)
 {
     long       offset;
     long      result;
@@ -292,7 +292,7 @@ julian(long date)
 * should be rewritten to allow multiple dists in a file
 */
 void
-read_dist(char *path, char *name, distribution *target)
+tpch_dbgen_read_dist(char *path, char *name, distribution *target)
 {
 FILE     *fp;
 char      line[256],
@@ -305,7 +305,7 @@ long      weight,
     if (d_path == NULL)
 		{
 		sprintf(line, "%s%c%s", 
-			env_config(CONFIG_TAG, CONFIG_DFLT), PATH_SEP, path);
+			tpch_dbgen_env_config(CONFIG_TAG, CONFIG_DFLT), PATH_SEP, path);
 		fp = fopen(line, "r");
 		OPEN_CHECK(fp, line);
 		}
@@ -325,16 +325,16 @@ long      weight,
 
         if (!name_set)
             {
-            if (dsscasecmp(strtok(line, "\n\t "), "BEGIN"))
+            if (tpch_dbgen_dsscasecmp(strtok(line, "\n\t "), "BEGIN"))
                 continue;
-            if (dsscasecmp(strtok(NULL, "\n\t "), name))
+            if (tpch_dbgen_dsscasecmp(strtok(NULL, "\n\t "), name))
                 continue;
             name_set = 1;
             continue;
             }
         else
             {
-            if (!dssncasecmp(line, "END", 3))
+            if (!tpch_dbgen_dssncasecmp(line, "END", 3))
                 {
                 fclose(fp);
                 return;
@@ -344,7 +344,7 @@ long      weight,
         if (sscanf(line, "%[^|]|%ld", token, &weight) != 2)
             continue;
 
-        if (!dsscasecmp(token, "count"))
+        if (!tpch_dbgen_dsscasecmp(token, "count"))
             {
             target->count = weight;
             target->list =
@@ -381,7 +381,7 @@ long      weight,
  */
 
 FILE     *
-tbl_open(int tbl, char *mode)
+tpch_dbgen_tbl_open(int tbl, char *mode)
 {
     char      prompt[256];
     char      fullpath[256];
@@ -394,7 +394,7 @@ tbl_open(int tbl, char *mode)
         strcpy(fullpath, tdefs[tbl].name);
     else
         sprintf(fullpath, "%s%c%s",
-            env_config(PATH_TAG, PATH_DFLT), PATH_SEP, tdefs[tbl].name);
+            tpch_dbgen_env_config(PATH_TAG, PATH_DFLT), PATH_SEP, tdefs[tbl].name);
 
     retcode = stat(fullpath, &fstats);
     if (retcode && (errno != ENOENT))
@@ -405,7 +405,7 @@ tbl_open(int tbl, char *mode)
     if (S_ISREG(fstats.st_mode) && !force && *mode != 'r' )
         {
         sprintf(prompt, "Do you want to overwrite %s ?", fullpath);
-        if (!yes_no(prompt))
+        if (!tpch_dbgen_yes_no(prompt))
             exit(0);
         }
 
@@ -424,11 +424,11 @@ tbl_open(int tbl, char *mode)
 
 
 /*
- * agg_str(set, count) build an aggregated string from count unique
+ * tpch_dbgen_agg_str(set, count) build an aggregated string from count unique
  * selections taken from set
  */
 void
-agg_str(distribution *set, long count, long col, char *dest)
+tpch_dbgen_agg_str(distribution *set, long count, long col, char *dest)
 {
 	distribution *d;
 	int i;
@@ -449,7 +449,7 @@ agg_str(distribution *set, long count, long col, char *dest)
 
 
 long
-dssncasecmp(char *s1, char *s2, int n)
+tpch_dbgen_dssncasecmp(char *s1, char *s2, int n)
 {
     for (; n > 0; ++s1, ++s2, --n)
         if (tolower(*s1) != tolower(*s2))
@@ -460,7 +460,7 @@ dssncasecmp(char *s1, char *s2, int n)
 }
 
 long
-dsscasecmp(char *s1, char *s2)
+tpch_dbgen_dsscasecmp(char *s1, char *s2)
 {
     for (; tolower(*s1) == tolower(*s2); ++s1, ++s2)
         if (*s1 == '\0')
@@ -469,12 +469,12 @@ dsscasecmp(char *s1, char *s2)
 }
 
 #ifndef STDLIB_HAS_GETOPT
-int optind = 0;
-int opterr = 0;
-char *optarg = NULL;
+int tpch_dbgen_optind = 0;
+int tpch_dbgen_opterr = 0;
+char *tpch_dbgen_optarg = NULL;
 
 int
-getopt(int ac, char **av, char *opt)
+tpch_dbgen_getopt(int ac, char **av, char *opt)
 {
     static char *nextchar = NULL;
     char *cp;
@@ -533,7 +533,7 @@ getopt(int ac, char **av, char *opt)
 #endif /* STDLIB_HAS_GETOPT */
 
 char **
-mk_ascdate(void)
+tpch_dbgen_mk_ascdate(void)
 {
     char **m;
     dss_time_t t;
@@ -558,7 +558,7 @@ mk_ascdate(void)
  * Returns the number of rows to be generated by the named step.
  */
 DSS_HUGE
-set_state(int table, long sf, long procs, long step, DSS_HUGE *extra_rows)
+tpch_dbgen_set_state(int table, long sf, long procs, long step, DSS_HUGE *extra_rows)
 {
     int i;
 	DSS_HUGE rowcount, remainder, result;

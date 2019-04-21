@@ -101,7 +101,7 @@
  *
  *	Returns: length of generated phrase
  *	Called By: txt_sentence()
- *	Calls: pick_str() 
+ *	Calls: tpch_dbgen_pick_str()
  */
 static int
 txt_vp(char *dest, int sd) 
@@ -114,7 +114,7 @@ txt_vp(char *dest, int sd)
 		res = 0;
 
 	
-	pick_str(&vp, sd, &syntax[0]);
+	tpch_dbgen_pick_str(&vp, sd, &syntax[0]);
 	parse_target = syntax;
 	while ((cptr = strtok(parse_target, " ")) != NULL)
 	{
@@ -131,7 +131,7 @@ txt_vp(char *dest, int sd)
 			src = &auxillaries;
 			break;
 		}	/* end of POS switch statement */
-		i = pick_str(src, sd, dest);
+		i = tpch_dbgen_pick_str(src, sd, dest);
 		i = (int)strlen(DIST_MEMBER(src, i));
 		dest += i;
 		res += i;
@@ -160,7 +160,7 @@ txt_vp(char *dest, int sd)
  *
  *	Returns: length of generated phrase
  *	Called By: txt_sentence()
- *	Calls: pick_str(), 
+ *	Calls: tpch_dbgen_pick_str(),
  */
 static int
 txt_np(char *dest, int sd) 
@@ -173,7 +173,7 @@ txt_np(char *dest, int sd)
 		res = 0;
 
 	
-	pick_str(&np, sd, &syntax[0]);
+	tpch_dbgen_pick_str(&np, sd, &syntax[0]);
 	parse_target = syntax;
 	while ((cptr = strtok(parse_target, " ")) != NULL)
 	{
@@ -193,7 +193,7 @@ txt_np(char *dest, int sd)
 			src = &nouns;
 			break;
 		}	/* end of POS switch statement */
-		i = pick_str(src, sd, dest);
+		i = tpch_dbgen_pick_str(src, sd, dest);
 		i = (int)strlen(DIST_MEMBER(src, i));
 		dest += i;
 		res += i;
@@ -222,7 +222,7 @@ txt_np(char *dest, int sd)
  *
  *	Returns: length of generated sentence
  *	Called By: dbg_text()
- *	Calls: pick_str(), txt_np(), txt_vp() 
+ *	Calls: tpch_dbgen_pick_str(), txt_np(), txt_vp()
  */
 static int
 txt_sentence(char *dest, int sd) 
@@ -234,7 +234,7 @@ txt_sentence(char *dest, int sd)
 		len = 0;
 
 	
-	pick_str(&grammar, sd, syntax);
+	tpch_dbgen_pick_str(&grammar, sd, syntax);
 	cptr = syntax;
 
 next_token:	/* I hate goto's, but can't seem to have parent and child use strtok() */
@@ -251,7 +251,7 @@ next_token:	/* I hate goto's, but can't seem to have parent and child use strtok
 			len = txt_np(dest, sd);
 			break;
 		case 'P':
-			i = pick_str(&prepositions, sd, dest);
+			i = tpch_dbgen_pick_str(&prepositions, sd, dest);
 			len = (int)strlen(DIST_MEMBER(&prepositions, i));
 			// HYRISE: Avoid redundantly figuring out the string length - use memcpy over strcpy
 			memcpy((dest + len), " the ", 5);
@@ -259,7 +259,7 @@ next_token:	/* I hate goto's, but can't seem to have parent and child use strtok
 			len += txt_np(dest + len, sd);
 			break;
 		case 'T':
-			i = pick_str(&terminators, sd, --dest); /*terminators should abut previous word */
+			i = tpch_dbgen_pick_str(&terminators, sd, --dest); /*terminators should abut previous word */
 			len = (int)strlen(DIST_MEMBER(&terminators, i));
 			break;
 		}	/* end of POS switch statement */
@@ -367,17 +367,17 @@ main()
 	
 	verbose = 1;
    
-   read_dist (env_config (DIST_TAG, DIST_DFLT), "nouns", &nouns);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "verbs", &verbs);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "adjectives", &adjectives);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "adverbs", &adverbs);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "auxillaries", &auxillaries);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "terminators", &terminators);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "articles", &articles);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "prepositions", &prepositions);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "grammar", &grammar);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "np", &np);
-	read_dist (env_config (DIST_TAG, DIST_DFLT), "vp", &vp);
+   tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "nouns", &nouns);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "verbs", &verbs);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "adjectives", &adjectives);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "adverbs", &adverbs);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "auxillaries", &auxillaries);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "terminators", &terminators);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "articles", &articles);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "prepositions", &prepositions);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "grammar", &grammar);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "np", &np);
+	tpch_dbgen_read_dist (tpch_dbgen_env_config (DIST_TAG, DIST_DFLT), "vp", &vp);
 
 	while (1)
 	{

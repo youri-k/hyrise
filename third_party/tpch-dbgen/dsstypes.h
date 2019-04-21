@@ -52,7 +52,8 @@ typedef struct
     int             clen;
 }               customer_t;
 /* customers.c */
-long mk_cust   PROTO((DSS_HUGE n_cust, customer_t * c));
+long tpch_dbgen_mk_cust   PROTO((DSS_HUGE
+                                n_cust, customer_t * c));
 int pr_cust    PROTO((customer_t * c, int mode));
 int ld_cust    PROTO((customer_t * c, int mode));
 
