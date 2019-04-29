@@ -38,6 +38,7 @@
 #include "operators/insert.hpp"
 #include "operators/join_hash.hpp"
 #include "operators/join_sort_merge.hpp"
+#include "operators/join_nested_loop.hpp"
 #include "operators/limit.hpp"
 #include "operators/maintenance/create_prepared_plan.hpp"
 #include "operators/maintenance/create_table.hpp"
@@ -308,15 +309,24 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_join_node(
   }
 
   const auto& primary_join_predicate = join_predicates.front();
+  const auto primary_join_predicate_expression = join_node->join_predicates().front();
+
   std::vector<OperatorJoinPredicate> secondary_join_predicates(join_predicates.cbegin() + 1, join_predicates.cend());
 
   if (primary_join_predicate.predicate_condition == PredicateCondition::Equals &&
       join_node->join_mode != JoinMode::FullOuter) {
     return std::make_shared<JoinHash>(input_left_operator, input_right_operator, join_node->join_mode,
                                       primary_join_predicate, std::nullopt, std::move(secondary_join_predicates));
-  } else {
+  } else if (primary_join_predicate_expression->arguments[0]->data_type() == primary_join_predicate_expression->arguments[1]->data_type()) {
+    // JoinSortMerge only supports equal argument DataTypes for primary predicate
     return std::make_shared<JoinSortMerge>(input_left_operator, input_right_operator, join_node->join_mode,
                                            primary_join_predicate, std::move(secondary_join_predicates));
+  } else {
+    // If none of the "fast" Join operators support the primary predicate, fallback to JoinNestedLoop
+    PerformanceWarning("Falling back to JoinNestedLoop for "s + join_node->description());
+    return std::make_shared<JoinNestedLoop>(input_left_operator, input_right_operator, join_node->join_mode,
+                                           primary_join_predicate, std::move(secondary_join_predicates));
+
   }
 }
 

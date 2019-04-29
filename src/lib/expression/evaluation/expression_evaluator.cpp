@@ -657,7 +657,7 @@ std::shared_ptr<ExpressionResult<Result>> ExpressionEvaluator::_evaluate_cast_ex
       if constexpr (std::is_same_v<Result, NullValue> || std::is_same_v<ArgumentDataType, NullValue>) {
         // "<Something> to Null" cast. Do nothing, this is handled by the `nulls` vector
       } else if constexpr (std::is_same_v<Result, pmr_string>) {  // NOLINT
-        // "<Something> to String" cast. Sould never fail, thus boost::lexical_cast (which throws on error) is fine
+        // "<Something> to String" cast. Should never fail, thus boost::lexical_cast (which throws on error) is fine
         values[chunk_offset] = boost::lexical_cast<Result>(argument_value);
       } else {
         if constexpr (std::is_same_v<ArgumentDataType, pmr_string>) {  // NOLINT
