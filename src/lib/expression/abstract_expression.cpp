@@ -26,6 +26,10 @@ bool AbstractExpression::is_nullable_on_lqp(const AbstractLQPNode& lqp) const {
   return _on_is_nullable_on_lqp(lqp);
 }
 
+bool AbstractExpression::is_nullable_on_pqp() const {
+  return _on_is_nullable_on_pqp();
+}
+
 bool AbstractExpression::operator==(const AbstractExpression& other) const {
   if (type != other.type) return false;
   if (!expressions_equal(arguments, other.arguments)) return false;
@@ -48,6 +52,11 @@ size_t AbstractExpression::_on_hash() const { return 0; }
 bool AbstractExpression::_on_is_nullable_on_lqp(const AbstractLQPNode& lqp) const {
   return std::any_of(arguments.begin(), arguments.end(),
                      [&](const auto& expression) { return expression->is_nullable_on_lqp(lqp); });
+}
+
+bool AbstractExpression::_on_is_nullable_on_pqp() const {
+  return std::any_of(arguments.begin(), arguments.end(),
+                     [&](const auto& expression) { return expression->is_nullable_on_pqp(); });
 }
 
 ExpressionPrecedence AbstractExpression::_precedence() const { return ExpressionPrecedence::Highest; }

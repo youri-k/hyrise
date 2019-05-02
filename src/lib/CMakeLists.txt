@@ -54,6 +54,12 @@ set(
     expression/evaluation/expression_result_views.hpp
     expression/evaluation/like_matcher.cpp
     expression/evaluation/like_matcher.hpp
+    expression/evaluation_2/expression_evaluator_2.cpp
+    expression/evaluation_2/expression_evaluator_2.hpp
+    expression/evaluation_2/expression_evaluator_range_2.hpp
+    expression/evaluation_2/expression_functors_2.hpp
+    expression/evaluation_2/expression_result_2.hpp
+    expression/evaluation_2/expression_result_views_2.hpp
     expression/exists_expression.cpp
     expression/exists_expression.hpp
     expression/expression_functional.cpp

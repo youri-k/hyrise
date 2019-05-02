@@ -83,6 +83,7 @@ class AbstractExpression : public std::enable_shared_from_this<AbstractExpressio
    *            e.g., is actually nullable if `a` comes from the null-supplying side of an outer join.
    */
   bool is_nullable_on_lqp(const AbstractLQPNode& lqp) const;
+  bool is_nullable_on_pqp() const;
 
   size_t hash() const;
 
@@ -103,6 +104,7 @@ class AbstractExpression : public std::enable_shared_from_this<AbstractExpressio
   virtual size_t _on_hash() const;
 
   virtual bool _on_is_nullable_on_lqp(const AbstractLQPNode& lqp) const;
+  virtual bool _on_is_nullable_on_pqp() const;
 
   /**
    * Used internally in _enclose_argument_as_column_name() to put parentheses around expression arguments if they have a lower
