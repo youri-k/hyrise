@@ -441,7 +441,8 @@ size_t LZ4Segment<T>::estimate_memory_usage() const {
   if (_string_offsets && *_string_offsets) {
     offset_size = (*_string_offsets)->data_size();
   }
-  return sizeof(*this) + _compressed_size + bool_size + offset_size + _dictionary.size() + block_vector_size;
+  // return sizeof(*this) + _compressed_size + bool_size + offset_size + _dictionary.size() + block_vector_size;
+  return sizeof(*this) + _compressed_size + bool_size + block_vector_size;
 }
 
 template <typename T>
