@@ -437,10 +437,10 @@ size_t LZ4Segment<T>::estimate_memory_usage() const {
    * _string_offsets is used only for string segments and is a nullptr if the string segment does not contain any data
    * (i.e., no rows or only rows with empty strings).
    */
-  auto offset_size = size_t{0};
-  if (_string_offsets && *_string_offsets) {
-    offset_size = (*_string_offsets)->data_size();
-  }
+  //auto offset_size = size_t{0};
+  //if (_string_offsets && *_string_offsets) {
+    //offset_size = (*_string_offsets)->data_size();
+  //}
   // return sizeof(*this) + _compressed_size + bool_size + offset_size + _dictionary.size() + block_vector_size;
   return sizeof(*this) + _compressed_size + bool_size + block_vector_size;
 }
