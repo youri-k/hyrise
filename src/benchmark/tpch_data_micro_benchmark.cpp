@@ -41,8 +41,8 @@ class TPCHDataMicroBenchmarkFixture : public MicroBenchmarkBasicFixture {
  public:
   void SetUp(::benchmark::State& state) {
     auto& sm = StorageManager::get();
-    const auto scale_factor = 2.0f;
-    // const auto scale_factor = 1.0f;
+    // const auto scale_factor = 2.0f;
+    const auto scale_factor = 0.05f;
 
     auto benchmark_config = BenchmarkConfig::get_default_config();
 
@@ -65,7 +65,7 @@ class TPCHDataMicroBenchmarkFixture : public MicroBenchmarkBasicFixture {
     const auto [ll_pipeline_status, ll_table] = ll_sql_pipeline.get_result_table();
     const auto search_value_l_linenumber = ll_table->get_value<int>(ColumnID{0}, 0u);
     const auto count_l_linenumber = ll_table->get_value<int64_t>(ColumnID{1}, 0u);
-    std::cout << "Searching l_linenumber for " << search_value_l_linenumber << "." << std::endl;
+    std::cout << "Searching l_linenumber for >>" << search_value_l_linenumber << "<<." << std::endl;
     compression_selection_selectivities << "L_LINENUMBER," << row_count_lineitem << "," << ll_table->row_count() << "," << static_cast<double>(count_l_linenumber) / row_count_lineitem << "\n";
 
     auto lp_sql_pipeline = SQLPipelineBuilder{"SELECT l_partkey, count(*) FROM lineitem group by l_partkey order by count(*) desc"}.create_pipeline_statement();
@@ -79,7 +79,7 @@ class TPCHDataMicroBenchmarkFixture : public MicroBenchmarkBasicFixture {
     const auto [lc_pipeline_status, lc_table] = lc_sql_pipeline.get_result_table();
     const auto search_value_l_comment = lc_table->get_value<pmr_string>(ColumnID{0}, 0u);
     const auto count_l_comment = lc_table->get_value<int64_t>(ColumnID{1}, 0u);
-    std::cout << "Searching l_comment for " << search_value_l_comment << "." << std::endl;
+    std::cout << "Searching l_comment for >>" << search_value_l_comment << "<<." << std::endl;
     compression_selection_selectivities << "L_COMMENT," << row_count_lineitem << "," << lc_table->row_count() <<  "," << static_cast<double>(count_l_comment) / row_count_lineitem << "\n";
 
     compression_selection_selectivities.close();
@@ -380,7 +380,12 @@ std::stringstream csv_time_measurement_row(const std::string&& benchmark_name, c
   const auto duration = std::chrono::duration_cast<duration_unit>(end - begin); 
 
   result << benchmark_name << "," << segment_encoding_to_csv_string(seg_spec) << ",";
-  result << repetitions << "," << duration.count() << "," << nth_of_a_second << "\n";
+  if (begin == end) {
+    // in case nanosecond timings equal, something went wrong
+    result << repetitions << ",NULL," << nth_of_a_second << "\n";
+  } else {
+    result << repetitions << "," << duration.count() << "," << nth_of_a_second << "\n";
+  }
 
   output_file << result.str();
 
@@ -390,7 +395,13 @@ std::stringstream csv_time_measurement_row(const std::string&& benchmark_name, c
 std::stringstream csv_size_measurement_row(const std::string&& benchmark_name, const SegmentEncodingSpec& seg_spec,
     const size_t size, std::ofstream& output_file) {
   std::stringstream result;
-  result << benchmark_name << "," << segment_encoding_to_csv_string(seg_spec) << "," << size << "\n";
+  result << benchmark_name << "," << segment_encoding_to_csv_string(seg_spec) << ",";
+  if (size == 0) {
+    // Something went wrong, when data disappeared
+    result << "NULL\n";
+  } else {
+    result << size << "\n";
+  }
   output_file << result.str();
 
   return result;
@@ -414,11 +425,11 @@ BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_CompressionSelectionIntroTable)(be
                                            SegmentEncodingSpec{EncodingType::FrameOfReference, VectorCompressionType::FixedSizeByteAligned},
                                            SegmentEncodingSpec{EncodingType::FrameOfReference, VectorCompressionType::SimdBp128}};
 
-  constexpr size_t encoding_measurements = 100;
-  constexpr size_t filter_measurements = 1'000;
+  // constexpr size_t encoding_measurements = 100;
+  // constexpr size_t filter_measurements = 1'000;
 
-  //constexpr size_t encoding_measurements = 5;
-  //constexpr size_t filter_measurements = 10;
+  constexpr size_t encoding_measurements = 5;
+  constexpr size_t filter_measurements = 10;
 
   constexpr size_t nth_of_a_second = 1'000'000;
 
@@ -440,6 +451,16 @@ BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_CompressionSelectionIntroTable)(be
 
 
     for (auto i = size_t{0}; i < encoding_measurements; ++i) {
+      if (seg_spec.encoding_type == EncodingType::Unencoded) {
+        {
+          const auto start = std::chrono::high_resolution_clock::now();
+          csv_time_measurement_row("UnencodingPartkey", seg_spec, encoding_measurements, start, start, nth_of_a_second, runtime_measurements).str();
+          csv_time_measurement_row("EncodingPartkey", seg_spec, encoding_measurements, start, start, nth_of_a_second, runtime_measurements).str();
+          csv_time_measurement_row("UnencodingComment", seg_spec, encoding_measurements, start, start, nth_of_a_second, runtime_measurements).str();
+          csv_time_measurement_row("EncodingComment", seg_spec, encoding_measurements, start, start, nth_of_a_second, runtime_measurements).str();
+          break;
+        }
+      }
       /**
           PARTKEY
        */
@@ -461,21 +482,28 @@ BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_CompressionSelectionIntroTable)(be
       /**
           COMMENT
        */
-      chunk_spec.back() = SegmentEncodingSpec{EncodingType::Unencoded};
-      {
-        const auto start = std::chrono::high_resolution_clock::now();
-        ChunkEncoder::encode_all_chunks(table, chunk_spec);
-        const auto end = std::chrono::high_resolution_clock::now();
-        csv_time_measurement_row("UnencodingComment", seg_spec, encoding_measurements, start, end, nth_of_a_second, runtime_measurements).str();
-      }
       if (seg_spec.encoding_type != EncodingType::FrameOfReference) {
+        chunk_spec.back() = SegmentEncodingSpec{EncodingType::Unencoded};
+        {
+          const auto start = std::chrono::high_resolution_clock::now();
+          ChunkEncoder::encode_all_chunks(table, chunk_spec);
+          const auto end = std::chrono::high_resolution_clock::now();
+          csv_time_measurement_row("UnencodingComment", seg_spec, encoding_measurements, start, end, nth_of_a_second, runtime_measurements).str();
+        }
+
         chunk_spec.back() = seg_spec;
-      }
-      {
-        const auto start = std::chrono::high_resolution_clock::now();
-        ChunkEncoder::encode_all_chunks(table, chunk_spec);
-        const auto end = std::chrono::high_resolution_clock::now();
-        csv_time_measurement_row("EncodingComment", seg_spec, encoding_measurements, start, end, nth_of_a_second, runtime_measurements).str();
+        {
+          const auto start = std::chrono::high_resolution_clock::now();
+          ChunkEncoder::encode_all_chunks(table, chunk_spec);
+          const auto end = std::chrono::high_resolution_clock::now();
+          csv_time_measurement_row("EncodingComment", seg_spec, encoding_measurements, start, end, nth_of_a_second, runtime_measurements).str();
+        }
+      } else {
+        {
+          const auto start = std::chrono::high_resolution_clock::now();
+          csv_time_measurement_row("UnencodingComment", seg_spec, encoding_measurements, start, start, nth_of_a_second, runtime_measurements).str();
+          csv_time_measurement_row("EncodingComment", seg_spec, encoding_measurements, start, start, nth_of_a_second, runtime_measurements).str();
+        }
       }
     }
 
@@ -513,12 +541,19 @@ BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_CompressionSelectionIntroTable)(be
     for (auto i = size_t{0}; i < filter_measurements; ++i) {
       const auto table_scan = std::make_shared<TableScan>(_table_wrapper_map.at("lineitem"), _l_comment_predicate);
 
-      {
-        auto start = std::chrono::high_resolution_clock::now();
-        table_scan->execute();
-        auto end = std::chrono::high_resolution_clock::now();
+      if (seg_spec.encoding_type != EncodingType::FrameOfReference) {
+        {
+          auto start = std::chrono::high_resolution_clock::now();
+          table_scan->execute();
+          auto end = std::chrono::high_resolution_clock::now();
 
-        csv_time_measurement_row("DirectScan_l_comment", seg_spec, filter_measurements, start, end, nth_of_a_second, runtime_measurements).str();
+          csv_time_measurement_row("DirectScan_l_comment", seg_spec, filter_measurements, start, end, nth_of_a_second, runtime_measurements).str();
+        }
+      } else {
+        {
+          auto start = std::chrono::high_resolution_clock::now();
+          csv_time_measurement_row("DirectScan_l_comment", seg_spec, filter_measurements, start, start, nth_of_a_second, runtime_measurements).str();
+        }
       }
     }
 
@@ -548,7 +583,11 @@ BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_CompressionSelectionIntroTable)(be
 
     csv_size_measurement_row("Partkey", seg_spec, column_size_partkey, size_measurements);
     csv_size_measurement_row("Linenumber", seg_spec, column_size_linenumber, size_measurements);
-    csv_size_measurement_row("Comment", seg_spec, column_size_comment, size_measurements);
+    if (seg_spec.encoding_type != EncodingType::FrameOfReference) {
+      csv_size_measurement_row("Comment", seg_spec, column_size_comment, size_measurements);
+    } else {
+      csv_size_measurement_row("Comment", seg_spec, 0, size_measurements);
+    }
 
     runtime_measurements.flush();
     size_measurements.flush();
