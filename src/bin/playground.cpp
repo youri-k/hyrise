@@ -53,6 +53,11 @@ table_name_id_bimap table_name_id_map;
 
 using TableColumnIdentifier = std::pair<uint16_t, ColumnID>;
 
+using TableIdentifierMap = std::map<std::string, uint16_t>;
+
+// maps an attribute to an identifier in the form of `table_idenfier_column_id`
+using AttributeIdentifierMap = std::map<std::pair<std::string, std::string>, std::string>;
+
 namespace std {
 template <>
 struct hash<TableColumnIdentifier> {
@@ -381,9 +386,113 @@ struct hash<TableColumnIdentifier> {
 //   return selected_candidates;
 // }
 
+void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
+                       AttributeIdentifierMap& attribute_to_attribute_id_map) {
+  std::ofstream table_meta_data_csv_file("table_meta_data.csv");
+  table_meta_data_csv_file << "TABLE_ID,TABLE_NAME,ROW_COUNT,MAX_CHUNK_SIZE\n";
+
+  std::ofstream attribute_meta_data_csv_file("attribute_meta_data.csv");
+  attribute_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,DATA_TYPE,IS_NULLABLE\n";
+
+  std::ofstream segment_meta_data_csv_file("segment_meta_data.csv");
+  segment_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,CHUNK_ID,ENCODING,COMPRESSION,SIZE\n";
+
+  uint16_t next_table_id = 0;
+  uint16_t next_attribute_id = 0;
+
+  for (const auto& table_name : StorageManager::get().table_names()) {
+    const auto& table = StorageManager::get().get_table(table_name);
+
+    // might be an overkill here?
+    const auto table_id = next_table_id;
+    const auto& [table_iter, table_inserted] = table_name_table_id_to_map.try_emplace(table_name, table_id);
+    if (table_inserted) {
+      ++next_table_id;
+    }
+
+    table_meta_data_csv_file << table_id << "," << table_name << "," << table->row_count() << ","
+                             << table->max_chunk_size() << std::endl;
+
+    next_attribute_id = 0;
+    for (const auto& column_def : table->column_definitions()) {
+      const auto& column_name = column_def.name;
+
+      std::stringstream attr_table_id;
+      attr_table_id << table_id << "_" << next_attribute_id;
+      attribute_to_attribute_id_map.emplace(std::make_pair(table_name, column_name), attr_table_id.str());
+      ++next_attribute_id;
+
+      attribute_meta_data_csv_file << attr_table_id.str() << "," << table_name << "," << column_name << ","
+                                   << data_type_to_string.left.at(column_def.data_type) << ","
+                                   << (column_def.nullable ? "TRUE" : "FALSE") << "\n";
+
+      for (auto chunk_id = ChunkID{0}, end = table->chunk_count(); chunk_id < end; ++chunk_id) {
+        const auto& chunk = table->get_chunk(chunk_id);
+        const auto column_id = table->column_id_by_name(column_name);
+        const auto& segment = chunk->get_segment(column_id);
+
+        const auto encoded_segment = std::dynamic_pointer_cast<const BaseEncodedSegment>(segment);
+        const auto encoding_type = encoded_segment->encoding_type();
+
+        segment_meta_data_csv_file << attr_table_id.str() << "," << table_name << "," << column_name << "," << chunk_id << "," << encoding_type_to_string.left.at(encoding_type) << ",";
+
+        if (encoded_segment->compressed_vector_type()) {
+          switch (*encoded_segment->compressed_vector_type()) {
+            case CompressedVectorType::FixedSize4ByteAligned: {
+              segment_meta_data_csv_file << "FixedSize4ByteAligned";
+              break;
+            }
+            case CompressedVectorType::FixedSize2ByteAligned: {
+              segment_meta_data_csv_file << "FixedSize2ByteAligned";
+              break;
+            }
+            case CompressedVectorType::FixedSize1ByteAligned: {
+              segment_meta_data_csv_file << "FixedSize1ByteAligned";
+              break;
+            }
+            case CompressedVectorType::SimdBp128: {
+              segment_meta_data_csv_file << "SimdBp128";
+              break;
+            }
+            default:
+              segment_meta_data_csv_file << "NONE";
+          }
+        }
+
+        segment_meta_data_csv_file << "," << encoded_segment->estimate_memory_usage() << "\n";
+      }
+    }
+  }
+
+  table_meta_data_csv_file.close();
+  attribute_meta_data_csv_file.close();
+  segment_meta_data_csv_file.close();
+}
+
+void extract_physical_query_plan_cache_data() {
+  std::ofstream plan_cache_csv_file("plan_cache.csv");
+  plan_cache_csv_file << "QUERY_HASH,EXECUTION_COUNT,QUERY_STRING\n";
+
+  for (const auto& [query_string, physical_query_plan] : SQLPhysicalPlanCache::get()) {
+    size_t frequency = SQLPhysicalPlanCache::get().get_frequency(query_string);
+
+    // std::cout << "=== Q (" << query_string.substr(0, 60) << " ...)" << std::endl;
+
+    std::stringstream query_hex_hash;
+    query_hex_hash << std::hex << std::hash<std::string>{}(query_string);
+
+    auto query_string2 = query_string;
+    query_string2.erase(std::remove(query_string2.begin(), query_string2.end(), '\n'), query_string2.end());
+
+    plan_cache_csv_file << query_hex_hash.str() << "," << frequency << ",\"" << query_string2 << "\"\n";
+  }
+
+  plan_cache_csv_file.close();
+}
+
 int main(int argc, const char* argv[]) {
   auto config = BenchmarkConfig::get_default_config();
-  config.max_num_query_runs = 150;
+  config.max_num_query_runs = 5;
   config.enable_visualization = false;
   config.output_file_path = "perf.json";
   config.chunk_size = 1'000'000;
@@ -419,36 +528,50 @@ int main(int argc, const char* argv[]) {
   const std::filesystem::path plugin_path(argv[1]);
   const auto plugin_name = plugin_name_from_path(plugin_path);
 
+  // const std::vector<QueryID> tpch_query_ids = {QueryID{6}};
+  // auto br = std::make_shared<BenchmarkRunner>(config, std::make_unique<TPCHQueryGenerator>(false, SCALE_FACTOR, tpch_query_ids),
+  //                 std::make_unique<TpchTableGenerator>(SCALE_FACTOR, std::make_shared<BenchmarkConfig>(config)), 100'000);
+
+  const std::vector<QueryID> tpch_query_ids = {QueryID{5}, QueryID{8}};
+
+  BenchmarkRunner(config, std::make_unique<TPCHQueryGenerator>(false, SCALE_FACTOR, tpch_query_ids),
+                  std::make_unique<TpchTableGenerator>(SCALE_FACTOR, std::make_shared<BenchmarkConfig>(config)),
+                  100'000)
+      .run();
+
+  // StorageManager::get().add_benchmark_runner(br);
+  // auto& query_gen = br->query_generator();
+  // br->run();
+
+  TableIdentifierMap table_name_table_id_to_map;
+  AttributeIdentifierMap attribute_to_attribute_id_map;
+
+  extract_meta_data(table_name_table_id_to_map, attribute_to_attribute_id_map);
+
+  extract_physical_query_plan_cache_data();
+
   PluginManager::get().load_plugin(plugin_path);
 
-  const std::vector<QueryID> tpch_query_ids = {QueryID{22}};
-  auto br = std::make_shared<BenchmarkRunner>(config, std::make_unique<TPCHQueryGenerator>(false, SCALE_FACTOR, tpch_query_ids),
-                  std::make_unique<TpchTableGenerator>(SCALE_FACTOR, std::make_shared<BenchmarkConfig>(config)),
-                  100'000);
-  StorageManager::get().add_benchmark_runner(br);
-  auto& query_gen = br->query_generator();
-  br->run();
+  // std::this_thread::sleep_for(std::chrono::milliseconds(1'500));
+  // br->rerun();
+  // SQLPhysicalPlanCache::get().clear();
+  // SQLLogicalPlanCache::get().clear();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(1'500));
-  br->rerun();
-  SQLPhysicalPlanCache::get().clear();
-  SQLLogicalPlanCache::get().clear();
+  // br->runs(75);
+  // query_gen->selected_queries({QueryID{13}, QueryID{22}});
+  // br->rerun();
 
-  br->runs(75);
-  query_gen->selected_queries({QueryID{13}, QueryID{22}});
-  br->rerun();
+  // std::this_thread::sleep_for(std::chrono::milliseconds(1'500));
+  // br->rerun();
+  // SQLPhysicalPlanCache::get().clear();
+  // SQLLogicalPlanCache::get().clear();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(1'500));
-  br->rerun();
-  SQLPhysicalPlanCache::get().clear();
-  SQLLogicalPlanCache::get().clear();
+	  // br->runs(50);
+	  // query_gen->selected_queries({QueryID{13}, QueryID{22}, QueryID{5}});
+	  // br->rerun();
 
-  br->runs(50);
-  query_gen->selected_queries({QueryID{13}, QueryID{22}, QueryID{5}});
-  br->rerun();
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(1'500));
-  br->rerun();
+  // std::this_thread::sleep_for(std::chrono::milliseconds(1'500));
+  // br->rerun();
 
   return 0;
 }
