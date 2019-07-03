@@ -80,7 +80,7 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
   attribute_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,DATA_TYPE,DISTINCT_VALUE_COUNT,IS_NULLABLE\n";
 
   std::ofstream segment_meta_data_csv_file("segment_meta_data.csv");
-  segment_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,CHUNK_ID,ENCODING,COMPRESSION,SIZE\n";
+  segment_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,CHUNK_ID,ENCODING,COMPRESSION,ROW_COUNT,SIZE_IN_BYTES\n";
 
   uint16_t next_table_id = 0;
   uint16_t next_attribute_id = 0;
@@ -162,7 +162,7 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
           }
         }
 
-        segment_meta_data_csv_file << "," << encoded_segment->estimate_memory_usage() << "\n";
+        segment_meta_data_csv_file << "," << segment->size() << "," << encoded_segment->estimate_memory_usage() << "\n";
       }
     }
   }
