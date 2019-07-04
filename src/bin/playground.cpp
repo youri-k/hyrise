@@ -1,6 +1,9 @@
 #include <fstream>
+#include <sstream>
+#include <string>
 #include <iomanip>
 #include <iostream>
+#include <filesystem>
 #include <boost/bimap.hpp>
 
 #include "benchmark_config.hpp"
@@ -46,8 +49,6 @@
 #include "statistics/statistics_objects/equal_distinct_count_histogram.hpp"
 
 using namespace opossum;  // NOLINT
-
-constexpr auto SCALE_FACTOR = 1.0f;
 
 typedef boost::bimap<std::string, uint16_t> table_name_id_bimap;
 typedef table_name_id_bimap::value_type table_name_id;
@@ -112,20 +113,19 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
       auto distinct_value_count = size_t{0};
       if (table->table_statistics() && column_id < table->table_statistics()->column_statistics.size()) {
         const auto base_attribute_statistics = table->table_statistics()->column_statistics[column_id];
-	    resolve_data_type(data_type, [&](const auto column_data_type) {
-	      using ColumnDataType = typename decltype(column_data_type)::type;
+  	    resolve_data_type(data_type, [&](const auto column_data_type) {
+  	      using ColumnDataType = typename decltype(column_data_type)::type;
 
-	      const auto attribute_statistics = std::dynamic_pointer_cast<AttributeStatistics<ColumnDataType>>(base_attribute_statistics);
-	      if (attribute_statistics) {
-	        const auto equal_distinct_count_histogram = std::dynamic_pointer_cast<EqualDistinctCountHistogram<ColumnDataType>>(attribute_statistics->histogram);
-	        if (equal_distinct_count_histogram) {
-	          distinct_value_count = static_cast<size_t>(equal_distinct_count_histogram->total_distinct_count());
-	        }
-	      }
-	    });
-	  }
+  	      const auto attribute_statistics = std::dynamic_pointer_cast<AttributeStatistics<ColumnDataType>>(base_attribute_statistics);
+  	      if (attribute_statistics) {
+  	        const auto equal_distinct_count_histogram = std::dynamic_pointer_cast<EqualDistinctCountHistogram<ColumnDataType>>(attribute_statistics->histogram);
+  	        if (equal_distinct_count_histogram) {
+  	          distinct_value_count = static_cast<size_t>(equal_distinct_count_histogram->total_distinct_count());
+  	        }
+  	      }
+  	    });
+  	  }
 
-      // TODO(Bouncner): get distinct count via histogram as soon as we have merged the current master
       attribute_meta_data_csv_file << attr_table_id.str() << "," << table_name << "," << column_name << ","
                                    << data_type_to_string.left.at(column_def.data_type) << "," << distinct_value_count << ","
                                    << (column_def.nullable ? "TRUE" : "FALSE") << "\n";
@@ -173,31 +173,86 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
 }
 
 int main(int argc, const char* argv[]) {
-  auto config = std::make_shared<BenchmarkConfig>(BenchmarkConfig::get_default_config());
-  config->max_runs = 1;
-  config->enable_visualization = false;
-  config->output_file_path = "perf.json";
-  config->chunk_size = 100'000;
-  config->cache_binary_tables = true;
+  constexpr auto SCALE_FACTOR = 1.0f;
 
-  const std::vector<BenchmarkItemID> tpch_query_ids = {BenchmarkItemID{6}};
+  auto start_config = std::make_shared<BenchmarkConfig>(BenchmarkConfig::get_default_config());
+  start_config->max_runs = 1;
+  start_config->enable_visualization = false;
+  start_config->chunk_size = 100'000;
+  start_config->cache_binary_tables = true;
+
+  const std::vector<BenchmarkItemID> tpch_query_ids = {BenchmarkItemID{5}};
   const bool use_prepared_statements = false;
+  auto start_context = BenchmarkRunner::create_context(*start_config);
 
-  auto context = BenchmarkRunner::create_context(*config);
+  auto start_item_runner = std::make_unique<TPCHBenchmarkItemRunner>(start_config, use_prepared_statements, SCALE_FACTOR, tpch_query_ids);
+  BenchmarkRunner(*start_config, std::move(start_item_runner), std::make_unique<TpchTableGenerator>(SCALE_FACTOR, start_config), start_context).run();
 
-  auto item_runner = std::make_unique<TPCHBenchmarkItemRunner>(config, use_prepared_statements, SCALE_FACTOR, tpch_query_ids);
-  BenchmarkRunner(*config, std::move(item_runner), std::make_unique<TpchTableGenerator>(SCALE_FACTOR, config), context)
-      .run();
+  std::string path = "/Users/martin/Programming/compression_selection_python/configurations";
+  for (const auto& entry : std::filesystem::directory_iterator(path)) {
+    const auto conf_path = entry.path();
+    const auto conf_name = conf_path.stem();
 
+    std::cout << "Benchmarking " << conf_name << " ..." << std::endl;
 
-  // StorageManager::get().add_benchmark_runner(br);
-  // auto& query_gen = br->query_generator();
-  // br->run();
+    {
+      auto config = std::make_shared<BenchmarkConfig>(BenchmarkConfig::get_default_config());
+      config->max_runs = 10;
+      config->enable_visualization = false;
+      config->output_file_path = conf_name.string() + ".json";
+      config->chunk_size = 100'000;
+      config->cache_binary_tables = true;
 
-  TableIdentifierMap table_name_table_id_to_map;
-  AttributeIdentifierMap attribute_to_attribute_id_map;
+      auto context = BenchmarkRunner::create_context(*config);
 
-  extract_meta_data(table_name_table_id_to_map, attribute_to_attribute_id_map);
+      std::ifstream configuration_file(entry.path().string());
+      std::string line;
+      std::cout << "Reencoding: " << std::flush;
+      while (std::getline(configuration_file, line))
+      {
+        std::vector<std::string> line_values;
+        std::istringstream linestream(line);
+        std::string value;
+        while (std::getline(linestream, value, ','))
+        {
+          line_values.push_back(value);
+        }
 
+        const auto table_name = line_values[0];
+        const auto column_name = line_values[1];
+        const auto chunk_id = std::stoi(line_values[2]);
+        const auto encoding_type_str = line_values[3];
+        const auto vector_compression_type_str = line_values[4];
+
+        const auto& table = StorageManager::get().get_table(table_name);
+        const auto& chunk = table->get_chunk(ChunkID{chunk_id});
+        const auto& column_id = table->column_id_by_name(column_name);
+        const auto& segment = chunk->get_segment(column_id);
+        const auto& data_type = table->column_data_type(column_id);
+
+        const auto encoding_type = encoding_type_to_string.right.at(encoding_type_str);
+
+        SegmentEncodingSpec spec = {encoding_type};
+        if (vector_compression_type_str != "None") {
+          const auto vector_compression_type = vector_compression_type_to_string.right.at(vector_compression_type_str);
+          spec.vector_compression_type = vector_compression_type;
+        }
+
+        const auto& encoded_segment = ChunkEncoder::encode_segment(segment, data_type, spec);
+        chunk->replace_segment(column_id, encoded_segment);
+        std::cout << "." << std::flush;
+      }
+      std::cout << " done." << std::endl;
+      configuration_file.close();
+
+      auto item_runner = std::make_unique<TPCHBenchmarkItemRunner>(config, use_prepared_statements, SCALE_FACTOR);
+      BenchmarkRunner(*config, std::move(item_runner), nullptr, context).run();
+
+      // TableIdentifierMap table_name_table_id_to_map;
+      // AttributeIdentifierMap attribute_to_attribute_id_map;
+
+      // extract_meta_data(table_name_table_id_to_map, attribute_to_attribute_id_map);
+    }
+  }
   return 0;
 }

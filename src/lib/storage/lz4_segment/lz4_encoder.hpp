@@ -58,7 +58,9 @@ class LZ4Encoder : public SegmentEncoder<LZ4Encoder> {
    * (due to not enough data) the compression ratio suffers, since LZ4 can only view and compress small amounts of data
    * at once (refer to the comment above).
    */
-  static constexpr auto _block_size = size_t{16384u};
+  //static constexpr auto _block_size = size_t{16384u};
+  static constexpr auto _block_size = size_t{64384u};
+
   static_assert(_block_size <= std::numeric_limits<int>::max(),
                 "LZ4 block size can't be larger than the maximum value of a 32 bit signed int");
 

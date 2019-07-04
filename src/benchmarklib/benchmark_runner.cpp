@@ -53,7 +53,9 @@ BenchmarkRunner::BenchmarkRunner(const BenchmarkConfig& config,
     CurrentScheduler::set(scheduler);
   }
 
-  _table_generator->generate_and_store();
+  if (_table_generator) {
+    _table_generator->generate_and_store();
+  }
 
   if (_config.verify) {
     std::cout << "- Loading tables into SQLite for verification." << std::endl;
@@ -349,8 +351,8 @@ void BenchmarkRunner::_create_report(std::ostream& stream) const {
 
   nlohmann::json report{{"context", _context},
                         {"benchmarks", benchmarks},
-                        {"summary", summary},
-                        {"table_generation", _table_generator->metrics}};
+                        {"summary", summary}};
+                        // {"table_generation", _table_generator->metrics}};
 
   stream << std::setw(2) << report << std::endl;
 }
