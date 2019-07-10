@@ -188,7 +188,7 @@ int main(int argc, const char* argv[]) {
   auto start_item_runner = std::make_unique<TPCHBenchmarkItemRunner>(start_config, use_prepared_statements, SCALE_FACTOR, tpch_query_ids);
   BenchmarkRunner(*start_config, std::move(start_item_runner), std::make_unique<TpchTableGenerator>(SCALE_FACTOR, start_config), start_context).run();
 
-  std::string path = "/Users/martin/Programming/compression_selection_python/configurations";
+  std::string path = "/home/Martin.Boissier/configurations_debug";
   for (const auto& entry : std::filesystem::directory_iterator(path)) {
     const auto conf_path = entry.path();
     const auto conf_name = conf_path.stem();
@@ -198,10 +198,12 @@ int main(int argc, const char* argv[]) {
     {
       auto config = std::make_shared<BenchmarkConfig>(BenchmarkConfig::get_default_config());
       config->max_runs = 10;
+      config->max_runs = 1;
       config->enable_visualization = false;
       config->output_file_path = conf_name.string() + ".json";
       config->chunk_size = 100'000;
       config->cache_binary_tables = true;
+      config->enable_visualization = true;
 
       auto context = BenchmarkRunner::create_context(*config);
 
@@ -225,7 +227,7 @@ int main(int argc, const char* argv[]) {
         const auto vector_compression_type_str = line_values[4];
 
         const auto& table = StorageManager::get().get_table(table_name);
-        const auto& chunk = table->get_chunk(ChunkID{chunk_id});
+        const auto& chunk = table->get_chunk(ChunkID{static_cast<uint32_t>(chunk_id)});
         const auto& column_id = table->column_id_by_name(column_name);
         const auto& segment = chunk->get_segment(column_id);
         const auto& data_type = table->column_data_type(column_id);
@@ -244,8 +246,9 @@ int main(int argc, const char* argv[]) {
       }
       std::cout << " done." << std::endl;
       configuration_file.close();
+  const std::vector<BenchmarkItemID> tpch_query_ids2 = {BenchmarkItemID{1}};
 
-      auto item_runner = std::make_unique<TPCHBenchmarkItemRunner>(config, use_prepared_statements, SCALE_FACTOR);
+      auto item_runner = std::make_unique<TPCHBenchmarkItemRunner>(config, use_prepared_statements, SCALE_FACTOR, tpch_query_ids2);
       BenchmarkRunner(*config, std::move(item_runner), nullptr, context).run();
 
       // TableIdentifierMap table_name_table_id_to_map;

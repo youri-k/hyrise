@@ -431,13 +431,13 @@ size_t LZ4Segment<T>::estimate_memory_usage() const {
   }
 
   // The overhead of storing each block in a separate vector.
-  auto block_vector_size = _lz4_blocks.size() * sizeof(pmr_vector<char>);
+  //auto block_vector_size = _lz4_blocks.size() * sizeof(pmr_vector<char>);
 
   /**
    * _string_offsets is used only for string segments and is a nullptr if the string segment does not contain any data
    * (i.e., no rows or only rows with empty strings).
    */
-  return sizeof(*this) + _compressed_size + bool_size + block_vector_size;
+  return sizeof(*this) + _compressed_size + bool_size;
 }
 
 template <typename T>
