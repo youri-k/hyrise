@@ -39,11 +39,11 @@ class FixedStringIterator : public boost::iterator_facade<FixedStringIterator<On
 
   // We have a couple of NOLINTs here becaues the facade expects these method names:
 
-  bool equal(FixedStringIterator const& other) const {  // NOLINT
+  bool equal(const FixedStringIterator& other) const {  // NOLINT
     return &_chars == &other._chars && _pos == other._pos;
   }
 
-  size_t distance_to(FixedStringIterator const& other) const {  // NOLINT
+  size_t distance_to(const FixedStringIterator& other) const {  // NOLINT
     if (_string_length == 0) return 0;
     return (std::intptr_t(other._pos) - std::intptr_t(this->_pos)) / std::intptr_t(_string_length);
   }

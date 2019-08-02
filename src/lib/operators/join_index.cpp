@@ -294,7 +294,7 @@ void JoinIndex::_data_join_two_segments_using_index(ProbeIterator probe_iter, Pr
                                                     const ChunkID probe_chunk_id, const ChunkID index_chunk_id,
                                                     const std::shared_ptr<BaseIndex>& index) {
   for (; probe_iter != probe_end; ++probe_iter) {
-    const auto probe_side_position = *probe_iter;
+    const auto& probe_side_position = *probe_iter;
     const auto index_ranges = _index_ranges_for_value(probe_side_position, index);
     for (const auto& [index_begin, index_end] : index_ranges) {
       _append_matches(index_begin, index_end, probe_side_position.chunk_offset(), probe_chunk_id, index_chunk_id);
@@ -308,7 +308,7 @@ void JoinIndex::_reference_join_two_segments_using_index(
     const std::shared_ptr<BaseIndex>& index, const std::shared_ptr<const PosList>& reference_segment_pos_list) {
   for (; probe_iter != probe_end; ++probe_iter) {
     PosList index_scan_pos_list;
-    const auto probe_side_position = *probe_iter;
+    const auto& probe_side_position = *probe_iter;
     const auto index_ranges = _index_ranges_for_value(probe_side_position, index);
     for (const auto& [index_begin, index_end] : index_ranges) {
       std::transform(index_begin, index_end, std::back_inserter(index_scan_pos_list),
@@ -330,7 +330,7 @@ void JoinIndex::_reference_join_two_segments_using_index(
 }
 
 template <typename SegmentPosition>
-const std::vector<IndexRange> JoinIndex::_index_ranges_for_value(SegmentPosition probe_side_position,
+const std::vector<IndexRange> JoinIndex::_index_ranges_for_value(const SegmentPosition& probe_side_position,
                                                                  const std::shared_ptr<BaseIndex>& index) const {
   std::vector<IndexRange> index_ranges{};
   index_ranges.reserve(2);

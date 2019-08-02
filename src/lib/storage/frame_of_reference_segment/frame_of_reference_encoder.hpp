@@ -56,7 +56,7 @@ class FrameOfReferenceEncoder : public SegmentEncoder<FrameOfReferenceEncoder> {
         auto value_block_it = current_value_block.begin();
         for (; value_block_it != current_value_block.end() && segment_it != segment_end;
              ++value_block_it, ++segment_it) {
-          const auto segment_value = *segment_it;
+          const auto& segment_value = *segment_it;
 
           *value_block_it = segment_value.is_null() ? T{0u} : segment_value.value();
           null_values.push_back(segment_value.is_null());

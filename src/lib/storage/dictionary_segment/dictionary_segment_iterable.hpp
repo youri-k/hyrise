@@ -71,6 +71,7 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<Iterator<ZsIteratorType, DictionaryIteratorType>, SegmentPosition<T>>;
 
     void increment() {
       ++_attribute_it;
@@ -91,7 +92,8 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
 
     std::ptrdiff_t distance_to(const Iterator& other) const { return other._attribute_it - _attribute_it; }
 
-    SegmentPosition<T> dereference() const {
+   protected:
+    SegmentPosition<T> _on_dereference() const {
       const auto value_id = static_cast<ValueID>(*_attribute_it);
       const auto is_null = (value_id == _null_value_id);
 
@@ -127,8 +129,10 @@ class DictionarySegmentIterable : public PointAccessibleSegmentIterable<Dictiona
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<PointAccessIterator<ZsDecompressorType, DictionaryIteratorType>,
+                                              SegmentPosition<T>>;
 
-    SegmentPosition<T> dereference() const {
+    SegmentPosition<T> _on_dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
 
       const auto value_id = _attribute_decompressor->get(chunk_offsets.offset_in_referenced_chunk);

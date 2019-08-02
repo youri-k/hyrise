@@ -70,7 +70,7 @@ class JoinIndex : public AbstractJoinOperator {
                                                 const std::shared_ptr<const PosList>& reference_segment_pos_list);
 
   template <typename SegmentPosition>
-  const std::vector<IndexRange> _index_ranges_for_value(SegmentPosition probe_side_position,
+  const std::vector<IndexRange> _index_ranges_for_value(const SegmentPosition& probe_side_position,
                                                         const std::shared_ptr<BaseIndex>& index) const;
 
   void _append_matches(const BaseIndex::Iterator& range_begin, const BaseIndex::Iterator& range_end,

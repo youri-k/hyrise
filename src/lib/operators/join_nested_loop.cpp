@@ -45,12 +45,12 @@ join_two_typed_segments(const BinaryFunctor& func, LeftIterator left_it, LeftIte
                         RightIterator right_begin, RightIterator right_end, const ChunkID chunk_id_left,
                         const ChunkID chunk_id_right, const JoinNestedLoop::JoinParams& params) {
   for (; left_it != left_end; ++left_it) {
-    const auto left_value = *left_it;
+    const auto& left_value = *left_it;
 
     const auto left_row_id = RowID{chunk_id_left, left_value.chunk_offset()};
 
     for (auto right_it = right_begin; right_it != right_end; ++right_it) {
-      const auto right_value = *right_it;
+      const auto& right_value = *right_it;
       const auto right_row_id = RowID{chunk_id_right, right_value.chunk_offset()};
 
       // AntiNullAsTrue is the only join mode where NULLs in any operand lead to a match. For all other

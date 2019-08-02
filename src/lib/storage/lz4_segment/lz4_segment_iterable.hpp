@@ -82,6 +82,7 @@ class LZ4SegmentIterable : public PointAccessibleSegmentIterable<LZ4SegmentItera
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<Iterator<ValueIterator>, SegmentPosition<T>>;
 
     void increment() {
       ++_chunk_offset;
@@ -114,7 +115,7 @@ class LZ4SegmentIterable : public PointAccessibleSegmentIterable<LZ4SegmentItera
       return std::ptrdiff_t{other._chunk_offset} - std::ptrdiff_t{_chunk_offset};
     }
 
-    SegmentPosition<T> dereference() const { return SegmentPosition<T>{*_data_it, *_null_value_it, _chunk_offset}; }
+    SegmentPosition<T> _on_dereference() const { return SegmentPosition<T>{*_data_it, *_null_value_it, _chunk_offset}; }
 
    private:
     ChunkOffset _chunk_offset;
@@ -140,8 +141,9 @@ class LZ4SegmentIterable : public PointAccessibleSegmentIterable<LZ4SegmentItera
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<PointAccessIterator<ValueIterator>, SegmentPosition<T>>;
 
-    SegmentPosition<T> dereference() const {
+    SegmentPosition<T> _on_dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
       const auto value = _data[chunk_offsets.offset_in_poslist];
       const auto is_null = *_null_values && (**_null_values)[chunk_offsets.offset_in_referenced_chunk];

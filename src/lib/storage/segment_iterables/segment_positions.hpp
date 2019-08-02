@@ -19,14 +19,15 @@ namespace opossum {
  * declared using `final`.
  */
 template <typename T>
-class AbstractSegmentPosition {
+class AbstractSegmentPosition : public Noncopyable {
  public:
   using Type = T;
 
  public:
   AbstractSegmentPosition() = default;
-  AbstractSegmentPosition(const AbstractSegmentPosition&) = default;
   virtual ~AbstractSegmentPosition() = default;
+  AbstractSegmentPosition(AbstractSegmentPosition&&) = default;
+  AbstractSegmentPosition& operator=(AbstractSegmentPosition&&) = default;
 
   virtual const T& value() const = 0;
   virtual bool is_null() const = 0;
@@ -50,8 +51,12 @@ class SegmentPosition : public AbstractSegmentPosition<T> {
  public:
   static constexpr bool Nullable = true;
 
+  SegmentPosition(){}
   SegmentPosition(const T& value, const bool null_value, const ChunkOffset& chunk_offset)
       : _value{value}, _null_value{null_value}, _chunk_offset{chunk_offset} {}
+  // Need to explicitly
+  SegmentPosition(SegmentPosition&&) = default;
+  SegmentPosition& operator=(SegmentPosition&&) = default;
 
   const T& value() const final { return _value; }
   bool is_null() const final { return _null_value; }
@@ -59,9 +64,9 @@ class SegmentPosition : public AbstractSegmentPosition<T> {
 
  private:
   // The alignment improves the suitability of the iterator for (auto-)vectorization
-  alignas(8) const T _value;
-  alignas(8) const bool _null_value;
-  alignas(8) const ChunkOffset _chunk_offset;
+  alignas(8) T _value{};
+  alignas(8) bool _null_value{};
+  alignas(8) ChunkOffset _chunk_offset{};
 };
 
 /**
@@ -74,6 +79,7 @@ class NonNullSegmentPosition : public AbstractSegmentPosition<T> {
  public:
   static constexpr bool Nullable = false;
 
+  NonNullSegmentPosition() {}
   NonNullSegmentPosition(const T& value, const ChunkOffset& chunk_offset)
       : _value{value}, _chunk_offset{chunk_offset} {}
 
@@ -83,8 +89,8 @@ class NonNullSegmentPosition : public AbstractSegmentPosition<T> {
 
  private:
   // The alignment improves the suitability of the iterator for (auto-)vectorization
-  alignas(8) const T _value;
-  alignas(8) const ChunkOffset _chunk_offset;
+  alignas(8) T _value{};
+  alignas(8) ChunkOffset _chunk_offset{};
 };
 
 /**
@@ -98,6 +104,7 @@ class IsNullSegmentPosition : public AbstractSegmentPosition<boost::blank> {
  public:
   static constexpr bool Nullable = true;
 
+  IsNullSegmentPosition() {}
   IsNullSegmentPosition(const bool null_value, const ChunkOffset& chunk_offset)
       : _null_value{null_value}, _chunk_offset{chunk_offset} {}
 
@@ -108,8 +115,8 @@ class IsNullSegmentPosition : public AbstractSegmentPosition<boost::blank> {
  private:
   // The alignment improves the suitability of the iterator for (auto-)vectorization
   static constexpr auto _blank = boost::blank{};
-  alignas(8) const bool _null_value;
-  alignas(8) const ChunkOffset _chunk_offset;
+  alignas(8) bool _null_value{};
+  alignas(8) ChunkOffset _chunk_offset{};
 };
 
 }  // namespace opossum

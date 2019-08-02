@@ -36,7 +36,7 @@ class RunLengthEncoder : public SegmentEncoder<RunLengthEncoder> {
       auto current_index = 0u;
 
       for (; it != end; ++it) {
-        auto segment_value = *it;
+        auto& segment_value = *it;
 
         const auto previous_value = current_value;
         const auto is_previous_null = is_current_null;

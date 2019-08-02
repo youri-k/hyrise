@@ -84,7 +84,7 @@ class LZ4Encoder : public SegmentEncoder<LZ4Encoder> {
       // iterate over the segment to access the values and increment the row index to copy values and null flags
       auto row_index = size_t{0u};
       for (; it != end; ++it) {
-        const auto segment_value = *it;
+        const auto& segment_value = *it;
         const auto contains_null = segment_value.is_null();
         values[row_index] = segment_value.value();
         null_values[row_index] = contains_null;
@@ -187,7 +187,7 @@ class LZ4Encoder : public SegmentEncoder<LZ4Encoder> {
       // values vectors
       auto row_index = size_t{0};
       for (; it != end; ++it) {
-        const auto segment_element = *it;
+        const auto& segment_element = *it;
         const auto contains_null = segment_element.is_null();
         null_values[row_index] = contains_null;
         segment_contains_null = segment_contains_null || contains_null;

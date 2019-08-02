@@ -261,6 +261,7 @@ enum class EraseTypes { OnlyInDebugBuild, Always };
 class Noncopyable {
  protected:
   Noncopyable() = default;
+  // You will need to explicitly default move constructor / assignments in derived classes, too.
   Noncopyable(Noncopyable&&) noexcept = default;
   Noncopyable& operator=(Noncopyable&&) noexcept = default;
   ~Noncopyable() = default;
