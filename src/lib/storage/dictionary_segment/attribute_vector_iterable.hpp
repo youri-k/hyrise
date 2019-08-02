@@ -56,6 +56,7 @@ class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeV
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<Iterator<ZsIteratorType>, SegmentPosition<ValueID>>;
 
     void increment() {
       ++_attribute_it;
@@ -76,7 +77,7 @@ class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeV
 
     std::ptrdiff_t distance_to(const Iterator& other) const { return other._attribute_it - _attribute_it; }
 
-    SegmentPosition<ValueID> dereference() const {
+    SegmentPosition<ValueID> _on_dereference() const {
       const auto value_id = static_cast<ValueID>(*_attribute_it);
       const auto is_null = (value_id == _null_value_id);
 

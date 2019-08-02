@@ -73,7 +73,7 @@ std::shared_ptr<BaseSegment> ChunkEncoder::encode_segment(const std::shared_ptr<
         null_values.resize(segment_size);
 
         for (auto current_position = size_t{0}; it != end; ++it, ++current_position) {
-          const auto segment_item = *it;
+          const auto& segment_item = *it;
           const auto is_null = segment_item.is_null();
           null_values[current_position] = is_null;
           if (!is_null) {

@@ -187,7 +187,7 @@ class LZ4Encoder : public SegmentEncoder<LZ4Encoder> {
       // values vectors
       auto row_index = size_t{0};
       for (; it != end; ++it) {
-        const auto segment_element = *it;
+        const auto& segment_element = *it;
         const auto contains_null = segment_element.is_null();
         null_values[row_index] = contains_null;
         segment_contains_null = segment_contains_null || contains_null;

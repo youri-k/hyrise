@@ -34,11 +34,29 @@ namespace opossum {
  *
  *   void increment() { ... }
  *   bool equal(const Iterator& other) const { return false; }
- *   Value dereference() const { return Value{}; }
+ *   Value _on_dereference() const { return Value{}; }
  * };
  */
+  // TODO doc that *it won't work
+
 template <typename Derived, typename Value>
-class BaseSegmentIterator : public boost::iterator_facade<Derived, Value, boost::random_access_traversal_tag, Value> {};
+class BaseSegmentIterator : public boost::iterator_facade<Derived, Value, boost::random_access_traversal_tag, const Value&> {
+ protected:
+  // Store the SegmentPosition in the iterator so that we can return a reference to it. This saves us some copies
+  // otherwise caused by boost's operator_arrow_dispatch.
+  const Value& dereference() const {
+    _last_derefenced_value = std::move(static_cast<const Derived*>(this)->_on_dereference());
+    return _last_derefenced_value;
+  }
+
+  BaseSegmentIterator() {}
+  BaseSegmentIterator(const BaseSegmentIterator& other) {
+    // TODO doc
+  }
+  BaseSegmentIterator& operator=(const BaseSegmentIterator& other) {return *this;}
+
+  mutable Value _last_derefenced_value{};
+};
 
 /**
  * Mapping between chunk offset into a reference segment and
