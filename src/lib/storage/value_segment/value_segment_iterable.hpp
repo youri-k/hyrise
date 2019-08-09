@@ -63,6 +63,7 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<NonNullIterator, NonNullSegmentPosition<T>>;
 
     void increment() {
       ++_value_it;
@@ -83,7 +84,7 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
 
     std::ptrdiff_t distance_to(const NonNullIterator& other) const { return other._value_it - _value_it; }
 
-    NonNullSegmentPosition<T> dereference() const { return NonNullSegmentPosition<T>{*_value_it, _chunk_offset}; }
+    NonNullSegmentPosition<T> _on_dereference() const { return NonNullSegmentPosition<T>{*_value_it, _chunk_offset}; }
 
    private:
     ValueIterator _value_it;
@@ -106,6 +107,7 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<Iterator, SegmentPosition<T>>;
 
     void increment() {
       ++_value_it;
@@ -129,7 +131,7 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
 
     std::ptrdiff_t distance_to(const Iterator& other) const { return other._value_it - _value_it; }
 
-    SegmentPosition<T> dereference() const { return SegmentPosition<T>{*_value_it, *_null_value_it, _chunk_offset}; }
+    SegmentPosition<T> _on_dereference() const { return SegmentPosition<T>{*_value_it, *_null_value_it, _chunk_offset}; }
 
    private:
     ValueIterator _value_it;
@@ -154,9 +156,9 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
           _values_begin_it{values_begin_it} {}
 
    private:
-    friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<NonNullPointAccessIterator, SegmentPosition<T>>;
 
-    SegmentPosition<T> dereference() const {
+    SegmentPosition<T> _on_dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
 
       return SegmentPosition<T>{*(_values_begin_it + chunk_offsets.offset_in_referenced_chunk), false,
@@ -184,9 +186,9 @@ class ValueSegmentIterable : public PointAccessibleSegmentIterable<ValueSegmentI
           _null_values_begin_it{null_values_begin_it} {}
 
    private:
-    friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<PointAccessIterator, SegmentPosition<T>>;
 
-    SegmentPosition<T> dereference() const {
+    SegmentPosition<T> _on_dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
 
       return SegmentPosition<T>{*(_values_begin_it + chunk_offsets.offset_in_referenced_chunk),

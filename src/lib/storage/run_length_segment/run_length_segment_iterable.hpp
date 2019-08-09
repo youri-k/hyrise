@@ -61,6 +61,7 @@ class RunLengthSegmentIterable : public PointAccessibleSegmentIterable<RunLength
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<Iterator, SegmentPosition<T>>;
 
     void increment() {
       ++_current_position;
@@ -102,7 +103,7 @@ class RunLengthSegmentIterable : public PointAccessibleSegmentIterable<RunLength
       return std::ptrdiff_t{other._current_position} - std::ptrdiff_t{_current_position};
     }
 
-    SegmentPosition<T> dereference() const {
+    SegmentPosition<T> _on_dereference() const {
       return SegmentPosition<T>{*_value_it, *_null_value_it, _current_position};
     }
 
@@ -147,8 +148,9 @@ class RunLengthSegmentIterable : public PointAccessibleSegmentIterable<RunLength
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<PointAccessIterator, SegmentPosition<T>>;
 
-    SegmentPosition<T> dereference() const {
+    SegmentPosition<T> _on_dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
 
       const auto current_chunk_offset = chunk_offsets.offset_in_referenced_chunk;

@@ -47,6 +47,7 @@ class NullValueVectorIterable : public PointAccessibleSegmentIterable<NullValueV
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<Iterator, IsNullSegmentPosition>;
 
     void increment() { ++_null_value_it; }
     void decrement() { --_null_value_it; }
@@ -54,7 +55,7 @@ class NullValueVectorIterable : public PointAccessibleSegmentIterable<NullValueV
     bool equal(const Iterator& other) const { return _null_value_it == other._null_value_it; }
     std::ptrdiff_t distance_to(const Iterator& other) const { return other._null_value_it - _null_value_it; }
 
-    IsNullSegmentPosition dereference() const {
+    IsNullSegmentPosition _on_dereference() const {
       return IsNullSegmentPosition{*_null_value_it,
                                    static_cast<ChunkOffset>(std::distance(_begin_null_value_it, _null_value_it))};
     }
@@ -79,8 +80,9 @@ class NullValueVectorIterable : public PointAccessibleSegmentIterable<NullValueV
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<PointAccessIterator, IsNullSegmentPosition>;
 
-    IsNullSegmentPosition dereference() const {
+    IsNullSegmentPosition _on_dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
 
       return IsNullSegmentPosition{_null_values[chunk_offsets.offset_in_referenced_chunk],

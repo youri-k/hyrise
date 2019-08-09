@@ -75,6 +75,7 @@ class FrameOfReferenceSegmentIterable : public PointAccessibleSegmentIterable<Fr
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<Iterator<OffsetValueIteratorT>, SegmentPosition<T>>;
 
     void increment() {
       ++_offset_value_it;
@@ -118,7 +119,7 @@ class FrameOfReferenceSegmentIterable : public PointAccessibleSegmentIterable<Fr
 
     std::ptrdiff_t distance_to(const Iterator& other) const { return other._offset_value_it - _offset_value_it; }
 
-    SegmentPosition<T> dereference() const {
+    SegmentPosition<T> _on_dereference() const {
       const auto value = static_cast<T>(*_offset_value_it) + *_block_minimum_it;
       return SegmentPosition<T>{value, *_null_value_it, _chunk_offset};
     }
@@ -157,8 +158,9 @@ class FrameOfReferenceSegmentIterable : public PointAccessibleSegmentIterable<Fr
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<PointAccessIterator<OffsetValueDecompressorT>, SegmentPosition<T>>;
 
-    SegmentPosition<T> dereference() const {
+    SegmentPosition<T> _on_dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
 
       static constexpr auto block_size = FrameOfReferenceSegment<T>::block_size;

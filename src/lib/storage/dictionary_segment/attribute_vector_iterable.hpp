@@ -105,8 +105,9 @@ class AttributeVectorIterable : public PointAccessibleSegmentIterable<AttributeV
 
    private:
     friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+    friend class BaseSegmentIterator<PointAccessIterator<ZsDecompressorType>, SegmentPosition<ValueID>>;
 
-    SegmentPosition<ValueID> dereference() const {
+    SegmentPosition<ValueID> _on_dereference() const {
       const auto& chunk_offsets = this->chunk_offsets();
 
       const auto value_id =

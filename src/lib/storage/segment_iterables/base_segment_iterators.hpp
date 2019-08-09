@@ -34,8 +34,11 @@ namespace opossum {
  *
  *   void increment() { ... }
  *   bool equal(const Iterator& other) const { return false; }
+ *
  *   Value _on_dereference() const { return Value{}; }
  * };
+ *
+ * dereference() returns a noncopyable SegmentPosition
  */
   // TODO doc that *it won't work
 
@@ -43,9 +46,10 @@ template <typename Derived, typename Value>
 class BaseSegmentIterator : public boost::iterator_facade<Derived, Value, boost::random_access_traversal_tag, const Value&> {
  protected:
   // Store the SegmentPosition in the iterator so that we can return a reference to it. This saves us some copies
-  // otherwise caused by boost's operator_arrow_dispatch.
-  const Value& dereference() const {
-    _last_derefenced_value = std::move(static_cast<const Derived*>(this)->_on_dereference());
+  // otherwise caused by boost's operator_arrow_dispatch. Using virtual final to prevent derived classes from
+  // implementing dereference() at zero cost.
+  virtual const Value& dereference() const final {
+    _last_derefenced_value = static_cast<const Derived*>(this)->_on_dereference();
     return _last_derefenced_value;
   }
 

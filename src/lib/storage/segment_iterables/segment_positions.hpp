@@ -26,6 +26,8 @@ class AbstractSegmentPosition : public Noncopyable {
  public:
   AbstractSegmentPosition() = default;
   virtual ~AbstractSegmentPosition() = default;
+  AbstractSegmentPosition(AbstractSegmentPosition&&) = default;
+  AbstractSegmentPosition& operator=(AbstractSegmentPosition&&) = default;
 
   virtual const T& value() const = 0;
   virtual bool is_null() const = 0;
@@ -52,8 +54,9 @@ class SegmentPosition : public AbstractSegmentPosition<T> {
   SegmentPosition(){}
   SegmentPosition(const T& value, const bool null_value, const ChunkOffset& chunk_offset)
       : _value{value}, _null_value{null_value}, _chunk_offset{chunk_offset} {}
-  // Need to explicitly
-  SegmentPosition& operator=(SegmentPosition&&) {return *this;} // TODO
+  // TODO doc Need to explicitly
+  SegmentPosition(SegmentPosition&&) = default;
+  SegmentPosition& operator=(SegmentPosition&&) = default;
 
   const T& value() const final { return _value; }
   bool is_null() const final { return _null_value; }

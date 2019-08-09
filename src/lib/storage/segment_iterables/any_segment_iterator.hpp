@@ -118,7 +118,7 @@ class AnySegmentIterator : public BaseSegmentIterator<AnySegmentIterator<T>, Seg
   /**@}*/
 
  public:
-  AnySegmentIterator(const AnySegmentIterator& other) : _wrapper{other._wrapper->clone()} {}
+  AnySegmentIterator(const AnySegmentIterator& other) : BaseSegmentIterator<AnySegmentIterator<T>, SegmentPosition<T>>(other), _wrapper{other._wrapper->clone()} {}
   AnySegmentIterator& operator=(const AnySegmentIterator& other) {
     if (this == &other) return *this;
     _wrapper = other._wrapper->clone();
@@ -127,6 +127,7 @@ class AnySegmentIterator : public BaseSegmentIterator<AnySegmentIterator<T>, Seg
 
  private:
   friend class boost::iterator_core_access;  // grants the boost::iterator_facade access to the private interface
+  friend class BaseSegmentIterator<AnySegmentIterator<T>, SegmentPosition<T>>;
 
   void increment() { _wrapper->increment(); }
 
@@ -140,7 +141,7 @@ class AnySegmentIterator : public BaseSegmentIterator<AnySegmentIterator<T>, Seg
     return _wrapper->distance_to(other._wrapper.get());
   }
 
-  SegmentPosition<T> dereference() const { return _wrapper->dereference(); }
+  SegmentPosition<T> _on_dereference() const { return _wrapper->dereference(); }
 
  private:
   std::unique_ptr<opossum::detail::AnySegmentIteratorWrapperBase<T>> _wrapper;
