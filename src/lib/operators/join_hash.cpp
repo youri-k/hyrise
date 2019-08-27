@@ -352,17 +352,17 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
     /**
      * 1.2 Schedule a JobTask for materialization, optional radix partitioning for the probe side
      */
-    jobs.emplace_back(std::make_shared<JobTask>([&]() {
-      // Materialize probe column.
-      if (keep_nulls_probe_column) {
-        materialized_probe_column = materialize_input<ProbeColumnType, HashedType, true>(
-            _probe_input_table, _column_ids.second, probe_chunk_offsets, histograms_probe_column, _radix_bits);
-      } else {
-        materialized_probe_column = materialize_input<ProbeColumnType, HashedType, false>(
-            _probe_input_table, _column_ids.second, probe_chunk_offsets, histograms_probe_column, _radix_bits);
-      }
+    if (_radix_bits > 0) {
+      jobs.emplace_back(std::make_shared<JobTask>([&]() {
+        // Materialize probe column.
+        if (keep_nulls_probe_column) {
+          materialized_probe_column = materialize_input<ProbeColumnType, HashedType, true>(
+              _probe_input_table, _column_ids.second, probe_chunk_offsets, histograms_probe_column, _radix_bits);
+        } else {
+          materialized_probe_column = materialize_input<ProbeColumnType, HashedType, false>(
+              _probe_input_table, _column_ids.second, probe_chunk_offsets, histograms_probe_column, _radix_bits);
+        }
 
-      if (_radix_bits > 0) {
         // radix partition the probe column.
         if (keep_nulls_probe_column) {
           radix_probe_column = partition_radix_parallel<ProbeColumnType, HashedType, true>(
@@ -373,12 +373,9 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
         }
         // After the data in materialized_probe_column has been partitioned, it is not needed anymore.
         materialized_probe_column.clear();
-      } else {
-        // short cut: skip radix partitioning and use materialized data directly
-        radix_probe_column = std::move(materialized_probe_column);
-      }
-    }));
-    jobs.back()->schedule();
+      }));
+      jobs.back()->schedule();
+    }
 
     CurrentScheduler::wait_for_tasks(jobs);
 
@@ -402,7 +399,7 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
      */
     std::vector<PosList> build_side_pos_lists;
     std::vector<PosList> probe_side_pos_lists;
-    const size_t partition_count = radix_probe_column.partition_offsets.size();
+    const size_t partition_count = std::max(size_t{1}, radix_probe_column.partition_offsets.size());
     build_side_pos_lists.resize(partition_count);
     probe_side_pos_lists.resize(partition_count);
 
@@ -418,40 +415,49 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
     The workers for each radix partition P should be scheduled on the same node as the input data:
     buildP, probeP and hash tableP.
     */
-    switch (_mode) {
-      case JoinMode::Inner:
-        probe<ProbeColumnType, HashedType, false>(PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, build_side_pos_lists,  // TODO cleanup
-                                                  probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
-                                                  _secondary_predicates);
-        break;
 
-      case JoinMode::Left:
-      case JoinMode::Right:
-        probe<ProbeColumnType, HashedType, true>(PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, build_side_pos_lists,
-                                                 probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
-                                                 _secondary_predicates);
-        break;
+    const auto run_probe_phase = [&](auto probe_side_accessor){
+      switch (_mode) {
+        case JoinMode::Inner:
+          probe<ProbeColumnType, HashedType, false>(probe_side_accessor, hash_tables, build_side_pos_lists,  // TODO cleanup
+                                                    probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
+                                                    _secondary_predicates);
+          break;
 
-      case JoinMode::Semi:
-        probe_semi_anti<ProbeColumnType, HashedType, JoinMode::Semi>(PartitionedProbeSideAccessor{radix_probe_column}, hash_tables,
-                                                                     probe_side_pos_lists, *_build_input_table,
-                                                                     *_probe_input_table, _secondary_predicates);
-        break;
+        case JoinMode::Left:
+        case JoinMode::Right:
+          probe<ProbeColumnType, HashedType, true>(probe_side_accessor, hash_tables, build_side_pos_lists,
+                                                   probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
+                                                   _secondary_predicates);
+          break;
 
-      case JoinMode::AntiNullAsTrue:
-        probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsTrue>(
-            PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
-            _secondary_predicates);
-        break;
+        case JoinMode::Semi:
+          probe_semi_anti<ProbeColumnType, HashedType, JoinMode::Semi>(probe_side_accessor, hash_tables,
+                                                                       probe_side_pos_lists, *_build_input_table,
+                                                                       *_probe_input_table, _secondary_predicates);
+          break;
 
-      case JoinMode::AntiNullAsFalse:
-        probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsFalse>(
-            PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
-            _secondary_predicates);
-        break;
+        case JoinMode::AntiNullAsTrue:
+          probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsTrue>(
+              probe_side_accessor, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
+              _secondary_predicates);
+          break;
 
-      default:
-        Fail("JoinMode not supported by JoinHash");
+        case JoinMode::AntiNullAsFalse:
+          probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsFalse>(
+              probe_side_accessor, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
+              _secondary_predicates);
+          break;
+
+        default:
+          Fail("JoinMode not supported by JoinHash");
+      }
+    };
+
+    if (_radix_bits > 0) {
+      run_probe_phase(PartitionedProbeSideAccessor{radix_probe_column});
+    } else {
+      run_probe_phase(UnmaterializedProbeSideAccessor<ProbeColumnType>{*_probe_input_table, _column_ids.second});
     }
 
     // After probing, the partitioned columns are not needed anymore.

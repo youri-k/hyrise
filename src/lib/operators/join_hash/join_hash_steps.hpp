@@ -522,12 +522,12 @@ class PartitionedProbeSideAccessor final {
     return _partition_offsets;
   }
 
-  bool is_null(size_t position) const {
+  bool is_null(const size_t position) const {
     DebugAssert(!_null_value_bitvector.empty(), "Trying to check non-nullable for NULL value");
     return _null_value_bitvector[position];
   }
 
-  const PartitionedElement<ProbeColumnType>& get_entry(size_t position) const {
+  const PartitionedElement<ProbeColumnType>& get_entry(const size_t position) const {
     return _elements[position];
   }
 
@@ -535,6 +535,44 @@ protected:
   const std::vector<size_t>& _partition_offsets;
   const Partition<ProbeColumnType>& _elements;
   const std::vector<bool>& _null_value_bitvector;
+};
+
+template <typename ProbeColumnType>
+class UnmaterializedProbeSideAccessor final {
+  // TODO This sucks. Change everything to iterators.
+ public:
+  UnmaterializedProbeSideAccessor(const Table& table, const ColumnID column_id) : _table(table), _column_id(column_id), _partition_offsets{table.row_count()} {}
+
+  const std::vector<size_t>& partition_offsets() const {
+    return _partition_offsets;
+  }
+
+  bool is_null(const size_t position) const {
+    return variant_is_null(_table.get_row(position)[_column_id]);
+  }
+
+  PartitionedElement<ProbeColumnType> get_entry(const size_t position) const {
+    auto pos = position;
+    auto chunk_id = ChunkID{0};
+    while (_table.get_chunk(chunk_id)->size() <= pos) {
+      pos -= _table.get_chunk(chunk_id)->size();
+      chunk_id++;
+    }
+    auto row_id = RowID{chunk_id, static_cast<ChunkOffset>(pos)};
+
+    const auto variant = _table.get_chunk(chunk_id)->get_segment(_column_id)->operator[](row_id.chunk_offset);
+
+    if(variant_is_null(variant)) {
+      return {row_id, ProbeColumnType{}};
+    }
+
+    return {row_id, boost::get<ProbeColumnType>(variant)};
+  }
+
+protected:
+  const Table& _table;  // TODO shouldn't make it until the end
+  const ColumnID _column_id;
+  const std::vector<size_t> _partition_offsets;
 };
 
 /*
@@ -576,8 +614,8 @@ void probe(const ProbeSideAccessor& probe_side_accessor,
       PosList pos_list_build_side_local;
       PosList pos_list_probe_local;
 
-      if (hash_tables[current_partition_id]) {
-        const auto& hash_table = hash_tables.at(current_partition_id).value();
+      if (hash_tables.at(current_partition_id)) {
+        const auto& hash_table = hash_tables[current_partition_id].value();
 
         // Accessors are not thread-safe, so we create one evaluator per job
         std::optional<MultiPredicateJoinEvaluator> multi_predicate_join_evaluator;
@@ -593,7 +631,7 @@ void probe(const ProbeSideAccessor& probe_side_accessor,
         pos_list_probe_local.reserve(static_cast<size_t>(expected_output_size));
 
         for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
+          const auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
 
           if (mode == JoinMode::Inner && probe_column_element.row_id == NULL_ROW_ID) {
             // From previous joins, we could potentially have NULL values that do not refer to
@@ -773,7 +811,7 @@ void probe_semi_anti(const ProbeSideAccessor& probe_side_accessor,
         // get emitted.
         pos_list_local.reserve(partition_end - partition_begin);
         for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
+          const auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
           pos_list_local.emplace_back(probe_column_element.row_id);
         }
       } else if constexpr (mode == JoinMode::AntiNullAsTrue) {  // NOLINT - doesn't like else if constexpr
@@ -781,7 +819,7 @@ void probe_semi_anti(const ProbeSideAccessor& probe_side_accessor,
         // get emitted. That is, except NULL values, which only get emitted if the build table is empty.
         pos_list_local.reserve(partition_end - partition_begin);
         for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
+          const auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
           // A NULL on the probe side never gets emitted, except when the build table is empty.
           // This is because `NULL NOT IN <empty list>` is actually true
           if (probe_side_accessor.is_null(partition_offset) && build_table.row_count() > 0) {
