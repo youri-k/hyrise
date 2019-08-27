@@ -513,19 +513,45 @@ RadixContainer<T> partition_radix_parallel(const RadixContainer<T>& radix_contai
   return radix_output;
 }
 
+template <typename ProbeColumnType>
+class PartitionedProbeSideAccessor final {
+ public:
+  PartitionedProbeSideAccessor(const RadixContainer<ProbeColumnType>& probe_radix_container) : _partition_offsets(probe_radix_container.partition_offsets), _elements(*probe_radix_container.elements), _null_value_bitvector(*probe_radix_container.null_value_bitvector) {}
+
+  const std::vector<size_t>& partition_offsets() const {
+    return _partition_offsets;
+  }
+
+  bool is_null(size_t position) const {
+    DebugAssert(!_null_value_bitvector.empty(), "Trying to check non-nullable for NULL value");
+    return _null_value_bitvector[position];
+  }
+
+  const PartitionedElement<ProbeColumnType>& get_entry(size_t position) const {
+    return _elements[position];
+  }
+
+protected:
+  const std::vector<size_t>& _partition_offsets;
+  const Partition<ProbeColumnType>& _elements;
+  const std::vector<bool>& _null_value_bitvector;
+};
+
 /*
   In the probe phase we take all partitions from the probe partition, iterate over them and compare each join candidate
   with the values in the hash table. Since build and probe are hashed using the same hash function, we can reduce the
   number of hash tables that need to be looked into to just 1.
   */
-template <typename ProbeColumnType, typename HashedType, bool keep_null_values>
-void probe(const RadixContainer<ProbeColumnType>& probe_radix_container,
+template <typename ProbeColumnType, typename HashedType, bool keep_null_values, typename ProbeSideAccessor>
+void probe(const ProbeSideAccessor& probe_side_accessor,
            const std::vector<std::optional<PosHashTable<HashedType>>>& hash_tables,
            std::vector<PosList>& pos_lists_build_side, std::vector<PosList>& pos_lists_probe_side, const JoinMode mode,
            const Table& build_table, const Table& probe_table,
            const std::vector<OperatorJoinPredicate>& secondary_join_predicates) {
+  const auto& partition_offsets = probe_side_accessor.partition_offsets();
+
   std::vector<std::shared_ptr<AbstractTask>> jobs;
-  jobs.reserve(probe_radix_container.partition_offsets.size());
+  jobs.reserve(partition_offsets.size());
 
   /*
     NUMA notes:
@@ -534,11 +560,11 @@ void probe(const RadixContainer<ProbeColumnType>& probe_radix_container,
     Therefore, inputs for one partition should be located on the same NUMA node,
     and the job that probes that partition should also be on that NUMA node.
   */
-  for (size_t current_partition_id = 0; current_partition_id < probe_radix_container.partition_offsets.size();
+  for (size_t current_partition_id = 0; current_partition_id < partition_offsets.size();
        ++current_partition_id) {
     const auto partition_begin =
-        current_partition_id == 0 ? 0 : probe_radix_container.partition_offsets[current_partition_id - 1];
-    const auto partition_end = probe_radix_container.partition_offsets[current_partition_id];  // make end non-inclusive
+        current_partition_id == 0 ? 0 : partition_offsets[current_partition_id - 1];
+    const auto partition_end = partition_offsets[current_partition_id];  // make end non-inclusive
 
     // Skip empty partitions to avoid empty output chunks
     if (partition_begin == partition_end) {
@@ -547,15 +573,8 @@ void probe(const RadixContainer<ProbeColumnType>& probe_radix_container,
 
     jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id]() {
       // Get information from work queue
-      auto& partition = static_cast<Partition<ProbeColumnType>&>(*probe_radix_container.elements);
       PosList pos_list_build_side_local;
       PosList pos_list_probe_local;
-
-      if constexpr (keep_null_values) {
-        DebugAssert(
-            probe_radix_container.null_value_bitvector->size() == probe_radix_container.elements->size(),
-            "Hash join probe called with NULL consideration but inputs do not store any NULL value information");
-      }
 
       if (hash_tables[current_partition_id]) {
         const auto& hash_table = hash_tables.at(current_partition_id).value();
@@ -574,7 +593,7 @@ void probe(const RadixContainer<ProbeColumnType>& probe_radix_container,
         pos_list_probe_local.reserve(static_cast<size_t>(expected_output_size));
 
         for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          auto& probe_column_element = partition[partition_offset];
+          auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
 
           if (mode == JoinMode::Inner && probe_column_element.row_id == NULL_ROW_ID) {
             // From previous joins, we could potentially have NULL values that do not refer to
@@ -595,7 +614,7 @@ void probe(const RadixContainer<ProbeColumnType>& probe_radix_container,
             // Note, if the materialization/radix partitioning phase did not explicitly consider
             // NULL values, they will not be handed to the probe function.
             if constexpr (keep_null_values) {
-              if ((*probe_radix_container.null_value_bitvector)[partition_offset]) {
+              if (probe_side_accessor.is_null(partition_offset)) {
                 pos_list_build_side_local.emplace_back(NULL_ROW_ID);
                 pos_list_probe_local.emplace_back(probe_column_element.row_id);
                 // ignore found matches and continue with next probe item
@@ -653,7 +672,7 @@ void probe(const RadixContainer<ProbeColumnType>& probe_radix_container,
           pos_list_probe_local.reserve(partition_end - partition_begin);
 
           for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-            auto& row = partition[partition_offset];
+            const auto& row = probe_side_accessor.get_entry(partition_offset);
             pos_list_build_side_local.emplace_back(NULL_ROW_ID);
             pos_list_probe_local.emplace_back(row.row_id);
           }

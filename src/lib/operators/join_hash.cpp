@@ -420,14 +420,14 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
     */
     switch (_mode) {
       case JoinMode::Inner:
-        probe<ProbeColumnType, HashedType, false>(radix_probe_column, hash_tables, build_side_pos_lists,
+        probe<ProbeColumnType, HashedType, false>(PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, build_side_pos_lists,
                                                   probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
                                                   _secondary_predicates);
         break;
 
       case JoinMode::Left:
       case JoinMode::Right:
-        probe<ProbeColumnType, HashedType, true>(radix_probe_column, hash_tables, build_side_pos_lists,
+        probe<ProbeColumnType, HashedType, true>(PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, build_side_pos_lists,
                                                  probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
                                                  _secondary_predicates);
         break;
