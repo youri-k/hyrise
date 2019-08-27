@@ -688,22 +688,21 @@ void probe(const ProbeSideAccessor& probe_side_accessor,
   CurrentScheduler::wait_for_tasks(jobs);
 }
 
-template <typename ProbeColumnType, typename HashedType, JoinMode mode>
-void probe_semi_anti(const RadixContainer<ProbeColumnType>& radix_probe_column,
+template <typename ProbeColumnType, typename HashedType, JoinMode mode, typename ProbeSideAccessor>
+void probe_semi_anti(const ProbeSideAccessor& probe_side_accessor,
                      const std::vector<std::optional<PosHashTable<HashedType>>>& hash_tables,
                      std::vector<PosList>& pos_lists, const Table& build_table, const Table& probe_table,
                      const std::vector<OperatorJoinPredicate>& secondary_join_predicates) {
+  const auto& partition_offsets = probe_side_accessor.partition_offsets();
+
   std::vector<std::shared_ptr<AbstractTask>> jobs;
-  jobs.reserve(radix_probe_column.partition_offsets.size());
+  jobs.reserve(partition_offsets.size());
 
-  [[maybe_unused]] const auto* probe_column_null_values =
-      radix_probe_column.null_value_bitvector ? radix_probe_column.null_value_bitvector.get() : nullptr;
-
-  for (size_t current_partition_id = 0; current_partition_id < radix_probe_column.partition_offsets.size();
+  for (size_t current_partition_id = 0; current_partition_id < partition_offsets.size();
        ++current_partition_id) {
     const auto partition_begin =
-        current_partition_id == 0 ? 0 : radix_probe_column.partition_offsets[current_partition_id - 1];
-    const auto partition_end = radix_probe_column.partition_offsets[current_partition_id];  // make end non-inclusive
+        current_partition_id == 0 ? 0 : partition_offsets[current_partition_id - 1];
+    const auto partition_end = partition_offsets[current_partition_id];  // make end non-inclusive
 
     // Skip empty partitions to avoid empty output chunks
     if (partition_begin == partition_end) {
@@ -712,8 +711,6 @@ void probe_semi_anti(const RadixContainer<ProbeColumnType>& radix_probe_column,
 
     jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id]() {
       // Get information from work queue
-      auto& partition = static_cast<Partition<ProbeColumnType>&>(*radix_probe_column.elements);
-
       PosList pos_list_local;
 
       if (hash_tables[current_partition_id]) {
@@ -725,7 +722,7 @@ void probe_semi_anti(const RadixContainer<ProbeColumnType>& radix_probe_column,
                                                                    secondary_join_predicates);
 
         for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          const auto& probe_column_element = partition[partition_offset];
+          const auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
 
           if constexpr (mode == JoinMode::Semi) {
             // NULLs on the probe side are never emitted
@@ -735,12 +732,12 @@ void probe_semi_anti(const RadixContainer<ProbeColumnType>& radix_probe_column,
           } else if constexpr (mode == JoinMode::AntiNullAsFalse) {  // NOLINT - doesn't like else if constexpr
             // NULL values on the probe side always lead to the tuple being emitted for AntiNullAsFalse, irrespective
             // of secondary predicates (`NULL("as false") AND <anything>` is always false)
-            if ((*probe_column_null_values)[partition_offset]) {
+            if (probe_side_accessor.is_null(partition_offset)) {
               pos_list_local.emplace_back(probe_column_element.row_id);
               continue;
             }
           } else if constexpr (mode == JoinMode::AntiNullAsTrue) {  // NOLINT - doesn't like else if constexpr
-            if ((*probe_column_null_values)[partition_offset]) {
+            if (probe_side_accessor.is_null(partition_offset)) {
               // Primary predicate is TRUE, as long as we do not support secondary predicates with AntiNullAsTrue.
               // This means that the probe value never gets emitted
               continue;
@@ -776,7 +773,7 @@ void probe_semi_anti(const RadixContainer<ProbeColumnType>& radix_probe_column,
         // get emitted.
         pos_list_local.reserve(partition_end - partition_begin);
         for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          auto& probe_column_element = partition[partition_offset];
+          auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
           pos_list_local.emplace_back(probe_column_element.row_id);
         }
       } else if constexpr (mode == JoinMode::AntiNullAsTrue) {  // NOLINT - doesn't like else if constexpr
@@ -784,10 +781,10 @@ void probe_semi_anti(const RadixContainer<ProbeColumnType>& radix_probe_column,
         // get emitted. That is, except NULL values, which only get emitted if the build table is empty.
         pos_list_local.reserve(partition_end - partition_begin);
         for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          auto& probe_column_element = partition[partition_offset];
+          auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
           // A NULL on the probe side never gets emitted, except when the build table is empty.
           // This is because `NULL NOT IN <empty list>` is actually true
-          if ((*probe_column_null_values)[partition_offset] && build_table.row_count() > 0) {
+          if (probe_side_accessor.is_null(partition_offset) && build_table.row_count() > 0) {
             continue;
           }
           pos_list_local.emplace_back(probe_column_element.row_id);

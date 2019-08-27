@@ -420,7 +420,7 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
     */
     switch (_mode) {
       case JoinMode::Inner:
-        probe<ProbeColumnType, HashedType, false>(PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, build_side_pos_lists,
+        probe<ProbeColumnType, HashedType, false>(PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, build_side_pos_lists,  // TODO cleanup
                                                   probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
                                                   _secondary_predicates);
         break;
@@ -433,20 +433,20 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
         break;
 
       case JoinMode::Semi:
-        probe_semi_anti<ProbeColumnType, HashedType, JoinMode::Semi>(radix_probe_column, hash_tables,
+        probe_semi_anti<ProbeColumnType, HashedType, JoinMode::Semi>(PartitionedProbeSideAccessor{radix_probe_column}, hash_tables,
                                                                      probe_side_pos_lists, *_build_input_table,
                                                                      *_probe_input_table, _secondary_predicates);
         break;
 
       case JoinMode::AntiNullAsTrue:
         probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsTrue>(
-            radix_probe_column, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
+            PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
             _secondary_predicates);
         break;
 
       case JoinMode::AntiNullAsFalse:
         probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsFalse>(
-            radix_probe_column, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
+            PartitionedProbeSideAccessor{radix_probe_column}, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
             _secondary_predicates);
         break;
 
