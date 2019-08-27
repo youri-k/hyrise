@@ -188,7 +188,7 @@ int main(int argc, const char* argv[]) {
   auto start_item_runner = std::make_unique<TPCHBenchmarkItemRunner>(start_config, use_prepared_statements, SCALE_FACTOR, tpch_query_ids);
   BenchmarkRunner(*start_config, std::move(start_item_runner), std::make_unique<TpchTableGenerator>(SCALE_FACTOR, start_config), start_context).run();
 
-  std::string path = "/home/Martin.Boissier/configurations_debug";
+  std::string path = "/Users/martin/Programming/compression_selection_python/configurations_debug";
   for (const auto& entry : std::filesystem::directory_iterator(path)) {
     const auto conf_path = entry.path();
     const auto conf_name = conf_path.stem();
