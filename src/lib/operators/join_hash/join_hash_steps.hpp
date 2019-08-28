@@ -523,9 +523,14 @@ class PartitionedProbeSideIterator final {
     return *this;
   }
 
-  PartitionedProbeSideIterator& operator+=(const size_t offset) {
-    _position += offset;
-    return *this;
+  PartitionedProbeSideIterator operator+(const size_t offset) const {
+    auto copy = *this;
+    copy._position += offset;
+    return copy;
+  }
+
+  bool operator!=(const PartitionedProbeSideIterator& other) const {
+    return _position != other._position;
   }
 
   bool is_null() const {
@@ -547,16 +552,41 @@ template <typename ProbeColumnType>
 class UnmaterializedProbeSideIterator final {
   // TODO This sucks. Change everything to iterators.
  public:
-  UnmaterializedProbeSideIterator(const Table& table, const ColumnID column_id) : _table(table), _column_id(column_id) {}
+  UnmaterializedProbeSideIterator(const Table& table, const ColumnID column_id) : _table(table), _column_id(column_id), _current_chunk(_table.chunk_count() > 0 ? _table.get_chunk(ChunkID{0}) : nullptr) {}
 
   UnmaterializedProbeSideIterator& operator++() {
+    if (_chunk_offset + 1 < _current_chunk->size()) {
+      ++_chunk_offset;
+    } else {
+      ++_chunk_id;
+      if (_chunk_id < _table.chunk_count()) _current_chunk = _table.get_chunk(_chunk_id);
+      _chunk_offset = 0;
+    }
+
     ++_position;
     return *this;
   }
 
-  UnmaterializedProbeSideIterator& operator+=(const size_t offset) {
-    _position += offset;
-    return *this;
+  UnmaterializedProbeSideIterator operator+(const size_t offset) const {
+    auto copy = *this;
+
+    auto remaining_offset = offset;
+    while (remaining_offset >= copy._current_chunk->size()) {
+      // Skip the rows remaining in this chunk
+      remaining_offset -= copy._current_chunk->size() - copy._chunk_offset;
+      ++copy._chunk_id;
+      if (copy._chunk_id < copy._table.chunk_count()) copy._current_chunk = copy._table.get_chunk(copy._chunk_id);
+      copy._chunk_offset = 0;
+    }
+    copy._chunk_offset = static_cast<ChunkOffset>(remaining_offset);
+
+    copy._position += offset;
+    return copy;
+  }
+
+  bool operator!=(const UnmaterializedProbeSideIterator& other) const {
+    DebugAssert(&_table == &other._table && _column_id == other._column_id, "Should not need to compare iterators on different columns");
+    return _chunk_id != other._chunk_id || _chunk_offset != other._chunk_offset;
   }
 
   bool is_null() const {
@@ -564,6 +594,9 @@ class UnmaterializedProbeSideIterator final {
   }
 
   PartitionedElement<ProbeColumnType> get_entry() const {
+    DebugAssert(_chunk_id < _table.chunk_count(), "Iterator is already at the end");
+
+    // TODO assert that not null
     auto pos = _position;
     auto chunk_id = ChunkID{0};
     while (_table.get_chunk(chunk_id)->size() <= pos) {
@@ -584,6 +617,9 @@ class UnmaterializedProbeSideIterator final {
 protected:
   const Table& _table;
   const ColumnID _column_id;
+  std::shared_ptr<const Chunk> _current_chunk;
+  ChunkID _chunk_id{0};
+  ChunkOffset _chunk_offset{0};
   size_t _position{0};  // TODO shouldn't make it until the end
 };
 
@@ -640,8 +676,8 @@ void probe(ProbeSideIterator initial_probe_side_iterator, const std::vector<size
         pos_list_build_side_local.reserve(static_cast<size_t>(expected_output_size));
         pos_list_probe_local.reserve(static_cast<size_t>(expected_output_size));
 
-        probe_side_iterator += partition_begin;
-        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+        const auto probe_side_end_iterator = initial_probe_side_iterator + partition_end;
+        for (auto probe_side_iterator = initial_probe_side_iterator + partition_begin; probe_side_iterator != probe_side_end_iterator; ++probe_side_iterator) {
           const auto& probe_column_element = probe_side_iterator.get_entry();
 
           if (mode == JoinMode::Inner && probe_column_element.row_id == NULL_ROW_ID) {
@@ -720,8 +756,8 @@ void probe(ProbeSideIterator initial_probe_side_iterator, const std::vector<size
           pos_list_build_side_local.reserve(partition_end - partition_begin);
           pos_list_probe_local.reserve(partition_end - partition_begin);
 
-          probe_side_iterator += partition_begin;
-          for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+        const auto probe_side_end_iterator = initial_probe_side_iterator + partition_end;
+        for (auto probe_side_iterator = initial_probe_side_iterator + partition_begin; probe_side_iterator != probe_side_end_iterator; ++probe_side_iterator) {
             const auto& row = probe_side_iterator.get_entry();
             pos_list_build_side_local.emplace_back(NULL_ROW_ID);
             pos_list_probe_local.emplace_back(row.row_id);
@@ -757,7 +793,7 @@ void probe_semi_anti(ProbeSideIterator initial_probe_side_iterator, const std::v
       continue;
     }
 
-    jobs.emplace_back(std::make_shared<JobTask>([&, probe_side_iterator, partition_begin, partition_end, current_partition_id]() mutable {
+    jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id]() mutable {
       // Get information from work queue
       PosList pos_list_local;
 
@@ -769,8 +805,8 @@ void probe_semi_anti(ProbeSideIterator initial_probe_side_iterator, const std::v
         MultiPredicateJoinEvaluator multi_predicate_join_evaluator(build_table, probe_table, mode,
                                                                    secondary_join_predicates);
 
-        probe_side_iterator += partition_begin;
-        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+        const auto probe_side_end_iterator = initial_probe_side_iterator + partition_end;
+        for (auto probe_side_iterator = initial_probe_side_iterator + partition_begin; probe_side_iterator != probe_side_end_iterator; ++probe_side_iterator) {
           const auto& probe_column_element = probe_side_iterator.get_entry();
 
           if constexpr (mode == JoinMode::Semi) {
@@ -821,8 +857,8 @@ void probe_semi_anti(ProbeSideIterator initial_probe_side_iterator, const std::v
         // no hash table on other side, but we are in AntiNullAsFalse mode which means all tuples from the probing side
         // get emitted.
         pos_list_local.reserve(partition_end - partition_begin);
-        probe_side_iterator += partition_begin;
-        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+        const auto probe_side_end_iterator = initial_probe_side_iterator + partition_end;
+        for (auto probe_side_iterator = initial_probe_side_iterator + partition_begin; probe_side_iterator != probe_side_end_iterator; ++probe_side_iterator) {
           const auto& probe_column_element = probe_side_iterator.get_entry();
           pos_list_local.emplace_back(probe_column_element.row_id);
         }
@@ -830,8 +866,8 @@ void probe_semi_anti(ProbeSideIterator initial_probe_side_iterator, const std::v
         // no hash table on other side, but we are in AntiNullAsTrue mode which means all tuples from the probing side
         // get emitted. That is, except NULL values, which only get emitted if the build table is empty.
         pos_list_local.reserve(partition_end - partition_begin);
-        probe_side_iterator += partition_begin;
-        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+        const auto probe_side_end_iterator = initial_probe_side_iterator + partition_end;
+        for (auto probe_side_iterator = initial_probe_side_iterator + partition_begin; probe_side_iterator != probe_side_end_iterator; ++probe_side_iterator) {
           const auto& probe_column_element = probe_side_iterator.get_entry();
           // A NULL on the probe side never gets emitted, except when the build table is empty.
           // This is because `NULL NOT IN <empty list>` is actually true
