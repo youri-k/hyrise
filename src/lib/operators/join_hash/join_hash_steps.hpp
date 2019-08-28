@@ -552,6 +552,7 @@ class UnmaterializedProbeSideIterator final {
  public:
   UnmaterializedProbeSideIterator(const Table& table, const ColumnID column_id) : _table(table), _column_id(column_id) {
     _load_chunk();
+    _load_value();
   }
 
   UnmaterializedProbeSideIterator& operator++() {
@@ -561,6 +562,7 @@ class UnmaterializedProbeSideIterator final {
       ++_chunk_id;
       _load_chunk();
     }
+    _load_value();
 
     return *this;
   }
@@ -576,6 +578,7 @@ class UnmaterializedProbeSideIterator final {
       copy._load_chunk();
     }
     copy._chunk_offset = static_cast<ChunkOffset>(remaining_offset);
+    copy._load_value();
 
     return copy;
   }
@@ -586,26 +589,38 @@ class UnmaterializedProbeSideIterator final {
     return _chunk_id != other._chunk_id || _chunk_offset != other._chunk_offset;
   }
 
-  bool is_null() const { return !_segment_accessor->access(_chunk_offset); }
+  bool is_null() const { return !_current_optional_value; }
 
   PartitionedElement<ProbeColumnType> get_entry() const {
     DebugAssert(_chunk_id < _table.chunk_count(), "Iterator is already at the end");
 
     const auto row_id = RowID{_chunk_id, _chunk_offset};
 
-    const auto optional_value = _segment_accessor->access(_chunk_offset);
+    if (!_current_optional_value) {
+      return PartitionedElement<ProbeColumnType>{row_id, ProbeColumnType{}};
+    }
 
-    return {row_id, *optional_value};
+    return {row_id, *_current_optional_value};
   }
 
  protected:
   void _load_chunk() {
     // Check if iterator already reached the end
     _chunk_offset = 0;
-    if (_chunk_id == _table.chunk_count()) return;
+    if (_chunk_id == _table.chunk_count()) {
+      _segment_accessor = nullptr;
+      return;
+    }
+    DebugAssert(_chunk_id < _table.chunk_count(), "Iterator was incremented after already being at the end");
+
     const auto current_chunk = _table.get_chunk(_chunk_id);
     _current_chunk_size = current_chunk->size();
     _segment_accessor = create_segment_accessor<ProbeColumnType>(current_chunk->get_segment(_column_id));
+  }
+
+  void _load_value() {
+    if(!_segment_accessor) return;
+    _current_optional_value = _segment_accessor->access(_chunk_offset);
   }
 
   const Table& _table;
@@ -615,6 +630,7 @@ class UnmaterializedProbeSideIterator final {
   ChunkOffset _chunk_offset{0};
   ChunkOffset _current_chunk_size{0};
   std::shared_ptr<AbstractSegmentAccessor<ProbeColumnType>> _segment_accessor{nullptr};
+  std::optional<ProbeColumnType> _current_optional_value{std::nullopt};
 };
 
 /*
