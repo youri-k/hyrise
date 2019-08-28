@@ -978,6 +978,10 @@ inline void write_output_segments(Segments& output_segments, const std::shared_p
           // Get the row ids that are referenced
           auto new_pos_list = std::make_shared<PosList>(pos_list->size());
           auto new_pos_list_iter = new_pos_list->begin();
+
+          bool single_chunk = true;
+          auto common_chunk_id = std::optional<ChunkID>{};
+
           for (const auto& row : *pos_list) {
             if (row.chunk_offset == INVALID_CHUNK_OFFSET) {
               *new_pos_list_iter = row;
@@ -985,7 +989,20 @@ inline void write_output_segments(Segments& output_segments, const std::shared_p
               const auto& referenced_pos_list = *(*input_table_pos_lists)[row.chunk_id];
               *new_pos_list_iter = referenced_pos_list[row.chunk_offset];
             }
+
+            if (!common_chunk_id) {
+              common_chunk_id = (*new_pos_list_iter).chunk_id;
+            } else {
+              if ((*new_pos_list_iter).chunk_id != common_chunk_id) {
+                single_chunk = false;
+              }
+            }
+
             ++new_pos_list_iter;
+          }
+
+          if (single_chunk) {
+            new_pos_list->guarantee_single_chunk();
           }
 
           iter = output_pos_list_cache.emplace(input_table_pos_lists, new_pos_list).first;
