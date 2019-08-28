@@ -555,7 +555,7 @@ class UnmaterializedProbeSideIterator final {
   }
 
   UnmaterializedProbeSideIterator& operator++() {
-    if (_chunk_offset + 1 < _current_chunk->size()) {
+    if (_chunk_offset + 1 < _current_chunk_size) {
       ++_chunk_offset;
     } else {
       ++_chunk_id;
@@ -569,9 +569,9 @@ class UnmaterializedProbeSideIterator final {
     auto copy = *this;
 
     auto remaining_offset = offset;
-    while (remaining_offset >= copy._current_chunk->size()) {
+    while (remaining_offset >= copy._current_chunk_size) {
       // Skip the rows remaining in this chunk
-      remaining_offset -= copy._current_chunk->size() - copy._chunk_offset;
+      remaining_offset -= copy._current_chunk_size - copy._chunk_offset;
       ++copy._chunk_id;
       copy._load_chunk();
     }
@@ -603,15 +603,17 @@ class UnmaterializedProbeSideIterator final {
     // Check if iterator already reached the end
     _chunk_offset = 0;
     if (_chunk_id == _table.chunk_count()) return;
-    _current_chunk = _table.get_chunk(_chunk_id);
-    _segment_accessor = create_segment_accessor<ProbeColumnType>(_current_chunk->get_segment(_column_id));
+    const auto current_chunk = _table.get_chunk(_chunk_id);
+    _current_chunk_size = current_chunk->size();
+    _segment_accessor = create_segment_accessor<ProbeColumnType>(current_chunk->get_segment(_column_id));
   }
 
   const Table& _table;
   const ColumnID _column_id;
-  std::shared_ptr<const Chunk> _current_chunk;
+
   ChunkID _chunk_id{0};
   ChunkOffset _chunk_offset{0};
+  ChunkOffset _current_chunk_size{0};
   std::shared_ptr<AbstractSegmentAccessor<ProbeColumnType>> _segment_accessor{nullptr};
 };
 
