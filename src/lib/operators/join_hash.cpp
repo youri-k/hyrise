@@ -467,9 +467,6 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
         }
         run_probe_phase(UnmaterializedProbeSideIterator<ProbeColumnType>{*_probe_input_table, _column_ids.second},
                         partition_offsets);
-
-
-        // TODO guarantee single chunk
       }
 
       // After probing, the partitioned columns are not needed anymore.

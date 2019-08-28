@@ -997,7 +997,7 @@ inline void write_output_segments(Segments& output_segments, const std::shared_p
             ++new_pos_list_iter;
           }
 
-          if (single_chunk && common_chunk_id) {
+          if (single_chunk && common_chunk_id != INVALID_CHUNK_ID) {
             new_pos_list->guarantee_single_chunk();
           }
 
