@@ -36,7 +36,17 @@ class DictionarySegment : public BaseDictionarySegment {
 
   const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const {
     // performance critical - not in cpp to help with inlining
-    const auto value_id = static_cast<FixedSizeByteAlignedDecompressor<uint16_t>&>(*_decompressor).get(chunk_offset);
+    const auto value_id = _decompressor->get(chunk_offset);
+    if (value_id == _null_value_id) {
+      return std::nullopt;
+    }
+    return (*_dictionary)[value_id];
+  }
+
+  template<typename VectorDecompressor>
+  const std::optional<T> get_typed_value(const ChunkOffset chunk_offset, const std::unique_ptr<VectorDecompressor>& vector_decompressor) const {
+    // performance critical - not in cpp to help with inlining
+    const auto value_id = vector_decompressor->get(chunk_offset);
     if (value_id == _null_value_id) {
       return std::nullopt;
     }

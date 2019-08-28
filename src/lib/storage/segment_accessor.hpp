@@ -51,13 +51,25 @@ class SegmentAccessor final : public AbstractSegmentAccessor<T> {
   const SegmentType& _segment;
 };
 
+template <typename T, typename SegmentType, typename VectorDecompressor>
+class SegmentAccessorWithDecompressor final : public AbstractSegmentAccessor<T> {
+ public:
+  explicit SegmentAccessorWithDecompressor(const SegmentType& segment, std::unique_ptr<VectorDecompressor> vector_decompressor) : AbstractSegmentAccessor<T>{}, _segment{segment}, _vector_decompressor(std::move(vector_decompressor)) {}
+
+  const std::optional<T> access(ChunkOffset offset) const final { return _segment.get_typed_value(offset, _vector_decompressor); }
+
+ protected:
+  const SegmentType& _segment;
+  const std::unique_ptr<VectorDecompressor> _vector_decompressor;
+};
+
 /**
  * For ReferenceSegments, we don't use the SegmentAccessor but either the MultipleChunkReferenceSegmentAccessor or the.
  * SingleChunkReferenceSegmentAccessor. The first one is generally applicable. However, we will have more overhead,
  * because we cannot be sure that two consecutive offsets reference the same chunk. In the
  * SingleChunkReferenceSegmentAccessor, we know that the same chunk is referenced, so we create the accessor only once.
  */
-template <typename T>
+template <typename T> // TODO move to cpp?
 class MultipleChunkReferenceSegmentAccessor final : public AbstractSegmentAccessor<T> {
  public:
   explicit MultipleChunkReferenceSegmentAccessor(const ReferenceSegment& segment)

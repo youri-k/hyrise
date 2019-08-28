@@ -42,7 +42,19 @@ std::unique_ptr<AbstractSegmentAccessor<T>> CreateSegmentAccessor<T>::create(
         accessor = std::make_unique<MultipleChunkReferenceSegmentAccessor<T>>(typed_segment);
       }
     } else {
-      accessor = std::make_unique<SegmentAccessor<T, SegmentType>>(typed_segment);
+      if constexpr (std::is_same_v<SegmentType, DictionarySegment<T>>) {
+        const auto& optional_compressed_vector_type = typed_segment.compressed_vector_type();
+        if (optional_compressed_vector_type) {
+          resolve_compressed_vector_type(*typed_segment.attribute_vector(), [&](const auto& compressed_vector) {
+            auto decompressor = compressed_vector.create_decompressor();
+            accessor = std::make_unique<SegmentAccessorWithDecompressor<T, SegmentType, std::decay_t<decltype(*decompressor)>>>(typed_segment, std::move(decompressor));
+          });
+        } else {
+          accessor = std::make_unique<SegmentAccessor<T, SegmentType>>(typed_segment);
+        }
+      } else {
+        accessor = std::make_unique<SegmentAccessor<T, SegmentType>>(typed_segment);
+      }
     }
   });
   return accessor;
