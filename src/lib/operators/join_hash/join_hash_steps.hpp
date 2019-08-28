@@ -11,6 +11,7 @@
 #include "scheduler/current_scheduler.hpp"
 #include "scheduler/job_task.hpp"
 #include "storage/create_iterable_from_segment.hpp"
+#include "storage/segment_accessor.hpp"
 #include "storage/segment_iterate.hpp"
 #include "type_comparison.hpp"
 
@@ -552,18 +553,18 @@ template <typename ProbeColumnType>
 class UnmaterializedProbeSideIterator final {
   // TODO This sucks. Change everything to iterators.
  public:
-  UnmaterializedProbeSideIterator(const Table& table, const ColumnID column_id) : _table(table), _column_id(column_id), _current_chunk(_table.chunk_count() > 0 ? _table.get_chunk(ChunkID{0}) : nullptr) {}
+  UnmaterializedProbeSideIterator(const Table& table, const ColumnID column_id) : _table(table), _column_id(column_id) {
+    _load_chunk();
+  }
 
   UnmaterializedProbeSideIterator& operator++() {
     if (_chunk_offset + 1 < _current_chunk->size()) {
       ++_chunk_offset;
     } else {
       ++_chunk_id;
-      if (_chunk_id < _table.chunk_count()) _current_chunk = _table.get_chunk(_chunk_id);
-      _chunk_offset = 0;
+      _load_chunk();
     }
 
-    ++_position;
     return *this;
   }
 
@@ -575,12 +576,10 @@ class UnmaterializedProbeSideIterator final {
       // Skip the rows remaining in this chunk
       remaining_offset -= copy._current_chunk->size() - copy._chunk_offset;
       ++copy._chunk_id;
-      if (copy._chunk_id < copy._table.chunk_count()) copy._current_chunk = copy._table.get_chunk(copy._chunk_id);
-      copy._chunk_offset = 0;
+      copy._load_chunk();
     }
     copy._chunk_offset = static_cast<ChunkOffset>(remaining_offset);
 
-    copy._position += offset;
     return copy;
   }
 
@@ -590,22 +589,15 @@ class UnmaterializedProbeSideIterator final {
   }
 
   bool is_null() const {
-    return variant_is_null(_table.get_row(_position)[_column_id]);
+    return variant_is_null((*_current_chunk->get_segment(_column_id))[_chunk_offset]);
   }
 
   PartitionedElement<ProbeColumnType> get_entry() const {
     DebugAssert(_chunk_id < _table.chunk_count(), "Iterator is already at the end");
 
     // TODO assert that not null
-    auto pos = _position;
-    auto chunk_id = ChunkID{0};
-    while (_table.get_chunk(chunk_id)->size() <= pos) {
-      pos -= _table.get_chunk(chunk_id)->size();
-      chunk_id++;
-    }
-    auto row_id = RowID{chunk_id, static_cast<ChunkOffset>(pos)};
-
-    const auto variant = _table.get_chunk(chunk_id)->get_segment(_column_id)->operator[](row_id.chunk_offset);
+    const auto row_id = RowID{_chunk_id, _chunk_offset};
+    const auto variant = _current_chunk->get_segment(_column_id)->operator[](_chunk_offset);
 
     if(variant_is_null(variant)) {
       return {row_id, ProbeColumnType{}};
@@ -615,12 +607,20 @@ class UnmaterializedProbeSideIterator final {
   }
 
 protected:
+  void _load_chunk() {
+    // Check if iterator already reached the end
+    _chunk_offset = 0;
+    if (_chunk_id == _table.chunk_count()) return;
+    _current_chunk = _table.get_chunk(_chunk_id);
+    _segment_accessor = create_segment_accessor<ProbeColumnType>(_current_chunk->get_segment(_column_id));
+  }
+
   const Table& _table;
   const ColumnID _column_id;
   std::shared_ptr<const Chunk> _current_chunk;
   ChunkID _chunk_id{0};
   ChunkOffset _chunk_offset{0};
-  size_t _position{0};  // TODO shouldn't make it until the end
+  std::shared_ptr<AbstractSegmentAccessor<ProbeColumnType>> _segment_accessor{nullptr};
 };
 
 /*
