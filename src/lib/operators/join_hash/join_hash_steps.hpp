@@ -589,21 +589,22 @@ class UnmaterializedProbeSideIterator final {
   }
 
   bool is_null() const {
-    return variant_is_null((*_current_chunk->get_segment(_column_id))[_chunk_offset]);
+    return !_segment_accessor->access(_chunk_offset);
   }
 
   PartitionedElement<ProbeColumnType> get_entry() const {
     DebugAssert(_chunk_id < _table.chunk_count(), "Iterator is already at the end");
 
-    // TODO assert that not null
     const auto row_id = RowID{_chunk_id, _chunk_offset};
-    const auto variant = _current_chunk->get_segment(_column_id)->operator[](_chunk_offset);
 
-    if(variant_is_null(variant)) {
+    const auto optional_value = _segment_accessor->access(_chunk_offset);
+
+    if(!optional_value) {
+      // TODO assert that not null
       return {row_id, ProbeColumnType{}};
     }
 
-    return {row_id, boost::get<ProbeColumnType>(variant)};
+    return {row_id, *optional_value};
   }
 
 protected:
