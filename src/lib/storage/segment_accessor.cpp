@@ -1,6 +1,6 @@
 #include "segment_accessor.hpp"
-
 #include "resolve_type.hpp"
+#include "storage/vector_compression/resolve_compressed_vector_type.hpp"
 
 namespace opossum {
 
