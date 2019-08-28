@@ -8,6 +8,26 @@ namespace detail {
 template <typename T>
 std::unique_ptr<AbstractSegmentAccessor<T>> CreateSegmentAccessor<T>::create(
     const std::shared_ptr<const BaseSegment>& segment) {
+
+  auto create_non_reference_segment_accessor = [](const auto& typed_segment) {
+    std::unique_ptr<AbstractSegmentAccessor<T>> accessor;
+    using SegmentType = std::decay_t<decltype(typed_segment)>;
+    if constexpr (std::is_same_v<SegmentType, DictionarySegment<T>>) {
+      const auto& optional_compressed_vector_type = typed_segment.compressed_vector_type();
+      if (optional_compressed_vector_type) {
+        resolve_compressed_vector_type(*typed_segment.attribute_vector(), [&](const auto& compressed_vector) {
+          auto decompressor = compressed_vector.create_decompressor();
+          accessor = std::make_unique<SegmentAccessorWithDecompressor<T, SegmentType, std::decay_t<decltype(*decompressor)>>>(typed_segment, std::move(decompressor));
+        });
+      } else {
+        accessor = std::make_unique<SegmentAccessor<T, SegmentType>>(typed_segment);
+      }
+    } else {
+      accessor = std::make_unique<SegmentAccessor<T, SegmentType>>(typed_segment);
+    }
+    return accessor;
+  };
+
   std::unique_ptr<AbstractSegmentAccessor<T>> accessor;
   resolve_segment_type<T>(*segment, [&](const auto& typed_segment) {
     using SegmentType = std::decay_t<decltype(typed_segment)>;
@@ -31,8 +51,9 @@ std::unique_ptr<AbstractSegmentAccessor<T>> CreateSegmentAccessor<T>::create(
           resolve_segment_type<T>(*referenced_segment, [&](const auto& typed_referenced_segment) {
             using ReferencedSegment = std::decay_t<decltype(typed_referenced_segment)>;
             if constexpr (!std::is_same_v<ReferencedSegment, ReferenceSegment>) {
-              accessor = std::make_unique<SingleChunkReferenceSegmentAccessor<T, ReferencedSegment>>(
-                  pos_list, chunk_id, typed_referenced_segment);
+              auto referenced_segment_accessor = create_non_reference_segment_accessor(typed_referenced_segment);
+              accessor = std::make_unique<SingleChunkReferenceSegmentAccessor<T, std::decay_t<decltype(*referenced_segment_accessor)>>>(
+                  pos_list, std::move(referenced_segment_accessor));
             } else {
               Fail("Encountered nested ReferenceSegments");
             }
@@ -42,19 +63,7 @@ std::unique_ptr<AbstractSegmentAccessor<T>> CreateSegmentAccessor<T>::create(
         accessor = std::make_unique<MultipleChunkReferenceSegmentAccessor<T>>(typed_segment);
       }
     } else {
-      if constexpr (std::is_same_v<SegmentType, DictionarySegment<T>>) {
-        const auto& optional_compressed_vector_type = typed_segment.compressed_vector_type();
-        if (optional_compressed_vector_type) {
-          resolve_compressed_vector_type(*typed_segment.attribute_vector(), [&](const auto& compressed_vector) {
-            auto decompressor = compressed_vector.create_decompressor();
-            accessor = std::make_unique<SegmentAccessorWithDecompressor<T, SegmentType, std::decay_t<decltype(*decompressor)>>>(typed_segment, std::move(decompressor));
-          });
-        } else {
-          accessor = std::make_unique<SegmentAccessor<T, SegmentType>>(typed_segment);
-        }
-      } else {
-        accessor = std::make_unique<SegmentAccessor<T, SegmentType>>(typed_segment);
-      }
+      accessor = create_non_reference_segment_accessor(typed_segment);
     }
   });
   return accessor;
