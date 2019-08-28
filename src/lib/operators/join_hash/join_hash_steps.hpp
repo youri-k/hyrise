@@ -663,13 +663,16 @@ void probe(ProbeSideIterator initial_probe_side_iterator, const std::vector<size
       continue;
     }
 
-    jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id]() mutable {
+    const auto single_input_chunk = std::is_same_v<ProbeSideIterator, UnmaterializedProbeSideIterator<ProbeColumnType>>;
+    auto hash_table_id = single_input_chunk ? 0 : current_partition_id;
+
+    jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id, hash_table_id]() {
       // Get information from work queue
       PosList pos_list_build_side_local;
       PosList pos_list_probe_local;
 
-      if (hash_tables.at(current_partition_id)) {
-        const auto& hash_table = hash_tables[current_partition_id].value();
+      if (hash_tables.at(hash_table_id)) {
+        const auto& hash_table = hash_tables[hash_table_id].value();
 
         // Accessors are not thread-safe, so we create one evaluator per job
         std::optional<MultiPredicateJoinEvaluator> multi_predicate_join_evaluator;
@@ -696,7 +699,7 @@ void probe(ProbeSideIterator initial_probe_side_iterator, const std::vector<size
           }
 
           const auto& primary_predicate_matching_rows =
-              hash_table.find(static_cast<HashedType>(probe_column_element.value));
+              hash_table.find(static_cast<HashedType>(probe_column_element.value));  // TODO why before null check
 
           if (primary_predicate_matching_rows != hash_table.end()) {
             // Key exists, thus we have at least one hit for the primary predicate
@@ -776,7 +779,7 @@ void probe(ProbeSideIterator initial_probe_side_iterator, const std::vector<size
       }
 
       pos_lists_build_side[current_partition_id] = std::move(pos_list_build_side_local);
-      pos_lists_probe_side[current_partition_id] = std::move(pos_list_probe_local);
+      pos_lists_probe_side[current_partition_id] = std::move(pos_list_probe_local);  // TODO Naming
     }));
     jobs.back()->schedule();
   }
@@ -801,13 +804,16 @@ void probe_semi_anti(ProbeSideIterator initial_probe_side_iterator, const std::v
       continue;
     }
 
-    jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id]() mutable {
-      // Get information from work queue
-      PosList pos_list_local;
+    const auto single_input_chunk = std::is_same_v<ProbeSideIterator, UnmaterializedProbeSideIterator<ProbeColumnType>>;
+    auto hash_table_id = single_input_chunk ? 0 : current_partition_id;
 
-      if (hash_tables[current_partition_id]) {
+    jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id, hash_table_id]() {
+      // Get information from work queue
+      PosList pos_list_local;  // TODO guarantee single chunk
+
+      if (hash_tables[hash_table_id]) {
         // Valid hash table found, so there is at least one match in this partition
-        const auto& hash_table = hash_tables[current_partition_id].value();
+        const auto& hash_table = hash_tables[hash_table_id].value();
 
         // Accessors are not thread-safe, so we create one evaluator per job
         MultiPredicateJoinEvaluator multi_predicate_join_evaluator(build_table, probe_table, mode,

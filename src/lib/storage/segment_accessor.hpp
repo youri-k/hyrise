@@ -52,7 +52,7 @@ class SegmentAccessor final : public AbstractSegmentAccessor<T> {
 };
 
 /**
- * For ReferenceSegments, we don't use the SegmentAccessor but either the MultipleChunkReferenceSegmentAccessor or the.
+ * For ReferenceSegments, we don't use the SegmentAccessor but either the MultipleChunkReferenceSegmentAccessor or the
  * SingleChunkReferenceSegmentAccessor. The first one is generally applicable. However, we will have more overhead,
  * because we cannot be sure that two consecutive offsets reference the same chunk. In the
  * SingleChunkReferenceSegmentAccessor, we know that the same chunk is referenced, so we create the accessor only once.
@@ -61,7 +61,7 @@ template <typename T>
 class MultipleChunkReferenceSegmentAccessor final : public AbstractSegmentAccessor<T> {
  public:
   explicit MultipleChunkReferenceSegmentAccessor(const ReferenceSegment& segment)
-      : _segment{segment}, _table{segment.referenced_table()}, _accessors{1} {}
+      : _segment{segment}, _table{segment.referenced_table()}, _accessors(segment.referenced_table()->chunk_count()) {}
 
   const std::optional<T> access(ChunkOffset offset) const final {
     const auto& row_id = (*_segment.pos_list())[offset];
@@ -71,10 +71,7 @@ class MultipleChunkReferenceSegmentAccessor final : public AbstractSegmentAccess
 
     const auto chunk_id = row_id.chunk_id;
 
-    // Grow the _accessors vector faster than linearly if the chunk_id is out of its current bounds
-    if (static_cast<size_t>(chunk_id) >= _accessors.size()) {
-      _accessors.resize(static_cast<size_t>(chunk_id + _accessors.size()));
-    }
+    DebugAssert(static_cast<size_t>(chunk_id) < _accessors.size(), "ChunkID out of bounds");
 
     if (!_accessors[chunk_id]) {
       _accessors[chunk_id] =

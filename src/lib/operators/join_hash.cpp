@@ -399,73 +399,83 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
      */
     std::vector<PosList> build_side_pos_lists;
     std::vector<PosList> probe_side_pos_lists;
-    const size_t partition_count = std::max(size_t{1}, radix_probe_column.partition_offsets.size());
-    build_side_pos_lists.resize(partition_count);
-    probe_side_pos_lists.resize(partition_count);
+    if (_probe_input_table->chunk_count() > 0) {
+      const size_t partition_count = _radix_bits == 0 ? _probe_input_table->chunk_count() : radix_probe_column.partition_offsets.size();
+      build_side_pos_lists.resize(partition_count);
+      probe_side_pos_lists.resize(partition_count);
 
-    // simple heuristic: half of the rows of the probe relation will match
-    const size_t result_rows_per_partition = _probe_input_table->row_count() / partition_count / 2;
-    for (size_t i = 0; i < partition_count; i++) {
-      build_side_pos_lists[i].reserve(result_rows_per_partition);
-      probe_side_pos_lists[i].reserve(result_rows_per_partition);
-    }
-
-    /*
-    NUMA notes:
-    The workers for each radix partition P should be scheduled on the same node as the input data:
-    buildP, probeP and hash tableP.
-    */
-
-    const auto run_probe_phase = [&](auto probe_side_iterator, const auto& partition_offsets) {
-      switch (_mode) {
-        case JoinMode::Inner:
-          probe<ProbeColumnType, HashedType, false>(
-              probe_side_iterator, partition_offsets, hash_tables, build_side_pos_lists,  // TODO cleanup
-              probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table, _secondary_predicates);
-          break;
-
-        case JoinMode::Left:
-        case JoinMode::Right:
-          probe<ProbeColumnType, HashedType, true>(probe_side_iterator, partition_offsets, hash_tables,
-                                                   build_side_pos_lists, probe_side_pos_lists, _mode,
-                                                   *_build_input_table, *_probe_input_table, _secondary_predicates);
-          break;
-
-        case JoinMode::Semi:
-          probe_semi_anti<ProbeColumnType, HashedType, JoinMode::Semi>(
-              probe_side_iterator, partition_offsets, hash_tables, probe_side_pos_lists, *_build_input_table,
-              *_probe_input_table, _secondary_predicates);
-          break;
-
-        case JoinMode::AntiNullAsTrue:
-          probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsTrue>(
-              probe_side_iterator, partition_offsets, hash_tables, probe_side_pos_lists, *_build_input_table,
-              *_probe_input_table, _secondary_predicates);
-          break;
-
-        case JoinMode::AntiNullAsFalse:
-          probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsFalse>(
-              probe_side_iterator, partition_offsets, hash_tables, probe_side_pos_lists, *_build_input_table,
-              *_probe_input_table, _secondary_predicates);
-          break;
-
-        default:
-          Fail("JoinMode not supported by JoinHash");
+      // simple heuristic: half of the rows of the probe relation will match
+      const size_t result_rows_per_partition = _probe_input_table->row_count() / partition_count / 2;
+      for (size_t i = 0; i < partition_count; i++) {
+        build_side_pos_lists[i].reserve(result_rows_per_partition);
+        probe_side_pos_lists[i].reserve(result_rows_per_partition);
       }
-    };
 
-    if (_radix_bits > 0) {
-      const std::vector<size_t>& partition_offsets{radix_probe_column.partition_offsets};
-      run_probe_phase(PartitionedProbeSideIterator{radix_probe_column}, partition_offsets);
-    } else {
-      const std::vector<size_t> partition_offsets{_probe_input_table->row_count()};
-      run_probe_phase(UnmaterializedProbeSideIterator<ProbeColumnType>{*_probe_input_table, _column_ids.second},
-                      partition_offsets);
+      /*
+      NUMA notes:
+      The workers for each radix partition P should be scheduled on the same node as the input data:
+      buildP, probeP and hash tableP.
+      */
+
+      const auto run_probe_phase = [&](auto probe_side_iterator, const auto& partition_offsets) {
+        switch (_mode) {
+          case JoinMode::Inner:
+            probe<ProbeColumnType, HashedType, false>(
+                probe_side_iterator, partition_offsets, hash_tables, build_side_pos_lists,  // TODO cleanup
+                probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table, _secondary_predicates);
+            break;
+
+          case JoinMode::Left:
+          case JoinMode::Right:
+            probe<ProbeColumnType, HashedType, true>(probe_side_iterator, partition_offsets, hash_tables,
+                                                     build_side_pos_lists, probe_side_pos_lists, _mode,
+                                                     *_build_input_table, *_probe_input_table, _secondary_predicates);
+            break;
+
+          case JoinMode::Semi:
+            probe_semi_anti<ProbeColumnType, HashedType, JoinMode::Semi>(
+                probe_side_iterator, partition_offsets, hash_tables, probe_side_pos_lists, *_build_input_table,
+                *_probe_input_table, _secondary_predicates);
+            break;
+
+          case JoinMode::AntiNullAsTrue:
+            probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsTrue>(
+                probe_side_iterator, partition_offsets, hash_tables, probe_side_pos_lists, *_build_input_table,
+                *_probe_input_table, _secondary_predicates);
+            break;
+
+          case JoinMode::AntiNullAsFalse:
+            probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsFalse>(
+                probe_side_iterator, partition_offsets, hash_tables, probe_side_pos_lists, *_build_input_table,
+                *_probe_input_table, _secondary_predicates);
+            break;
+
+          default:
+            Fail("JoinMode not supported by JoinHash");
+        }
+      };
+
+      if (_radix_bits > 0) {
+        const std::vector<size_t>& partition_offsets{radix_probe_column.partition_offsets};
+        run_probe_phase(PartitionedProbeSideIterator{radix_probe_column}, partition_offsets);
+      } else {
+        std::vector<size_t> partition_offsets(_probe_input_table->chunk_count());
+        auto offset = 0;
+        for (auto chunk_id = ChunkID{0}; chunk_id < _probe_input_table->chunk_count(); ++chunk_id) {
+          offset += _probe_input_table->get_chunk(chunk_id)->size();
+          partition_offsets[chunk_id] = offset;
+        }
+        run_probe_phase(UnmaterializedProbeSideIterator<ProbeColumnType>{*_probe_input_table, _column_ids.second},
+                        partition_offsets);
+
+
+        // TODO guarantee single chunk
+      }
+
+      // After probing, the partitioned columns are not needed anymore.
+      radix_build_column.clear();
+      radix_probe_column.clear();
     }
-
-    // After probing, the partitioned columns are not needed anymore.
-    radix_build_column.clear();
-    radix_probe_column.clear();
 
     /**
      * 3. Write output Table
