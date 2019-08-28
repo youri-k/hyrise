@@ -535,7 +535,7 @@ class PartitionedProbeSideIterator final {
   bool operator!=(const PartitionedProbeSideIterator& other) const { return _position != other._position; }
 
   bool is_null() const {
-    DebugAssert(!_null_value_bitvector.empty(), "Trying to check non-nullable for NULL value");
+    DebugAssert(!_null_value_bitvector.empty(), "Trying to check non-nullable probe column for NULL value");
     return _null_value_bitvector[_position];
   }
 
@@ -1001,7 +1001,7 @@ inline void write_output_segments(Segments& output_segments, const std::shared_p
             ++new_pos_list_iter;
           }
 
-          if (single_chunk) {
+          if (single_chunk && common_chunk_id) {
             new_pos_list->guarantee_single_chunk();
           }
 
