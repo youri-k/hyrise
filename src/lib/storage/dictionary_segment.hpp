@@ -5,6 +5,7 @@
 
 #include "base_dictionary_segment.hpp"
 #include "storage/vector_compression/base_compressed_vector.hpp"
+#include "storage/vector_compression/fixed_size_byte_aligned/fixed_size_byte_aligned_decompressor.hpp"
 #include "types.hpp"
 
 namespace opossum {
@@ -35,7 +36,7 @@ class DictionarySegment : public BaseDictionarySegment {
 
   const std::optional<T> get_typed_value(const ChunkOffset chunk_offset) const {
     // performance critical - not in cpp to help with inlining
-    const auto value_id = _decompressor->get(chunk_offset);
+    const auto value_id = static_cast<FixedSizeByteAlignedDecompressor<uint16_t>&>(*_decompressor).get(chunk_offset);
     if (value_id == _null_value_id) {
       return std::nullopt;
     }
