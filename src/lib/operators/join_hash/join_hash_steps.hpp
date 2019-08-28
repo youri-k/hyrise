@@ -514,45 +514,57 @@ RadixContainer<T> partition_radix_parallel(const RadixContainer<T>& radix_contai
 }
 
 template <typename ProbeColumnType>
-class PartitionedProbeSideAccessor final {
+class PartitionedProbeSideIterator final {
  public:
-  PartitionedProbeSideAccessor(const RadixContainer<ProbeColumnType>& probe_radix_container) : _partition_offsets(probe_radix_container.partition_offsets), _elements(*probe_radix_container.elements), _null_value_bitvector(*probe_radix_container.null_value_bitvector) {}
+  PartitionedProbeSideIterator(const RadixContainer<ProbeColumnType>& probe_radix_container) : _elements(*probe_radix_container.elements), _null_value_bitvector(*probe_radix_container.null_value_bitvector) {}
 
-  const std::vector<size_t>& partition_offsets() const {
-    return _partition_offsets;
+  PartitionedProbeSideIterator& operator++() {
+    ++_position;
+    return *this;
   }
 
-  bool is_null(const size_t position) const {
+  PartitionedProbeSideIterator& operator+=(const size_t offset) {
+    _position += offset;
+    return *this;
+  }
+
+  bool is_null() const {
     DebugAssert(!_null_value_bitvector.empty(), "Trying to check non-nullable for NULL value");
-    return _null_value_bitvector[position];
+    return _null_value_bitvector[_position];
   }
 
-  const PartitionedElement<ProbeColumnType>& get_entry(const size_t position) const {
-    return _elements[position];
+  const PartitionedElement<ProbeColumnType>& get_entry() const {
+    return _elements[_position];
   }
 
 protected:
-  const std::vector<size_t>& _partition_offsets;
   const Partition<ProbeColumnType>& _elements;
   const std::vector<bool>& _null_value_bitvector;
+  size_t _position{0};
 };
 
 template <typename ProbeColumnType>
-class UnmaterializedProbeSideAccessor final {
+class UnmaterializedProbeSideIterator final {
   // TODO This sucks. Change everything to iterators.
  public:
-  UnmaterializedProbeSideAccessor(const Table& table, const ColumnID column_id) : _table(table), _column_id(column_id), _partition_offsets{table.row_count()} {}
+  UnmaterializedProbeSideIterator(const Table& table, const ColumnID column_id) : _table(table), _column_id(column_id) {}
 
-  const std::vector<size_t>& partition_offsets() const {
-    return _partition_offsets;
+  UnmaterializedProbeSideIterator& operator++() {
+    ++_position;
+    return *this;
   }
 
-  bool is_null(const size_t position) const {
-    return variant_is_null(_table.get_row(position)[_column_id]);
+  UnmaterializedProbeSideIterator& operator+=(const size_t offset) {
+    _position += offset;
+    return *this;
   }
 
-  PartitionedElement<ProbeColumnType> get_entry(const size_t position) const {
-    auto pos = position;
+  bool is_null() const {
+    return variant_is_null(_table.get_row(_position)[_column_id]);
+  }
+
+  PartitionedElement<ProbeColumnType> get_entry() const {
+    auto pos = _position;
     auto chunk_id = ChunkID{0};
     while (_table.get_chunk(chunk_id)->size() <= pos) {
       pos -= _table.get_chunk(chunk_id)->size();
@@ -570,9 +582,9 @@ class UnmaterializedProbeSideAccessor final {
   }
 
 protected:
-  const Table& _table;  // TODO shouldn't make it until the end
+  const Table& _table;
   const ColumnID _column_id;
-  const std::vector<size_t> _partition_offsets;
+  size_t _position{0};  // TODO shouldn't make it until the end
 };
 
 /*
@@ -580,14 +592,12 @@ protected:
   with the values in the hash table. Since build and probe are hashed using the same hash function, we can reduce the
   number of hash tables that need to be looked into to just 1.
   */
-template <typename ProbeColumnType, typename HashedType, bool keep_null_values, typename ProbeSideAccessor>
-void probe(const ProbeSideAccessor& probe_side_accessor,
+template <typename ProbeColumnType, typename HashedType, bool keep_null_values, typename ProbeSideIterator>
+void probe(ProbeSideIterator initial_probe_side_iterator, const std::vector<size_t>& partition_offsets,
            const std::vector<std::optional<PosHashTable<HashedType>>>& hash_tables,
            std::vector<PosList>& pos_lists_build_side, std::vector<PosList>& pos_lists_probe_side, const JoinMode mode,
            const Table& build_table, const Table& probe_table,
            const std::vector<OperatorJoinPredicate>& secondary_join_predicates) {
-  const auto& partition_offsets = probe_side_accessor.partition_offsets();
-
   std::vector<std::shared_ptr<AbstractTask>> jobs;
   jobs.reserve(partition_offsets.size());
 
@@ -609,7 +619,7 @@ void probe(const ProbeSideAccessor& probe_side_accessor,
       continue;
     }
 
-    jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id]() {
+    jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id]() mutable {
       // Get information from work queue
       PosList pos_list_build_side_local;
       PosList pos_list_probe_local;
@@ -630,8 +640,9 @@ void probe(const ProbeSideAccessor& probe_side_accessor,
         pos_list_build_side_local.reserve(static_cast<size_t>(expected_output_size));
         pos_list_probe_local.reserve(static_cast<size_t>(expected_output_size));
 
-        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          const auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
+        probe_side_iterator += partition_begin;
+        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+          const auto& probe_column_element = probe_side_iterator.get_entry();
 
           if (mode == JoinMode::Inner && probe_column_element.row_id == NULL_ROW_ID) {
             // From previous joins, we could potentially have NULL values that do not refer to
@@ -652,7 +663,7 @@ void probe(const ProbeSideAccessor& probe_side_accessor,
             // Note, if the materialization/radix partitioning phase did not explicitly consider
             // NULL values, they will not be handed to the probe function.
             if constexpr (keep_null_values) {
-              if (probe_side_accessor.is_null(partition_offset)) {
+              if (probe_side_iterator.is_null()) {
                 pos_list_build_side_local.emplace_back(NULL_ROW_ID);
                 pos_list_probe_local.emplace_back(probe_column_element.row_id);
                 // ignore found matches and continue with next probe item
@@ -709,8 +720,9 @@ void probe(const ProbeSideAccessor& probe_side_accessor,
           pos_list_build_side_local.reserve(partition_end - partition_begin);
           pos_list_probe_local.reserve(partition_end - partition_begin);
 
-          for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-            const auto& row = probe_side_accessor.get_entry(partition_offset);
+          probe_side_iterator += partition_begin;
+          for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+            const auto& row = probe_side_iterator.get_entry();
             pos_list_build_side_local.emplace_back(NULL_ROW_ID);
             pos_list_probe_local.emplace_back(row.row_id);
           }
@@ -726,13 +738,11 @@ void probe(const ProbeSideAccessor& probe_side_accessor,
   CurrentScheduler::wait_for_tasks(jobs);
 }
 
-template <typename ProbeColumnType, typename HashedType, JoinMode mode, typename ProbeSideAccessor>
-void probe_semi_anti(const ProbeSideAccessor& probe_side_accessor,
+template <typename ProbeColumnType, typename HashedType, JoinMode mode, typename ProbeSideIterator>
+void probe_semi_anti(ProbeSideIterator initial_probe_side_iterator, const std::vector<size_t>& partition_offsets,
                      const std::vector<std::optional<PosHashTable<HashedType>>>& hash_tables,
                      std::vector<PosList>& pos_lists, const Table& build_table, const Table& probe_table,
                      const std::vector<OperatorJoinPredicate>& secondary_join_predicates) {
-  const auto& partition_offsets = probe_side_accessor.partition_offsets();
-
   std::vector<std::shared_ptr<AbstractTask>> jobs;
   jobs.reserve(partition_offsets.size());
 
@@ -747,7 +757,7 @@ void probe_semi_anti(const ProbeSideAccessor& probe_side_accessor,
       continue;
     }
 
-    jobs.emplace_back(std::make_shared<JobTask>([&, partition_begin, partition_end, current_partition_id]() {
+    jobs.emplace_back(std::make_shared<JobTask>([&, probe_side_iterator, partition_begin, partition_end, current_partition_id]() mutable {
       // Get information from work queue
       PosList pos_list_local;
 
@@ -759,8 +769,9 @@ void probe_semi_anti(const ProbeSideAccessor& probe_side_accessor,
         MultiPredicateJoinEvaluator multi_predicate_join_evaluator(build_table, probe_table, mode,
                                                                    secondary_join_predicates);
 
-        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          const auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
+        probe_side_iterator += partition_begin;
+        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+          const auto& probe_column_element = probe_side_iterator.get_entry();
 
           if constexpr (mode == JoinMode::Semi) {
             // NULLs on the probe side are never emitted
@@ -770,12 +781,12 @@ void probe_semi_anti(const ProbeSideAccessor& probe_side_accessor,
           } else if constexpr (mode == JoinMode::AntiNullAsFalse) {  // NOLINT - doesn't like else if constexpr
             // NULL values on the probe side always lead to the tuple being emitted for AntiNullAsFalse, irrespective
             // of secondary predicates (`NULL("as false") AND <anything>` is always false)
-            if (probe_side_accessor.is_null(partition_offset)) {
+            if (probe_side_iterator.is_null()) {
               pos_list_local.emplace_back(probe_column_element.row_id);
               continue;
             }
           } else if constexpr (mode == JoinMode::AntiNullAsTrue) {  // NOLINT - doesn't like else if constexpr
-            if (probe_side_accessor.is_null(partition_offset)) {
+            if (probe_side_iterator.is_null()) {
               // Primary predicate is TRUE, as long as we do not support secondary predicates with AntiNullAsTrue.
               // This means that the probe value never gets emitted
               continue;
@@ -810,19 +821,21 @@ void probe_semi_anti(const ProbeSideAccessor& probe_side_accessor,
         // no hash table on other side, but we are in AntiNullAsFalse mode which means all tuples from the probing side
         // get emitted.
         pos_list_local.reserve(partition_end - partition_begin);
-        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          const auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
+        probe_side_iterator += partition_begin;
+        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+          const auto& probe_column_element = probe_side_iterator.get_entry();
           pos_list_local.emplace_back(probe_column_element.row_id);
         }
       } else if constexpr (mode == JoinMode::AntiNullAsTrue) {  // NOLINT - doesn't like else if constexpr
         // no hash table on other side, but we are in AntiNullAsTrue mode which means all tuples from the probing side
         // get emitted. That is, except NULL values, which only get emitted if the build table is empty.
         pos_list_local.reserve(partition_end - partition_begin);
-        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset) {
-          const auto& probe_column_element = probe_side_accessor.get_entry(partition_offset);
+        probe_side_iterator += partition_begin;
+        for (size_t partition_offset = partition_begin; partition_offset < partition_end; ++partition_offset, ++probe_side_iterator) {
+          const auto& probe_column_element = probe_side_iterator.get_entry();
           // A NULL on the probe side never gets emitted, except when the build table is empty.
           // This is because `NULL NOT IN <empty list>` is actually true
-          if (probe_side_accessor.is_null(partition_offset) && build_table.row_count() > 0) {
+          if (probe_side_iterator.is_null() && build_table.row_count() > 0) {
             continue;
           }
           pos_list_local.emplace_back(probe_column_element.row_id);

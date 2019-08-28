@@ -416,36 +416,36 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
     buildP, probeP and hash tableP.
     */
 
-    const auto run_probe_phase = [&](auto probe_side_accessor){
+    const auto run_probe_phase = [&](auto probe_side_iterator, const auto& partition_offsets){
       switch (_mode) {
         case JoinMode::Inner:
-          probe<ProbeColumnType, HashedType, false>(probe_side_accessor, hash_tables, build_side_pos_lists,  // TODO cleanup
+          probe<ProbeColumnType, HashedType, false>(probe_side_iterator, partition_offsets, hash_tables, build_side_pos_lists,  // TODO cleanup
                                                     probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
                                                     _secondary_predicates);
           break;
 
         case JoinMode::Left:
         case JoinMode::Right:
-          probe<ProbeColumnType, HashedType, true>(probe_side_accessor, hash_tables, build_side_pos_lists,
+          probe<ProbeColumnType, HashedType, true>(probe_side_iterator, partition_offsets, hash_tables, build_side_pos_lists,
                                                    probe_side_pos_lists, _mode, *_build_input_table, *_probe_input_table,
                                                    _secondary_predicates);
           break;
 
         case JoinMode::Semi:
-          probe_semi_anti<ProbeColumnType, HashedType, JoinMode::Semi>(probe_side_accessor, hash_tables,
+          probe_semi_anti<ProbeColumnType, HashedType, JoinMode::Semi>(probe_side_iterator, partition_offsets, hash_tables,
                                                                        probe_side_pos_lists, *_build_input_table,
                                                                        *_probe_input_table, _secondary_predicates);
           break;
 
         case JoinMode::AntiNullAsTrue:
           probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsTrue>(
-              probe_side_accessor, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
+              probe_side_iterator, partition_offsets, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
               _secondary_predicates);
           break;
 
         case JoinMode::AntiNullAsFalse:
           probe_semi_anti<ProbeColumnType, HashedType, JoinMode::AntiNullAsFalse>(
-              probe_side_accessor, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
+              probe_side_iterator, partition_offsets, hash_tables, probe_side_pos_lists, *_build_input_table, *_probe_input_table,
               _secondary_predicates);
           break;
 
@@ -455,9 +455,11 @@ class JoinHash::JoinHashImpl : public AbstractJoinOperatorImpl {
     };
 
     if (_radix_bits > 0) {
-      run_probe_phase(PartitionedProbeSideAccessor{radix_probe_column});
+      const std::vector<size_t>& partition_offsets{radix_probe_column.partition_offsets};
+      run_probe_phase(PartitionedProbeSideIterator{radix_probe_column}, partition_offsets);
     } else {
-      run_probe_phase(UnmaterializedProbeSideAccessor<ProbeColumnType>{*_probe_input_table, _column_ids.second});
+      const std::vector<size_t> partition_offsets{_probe_input_table->row_count()};
+      run_probe_phase(UnmaterializedProbeSideIterator<ProbeColumnType>{*_probe_input_table, _column_ids.second}, partition_offsets);
     }
 
     // After probing, the partitioned columns are not needed anymore.
