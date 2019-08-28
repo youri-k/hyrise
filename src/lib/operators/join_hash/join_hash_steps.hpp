@@ -980,7 +980,7 @@ inline void write_output_segments(Segments& output_segments, const std::shared_p
           auto new_pos_list_iter = new_pos_list->begin();
 
           bool single_chunk = true;
-          auto common_chunk_id = std::optional<ChunkID>{};
+          auto common_chunk_id = pos_list->empty() ? INVALID_CHUNK_ID : (*pos_list)[0].chunk_id;
 
           for (const auto& row : *pos_list) {
             if (row.chunk_offset == INVALID_CHUNK_OFFSET) {
@@ -990,12 +990,8 @@ inline void write_output_segments(Segments& output_segments, const std::shared_p
               *new_pos_list_iter = referenced_pos_list[row.chunk_offset];
             }
 
-            if (!common_chunk_id) {
-              common_chunk_id = (*new_pos_list_iter).chunk_id;
-            } else {
-              if ((*new_pos_list_iter).chunk_id != common_chunk_id) {
-                single_chunk = false;
-              }
+            if ((*new_pos_list_iter).chunk_id != common_chunk_id) {
+              single_chunk = false;
             }
 
             ++new_pos_list_iter;
