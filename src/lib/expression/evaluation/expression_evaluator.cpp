@@ -766,7 +766,7 @@ std::shared_ptr<ExpressionResult<Result>> ExpressionEvaluator::_evaluate_functio
 template <>
 std::shared_ptr<ExpressionResult<pmr_string>> ExpressionEvaluator::_evaluate_extract_expression<pmr_string>(
     const ExtractExpression& extract_expression) {
-  const auto from_result = evaluate_expression_to_result<pmr_string>(*extract_expression.from());
+  auto from_result = evaluate_expression_to_result<pmr_string>(*extract_expression.from());
 
   switch (extract_expression.datetime_component) {
     case DatetimeComponent::Year:
@@ -792,7 +792,7 @@ std::shared_ptr<ExpressionResult<Result>> ExpressionEvaluator::_evaluate_extract
 
 template <size_t offset, size_t count>
 std::shared_ptr<ExpressionResult<pmr_string>> ExpressionEvaluator::_evaluate_extract_substr(
-    const ExpressionResult<pmr_string>& from_result) {
+    ExpressionResult<pmr_string>& from_result) {
   std::shared_ptr<ExpressionResult<pmr_string>> result;
 
   std::vector<pmr_string> values(from_result.size());
@@ -952,7 +952,7 @@ std::shared_ptr<BaseValueSegment> ExpressionEvaluator::evaluate_expression_to_se
   std::shared_ptr<BaseValueSegment> segment;
   std::vector<bool> nulls;
 
-  _resolve_to_expression_result_view(expression, [&](const auto& view) {
+  _resolve_to_expression_result_view(expression, [&](auto& view) {
     using ColumnDataType = typename std::decay_t<decltype(view)>::Type;
 
     // clang-format off
@@ -962,7 +962,7 @@ std::shared_ptr<BaseValueSegment> ExpressionEvaluator::evaluate_expression_to_se
       std::vector<ColumnDataType> values(_output_row_count);
 
       for (auto chunk_offset = ChunkOffset{0}; chunk_offset < _output_row_count; ++chunk_offset) {
-        values[chunk_offset] = std::move(view.value(chunk_offset));
+        values[chunk_offset] = std::move(view.try_consume_value(chunk_offset));
       }
 
       if (view.is_nullable()) {
@@ -1073,8 +1073,8 @@ PosList ExpressionEvaluator::evaluate_expression_to_pos_list(const AbstractExpre
           // a) such implementations would require lots of code, there is little potential for code sharing between the
           //    evaluate-to-PosList and evaluate-to-Result implementations
           // b) Like/In are on the slower end anyway
-          const auto result = evaluate_expression_to_result<ExpressionEvaluator::Bool>(expression);
-          result->as_view([&](const auto& result_view) {
+          auto result = evaluate_expression_to_result<ExpressionEvaluator::Bool>(expression);
+          result->as_view([&](auto result_view) {
             for (auto chunk_offset = ChunkOffset{0}; chunk_offset < _output_row_count; ++chunk_offset) {
               if (result_view.value(chunk_offset) != 0 && !result_view.is_null(chunk_offset)) {
                 result_pos_list.emplace_back(RowID{_chunk_id, chunk_offset});
@@ -1212,7 +1212,7 @@ std::shared_ptr<ExpressionResult<Result>> ExpressionEvaluator::_evaluate_binary_
     const AbstractExpression& left_expression, const AbstractExpression& right_expression) {
   auto result = std::shared_ptr<ExpressionResult<Result>>{};
 
-  _resolve_to_expression_result_views(left_expression, right_expression, [&](const auto& left, const auto& right) {
+  _resolve_to_expression_result_views(left_expression, right_expression, [&](auto& left, auto& right) {
     using LeftDataType = typename std::decay_t<decltype(left)>::Type;
     using RightDataType = typename std::decay_t<decltype(right)>::Type;
 
@@ -1242,7 +1242,7 @@ std::shared_ptr<ExpressionResult<Result>> ExpressionEvaluator::_evaluate_binary_
 template <typename Functor>
 void ExpressionEvaluator::_resolve_to_expression_result_view(const AbstractExpression& expression, const Functor& fn) {
   _resolve_to_expression_result(expression,
-                                [&](const auto& result) { result.as_view([&](const auto& view) { fn(view); }); });
+                                [&](auto& result) { result.as_view([&](auto view) { fn(view); }); });
 }
 
 template <typename Functor>
@@ -1250,9 +1250,9 @@ void ExpressionEvaluator::_resolve_to_expression_result_views(const AbstractExpr
                                                               const AbstractExpression& right_expression,
                                                               const Functor& fn) {
   _resolve_to_expression_results(left_expression, right_expression,
-                                 [&](const auto& left_result, const auto& right_result) {
-                                   left_result.as_view([&](const auto& left_view) {
-                                     right_result.as_view([&](const auto& right_view) { fn(left_view, right_view); });
+                                 [&](auto& left_result, auto& right_result) {
+                                   left_result.as_view([&](auto left_view) {
+                                     right_result.as_view([&](auto right_view) { fn(left_view, right_view); });
                                    });
                                  });
 }
@@ -1261,8 +1261,8 @@ template <typename Functor>
 void ExpressionEvaluator::_resolve_to_expression_results(const AbstractExpression& left_expression,
                                                          const AbstractExpression& right_expression,
                                                          const Functor& fn) {
-  _resolve_to_expression_result(left_expression, [&](const auto& left_result) {
-    _resolve_to_expression_result(right_expression, [&](const auto& right_result) { fn(left_result, right_result); });
+  _resolve_to_expression_result(left_expression, [&](auto& left_result) {
+    _resolve_to_expression_result(right_expression, [&](auto& right_result) { fn(left_result, right_result); });
   });
 }
 
@@ -1280,7 +1280,7 @@ void ExpressionEvaluator::_resolve_to_expression_result(const AbstractExpression
     resolve_data_type(expression.data_type(), [&](const auto data_type_t) {
       using ExpressionDataType = typename decltype(data_type_t)::type;
 
-      const auto expression_result = evaluate_expression_to_result<ExpressionDataType>(expression);
+      auto expression_result = evaluate_expression_to_result<ExpressionDataType>(expression);
       fn(*expression_result);
     });
   }
@@ -1376,9 +1376,9 @@ std::shared_ptr<ExpressionResult<pmr_string>> ExpressionEvaluator::_evaluate_sub
     const std::vector<std::shared_ptr<AbstractExpression>>& arguments) {
   DebugAssert(arguments.size() == 3, "SUBSTR expects three arguments");
 
-  const auto strings = evaluate_expression_to_result<pmr_string>(*arguments[0]);
-  const auto starts = evaluate_expression_to_result<int32_t>(*arguments[1]);
-  const auto lengths = evaluate_expression_to_result<int32_t>(*arguments[2]);
+  auto strings = evaluate_expression_to_result<pmr_string>(*arguments[0]);
+  auto starts = evaluate_expression_to_result<int32_t>(*arguments[1]);
+  auto lengths = evaluate_expression_to_result<int32_t>(*arguments[2]);
 
   const auto row_count = _result_size(strings->size(), starts->size(), lengths->size());
 

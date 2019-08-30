@@ -94,7 +94,7 @@ class ExpressionResult : public BaseExpressionResult {
    * overhead
    */
   template <typename Functor>
-  void as_view(const Functor& fn) const {
+  void as_view(const Functor& fn) {
     if (size() == 1) {
       fn(ExpressionResultLiteral(values.front(), is_nullable() && nulls.front()));
     } else if (nulls.size() == 1 && nulls.front()) {

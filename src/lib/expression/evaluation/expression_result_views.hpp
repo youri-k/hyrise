@@ -20,7 +20,7 @@ class ExpressionResultNullableSeries {
  public:
   using Type = T;
 
-  ExpressionResultNullableSeries(const std::vector<T>& values, const std::vector<bool>& nulls)
+  ExpressionResultNullableSeries(std::vector<T>& values, const std::vector<bool>& nulls)
       : _values(values), _nulls(nulls) {
     DebugAssert(values.size() == nulls.size(), "Need as many values as nulls");
   }
@@ -34,6 +34,12 @@ class ExpressionResultNullableSeries {
     return _values[idx];
   }
 
+  T&& try_consume_value(const size_t idx) {
+    DebugAssert(idx < _values.size(), "Index out of range");
+    if constexpr (HYRISE_DEBUG) _values[idx] = T{};
+    return std::move(_values[idx]);
+  }
+
   size_t size() const { return _values.size(); }
 
   bool is_null(const size_t idx) const {
@@ -42,7 +48,7 @@ class ExpressionResultNullableSeries {
   }
 
  private:
-  const std::vector<T>& _values;
+  std::vector<T>& _values;
   const std::vector<bool>& _nulls;
 };
 
@@ -55,7 +61,7 @@ class ExpressionResultNonNullSeries {
  public:
   using Type = T;
 
-  explicit ExpressionResultNonNullSeries(const std::vector<T>& values) : _values(values) {}
+  explicit ExpressionResultNonNullSeries(std::vector<T>& values) : _values(values) {}
 
   bool is_series() const { return true; }
   bool is_literal() const { return false; }
@@ -68,10 +74,16 @@ class ExpressionResultNonNullSeries {
     return _values[idx];
   }
 
+  T&& try_consume_value(const size_t idx) {
+    DebugAssert(idx < _values.size(), "Index out of range");
+    if constexpr (HYRISE_DEBUG) _values[idx] = T{};
+    return std::move(_values[idx]);
+  }
+
   bool is_null(const size_t idx) const { return false; }
 
  private:
-  const std::vector<T>& _values;
+  std::vector<T>& _values;
 };
 
 /**
@@ -92,6 +104,7 @@ class ExpressionResultLiteral {
   size_t size() const { return 1u; }
 
   const T& value(const size_t = 0) const { return _value; }
+  const T& try_consume_value(const size_t = 0) const { return _value; }
   bool is_null(const size_t = 0) const { return _null; }
 
  private:

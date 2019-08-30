@@ -89,7 +89,7 @@ class ExpressionEvaluatorToValuesTest : public ::testing::Test {
   std::vector<std::optional<T>> normalize_expression_result(const ExpressionResult<T>& result) {
     std::vector<std::optional<T>> normalized(result.size());
 
-    result.as_view([&](const auto& resolved) {
+    result.as_view([&](auto resolved) {
       for (auto idx = size_t{0}; idx < result.size(); ++idx) {
         if (!resolved.is_null(idx)) normalized[idx] = resolved.value(idx);
       }

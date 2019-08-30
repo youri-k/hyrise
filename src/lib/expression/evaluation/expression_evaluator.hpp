@@ -135,7 +135,7 @@ class ExpressionEvaluator final {
 
   template <size_t offset, size_t count>
   std::shared_ptr<ExpressionResult<pmr_string>> _evaluate_extract_substr(
-      const ExpressionResult<pmr_string>& from_result);
+      ExpressionResult<pmr_string>& from_result);
 
   template <typename Result>
   std::shared_ptr<ExpressionResult<Result>> _evaluate_exists_expression(const ExistsExpression& exists_expression);
