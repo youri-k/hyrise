@@ -85,8 +85,8 @@ ValueID DictionarySegment<T>::lower_bound(const AllTypeVariant& value) const {
   const auto typed_value = boost::get<T>(value);
 
   auto it = std::lower_bound(_dictionary->cbegin(), _dictionary->cend(), typed_value, [](const auto& a, const auto &b) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(a)>, pmr_string>) {
-      return A_strcmp(a.c_str(), b.c_str()) == -1;
+    if constexpr (std::is_same_v<T, pmr_string>) {
+      return A_strcmp(a.c_str(), b.c_str()) < 0;
     }
     return a < b;
   });
@@ -101,8 +101,8 @@ ValueID DictionarySegment<T>::upper_bound(const AllTypeVariant& value) const {
   const auto typed_value = boost::get<T>(value);
 
   auto it = std::upper_bound(_dictionary->cbegin(), _dictionary->cend(), typed_value, [](const auto& a, const auto &b) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(a)>, pmr_string>) {
-      return A_strcmp(a.c_str(), b.c_str()) == -1;
+    if constexpr (std::is_same_v<T, pmr_string>) {
+      return A_strcmp(a.c_str(), b.c_str()) < 0;
     }
     return a < b;
   });
