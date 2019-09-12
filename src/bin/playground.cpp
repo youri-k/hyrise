@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "asmlib.h"
 #include "types.hpp"
 
 using namespace opossum;  // NOLINT

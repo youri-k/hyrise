@@ -606,6 +606,7 @@ set(
     lz4
     zstd
     custom_jemalloc
+    asmlib
     ${FILESYSTEM_LIBRARY}
     ${Boost_CONTAINER_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}

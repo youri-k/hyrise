@@ -4,6 +4,20 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     add_compile_options(-Wno-format-overflow)
 endif()
 
+add_library(
+    asmlib
+
+    STATIC IMPORTED GLOBAL
+)
+target_include_directories(asmlib INTERFACE ${PROJECT_SOURCE_DIR}/third_party/asmlib/)
+set_target_properties(asmlib PROPERTIES LINKER_LANGUAGE C)
+if(${APPLE})
+  set_target_properties(asmlib PROPERTIES IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/third_party/asmlib/libamac64o.a")  # TODO check override
+else()
+  set_target_properties(asmlib PROPERTIES IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/third_party/asmlib/libaelf64o.a")
+endif()
+set_target_properties(asmlib PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/third_party/asmlib/")
+
 # Build google benchmark
 add_library(
     benchmark
