@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "asmlib.h"
 #include "aggregate/aggregate_traits.hpp"
 #include "constant_mappings.hpp"
 #include "resolve_type.hpp"
@@ -134,6 +135,19 @@ void AggregateHash::_aggregate_segment(ChunkID chunk_id, ColumnID column_index, 
   });
 }
 
+template<typename T>
+class EqualFn
+{
+public:
+  bool operator() (const T& a, const T& b) const
+  {
+    if constexpr (std::is_same_v<T, pmr_string>) {
+      return A_strcmp(a.c_str(), b.c_str()) == 0;
+    }
+    return a == b;
+  }
+};
+
 template <typename AggregateKey>
 void AggregateHash::_aggregate() {
   // We use monotonic_buffer_resource for the vector of vectors that hold the aggregate keys. That is so that we can
@@ -229,7 +243,7 @@ void AggregateHash::_aggregate() {
         auto allocator = PolymorphicAllocator<std::pair<const ColumnDataType, AggregateKeyEntry>>{&temp_buffer};
 
         auto id_map = std::unordered_map<ColumnDataType, AggregateKeyEntry, std::hash<ColumnDataType>,
-                                         std::equal_to<ColumnDataType>, decltype(allocator)>(allocator);
+                                         EqualFn<ColumnDataType>, decltype(allocator)>(allocator);
         AggregateKeyEntry id_counter = 1u;
 
         const auto chunk_count = input_table->chunk_count();
