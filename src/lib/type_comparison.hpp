@@ -1,11 +1,11 @@
 #pragma once
 
-#include <boost/lexical_cast.hpp>
 #include <functional>
 #include <string>
 #include <type_traits>
 
-#include "asmlib.h"
+#include "boost/lexical_cast.hpp"
+
 #include "types.hpp"
 #include "utils/assert.hpp"
 
@@ -90,28 +90,13 @@ std::enable_if_t<std::is_arithmetic_v<R> && is_lex_castable_v<L> && !std::is_ari
   return boost::lexical_cast<R>(l) > r;
 }
 
-template <typename _Tp = void>
-struct my_equal_to;
-template <>
-struct my_equal_to<void> {
-  template <typename _Tp, typename _Up>
-  constexpr auto operator()(_Tp&& __t, _Up&& __u) const
-      noexcept(noexcept(std::forward<_Tp>(__t) == std::forward<_Up>(__u)))
-          -> decltype(std::forward<_Tp>(__t) == std::forward<_Up>(__u)) {
-    if constexpr(std::is_same_v<std::decay_t<_Tp>, pmr_string> && std::is_same_v<std::decay_t<_Up>, pmr_string>) {
-      return __t.size() == __u.size() && !A_memcmp(__t.c_str(), __u.c_str(), __t.size());
-    }
-    return std::forward<_Tp>(__t) == std::forward<_Up>(__u);
-  }
-};
-
 // Function that calls a given functor with the correct std comparator. The light version is not instantiated for
 // > and >=, reducing the number of instantiated templates by a third.
 template <typename Functor>
 void with_comparator_light(const PredicateCondition predicate_condition, const Functor& func) {
   switch (predicate_condition) {
     case PredicateCondition::Equals:
-      return func(my_equal_to<void>{});
+      return func(std::equal_to<void>{});
 
     case PredicateCondition::NotEquals:
       return func(std::not_equal_to<void>{});

@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include "asmlib.h"
 #include "resolve_type.hpp"
 #include "storage/vector_compression/base_compressed_vector.hpp"
 #include "utils/assert.hpp"
@@ -83,7 +84,12 @@ ValueID DictionarySegment<T>::lower_bound(const AllTypeVariant& value) const {
 
   const auto typed_value = boost::get<T>(value);
 
-  auto it = std::lower_bound(_dictionary->cbegin(), _dictionary->cend(), typed_value);
+  auto it = std::lower_bound(_dictionary->cbegin(), _dictionary->cend(), typed_value, [](const auto& a, const auto &b) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(a)>, pmr_string>) {
+      return A_strcmp(a.c_str(), b.c_str()) == -1;
+    }
+    return a < b;
+  });
   if (it == _dictionary->cend()) return INVALID_VALUE_ID;
   return ValueID{static_cast<ValueID::base_type>(std::distance(_dictionary->cbegin(), it))};
 }
@@ -94,7 +100,12 @@ ValueID DictionarySegment<T>::upper_bound(const AllTypeVariant& value) const {
 
   const auto typed_value = boost::get<T>(value);
 
-  auto it = std::upper_bound(_dictionary->cbegin(), _dictionary->cend(), typed_value);
+  auto it = std::upper_bound(_dictionary->cbegin(), _dictionary->cend(), typed_value, [](const auto& a, const auto &b) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(a)>, pmr_string>) {
+      return A_strcmp(a.c_str(), b.c_str()) == -1;
+    }
+    return a < b;
+  });
   if (it == _dictionary->cend()) return INVALID_VALUE_ID;
   return ValueID{static_cast<ValueID::base_type>(std::distance(_dictionary->cbegin(), it))};
 }

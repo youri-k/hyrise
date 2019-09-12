@@ -12,9 +12,9 @@ add_library(
 target_include_directories(asmlib INTERFACE ${PROJECT_SOURCE_DIR}/third_party/asmlib/)
 set_target_properties(asmlib PROPERTIES LINKER_LANGUAGE C)
 if(${APPLE})
-  set_target_properties(asmlib PROPERTIES IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/third_party/asmlib/libamac64o.a")  # TODO check override
+  set_target_properties(asmlib PROPERTIES IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/third_party/asmlib/libamac64.a")
 else()
-  set_target_properties(asmlib PROPERTIES IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/third_party/asmlib/libaelf64o.a")
+  set_target_properties(asmlib PROPERTIES IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/third_party/asmlib/libaelf64.a")
 endif()
 set_target_properties(asmlib PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/third_party/asmlib/")
 
