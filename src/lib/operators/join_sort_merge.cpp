@@ -910,16 +910,22 @@ class JoinSortMerge::JoinSortMergeImpl : public AbstractJoinOperatorImpl {
 
     // Add the outer join rows which had a null value in their join column
     if (include_null_left) {
-      for (auto row_id_left : *_null_rows_left) {
-        output_left->push_back(row_id_left);
-        output_right->push_back(NULL_ROW_ID);
-      }
+      output_left->insert(output_left->end(), _null_rows_left->begin(), _null_rows_left->end());
+      output_right->insert(output_right->end(), _null_rows_left->size(), NULL_ROW_ID);
+
+      // for (auto row_id_left : *_null_rows_left) {
+      //   output_left->push_back(row_id_left);
+      //   output_right->push_back(NULL_ROW_ID);
+      // }
     }
     if (include_null_right) {
-      for (auto row_id_right : *_null_rows_right) {
-        output_left->push_back(NULL_ROW_ID);
-        output_right->push_back(row_id_right);
-      }
+      output_left->insert(output_left->end(), _null_rows_right->size(), NULL_ROW_ID);
+      output_right->insert(output_right->end(), _null_rows_right->begin(), _null_rows_right->end());
+
+      // for (auto row_id_right : *_null_rows_right) {
+      //   output_left->push_back(NULL_ROW_ID);
+      //   output_right->push_back(row_id_right);
+      // }
     }
 
     // Add the segments from both input tables to the output

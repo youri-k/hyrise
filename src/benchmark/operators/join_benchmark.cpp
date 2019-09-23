@@ -2,16 +2,23 @@
 
 #include "benchmark/benchmark.h"
 #include "hyrise.hpp"
+#include "expression/expression_functional.hpp"
+#include "expression/pqp_column_expression.hpp"
 #include "operators/join_hash.hpp"
 #include "operators/join_index.hpp"
 #include "operators/join_mpsm.hpp"
 #include "operators/join_nested_loop.hpp"
 #include "operators/join_sort_merge.hpp"
+#include "operators/join_sort_merge/radix_cluster_sort.hpp"
+#include "operators/table_scan.hpp"
 #include "operators/table_wrapper.hpp"
+#include "scheduler/node_queue_scheduler.hpp"
 #include "storage/chunk.hpp"
 #include "storage/index/adaptive_radix_tree/adaptive_radix_tree_index.hpp"
 #include "synthetic_table_generator.hpp"
 #include "types.hpp"
+
+using namespace opossum::expression_functional;  // NOLINT
 
 namespace {
 constexpr auto NUMBER_OF_CHUNKS = size_t{50};
@@ -58,6 +65,45 @@ std::shared_ptr<TableWrapper> generate_table(const size_t number_of_rows) {
 
   return table_wrapper;
 }
+
+static void BM_JoinInequalityStatic(benchmark::State& state) {
+  // Hyrise::get().set_scheduler(std::make_shared<NodeQueueScheduler>());
+
+  const auto scale_factor = 1'000'000;
+  const auto cluster_count = 32;
+  const auto radix_clustering = state.range(0);
+  auto table_generator = std::make_shared<SyntheticTableGenerator>();
+
+  auto distribution_left = ColumnDataDistribution::make_uniform_config(0.0, 10'000);
+  auto distribution_right = ColumnDataDistribution::make_uniform_config(0.0, 30'000);
+
+  const auto encoding_spec = std::vector<SegmentEncodingSpec>({SegmentEncodingSpec{EncodingType::Dictionary}});
+
+  auto table_l = table_generator->generate_table({distribution_left}, {DataType::Int}, scale_factor, 100'000, encoding_spec);
+  auto table_r = table_generator->generate_table({distribution_right}, {DataType::Int}, scale_factor * 10, 100'000, encoding_spec);
+
+  auto table_wrapper_left = std::make_shared<TableWrapper>(table_l);
+  table_wrapper_left->execute();
+  auto table_wrapper_right = std::make_shared<TableWrapper>(table_r);
+  table_wrapper_right->execute();
+
+  auto expression_left = PQPColumnExpression::from_table(*table_l, "column_1");
+  auto expression_right = PQPColumnExpression::from_table(*table_r, "column_1");
+  auto table_scan_left = std::make_shared<TableScan>(table_wrapper_left, greater_than_equals_(expression_left, 1'000));
+  auto table_scan_right = std::make_shared<TableScan>(table_wrapper_right, greater_than_equals_(expression_right, 3'000));
+  table_scan_left->execute();
+  table_scan_right->execute();
+
+  for (auto _ : state) {
+    auto clusterer = RadixClusterSort<int>(
+        table_scan_left->get_output(), table_scan_right->get_output(), ColumnIDPair{0, 0}, radix_clustering,
+        false, false, cluster_count);
+    clusterer.execute();
+  }
+
+  // Hyrise::get().scheduler().finish();
+}
+BENCHMARK(BM_JoinInequalityStatic)->RangeMultiplier(2)->Ranges({{true, false}});
 
 template <class C>
 void bm_join_impl(benchmark::State& state, std::shared_ptr<TableWrapper> table_wrapper_left,

@@ -19,6 +19,10 @@
 #include "storage/encoding_type.hpp"
 #include "tpch/tpch_table_generator.hpp"
 
+
+
+#include "operators/print.hpp"
+
 using namespace opossum::expression_functional;  // NOLINT
 
 namespace opossum {
@@ -30,7 +34,7 @@ class TPCHDataMicroBenchmarkFixture : public MicroBenchmarkBasicFixture {
  public:
   void SetUp(::benchmark::State& state) {
     auto& sm = Hyrise::get().storage_manager;
-    const auto scale_factor = 0.001f;
+    const auto scale_factor = 0.1f;
     const auto default_encoding = EncodingType::Dictionary;
 
     auto benchmark_config = BenchmarkConfig::get_default_config();
@@ -273,6 +277,20 @@ BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_HashSemiProbeRelationLarger)(bench
         _table_wrapper_map.at("lineitem"), _table_wrapper_map.at("orders"), JoinMode::Semi,
         OperatorJoinPredicate{ColumnIDPair(ColumnID{0}, ColumnID{0}), PredicateCondition::Equals});
     join->execute();
+  }
+}
+
+BENCHMARK_F(TPCHDataMicroBenchmarkFixture, BM_NewNullAppend)(benchmark::State& state) {
+  auto null_introducing_join = std::make_shared<JoinHash>(
+        _table_wrapper_map.at("region"), _table_wrapper_map.at("lineitem"), JoinMode::Right,
+        OperatorJoinPredicate{ColumnIDPair(ColumnID{0}, ColumnID{0}), PredicateCondition::Equals});
+    null_introducing_join->execute();
+
+  for (auto _ : state) {
+    auto full_outer_join = std::make_shared<JoinSortMerge>(
+        null_introducing_join, null_introducing_join, JoinMode::FullOuter,
+        OperatorJoinPredicate{ColumnIDPair(ColumnID{0}, ColumnID{3}), PredicateCondition::Equals});
+    full_outer_join->execute();
   }
 }
 
