@@ -109,7 +109,7 @@ void PredicatePlacementRule::_push_down_traversal(const std::shared_ptr<Abstract
           const auto move_to_right =
               _is_evaluable_on_lqp(push_down_node, join_node->right_input());
 
-          if (!move_to_left && !move_to_right && join_node->join_mode == JoinMode::Inner) {
+          if (!move_to_left && !move_to_right && push_down_node->type == AbstractLQPNode::Predicate && join_node->join_mode == JoinMode::Inner) {
             // The current predicate could not be pushed down to either side. If we cannot push it down, we might be
             // able to create additional predicates that perform some pre-selection before the tuples reach the join.
             // An example can be found in TPC-H query 7, with the predicate
@@ -155,7 +155,7 @@ void PredicatePlacementRule::_push_down_traversal(const std::shared_ptr<Abstract
             auto aborted_right_side = false;
 
             const auto outer_disjunction =
-                flatten_logical_expressions(push_down_node->predicate(), LogicalOperator::Or);
+                flatten_logical_expressions(static_cast<PredicateNode&>(*push_down_node).predicate(), LogicalOperator::Or);
             for (const auto& expression_in_disjunction : outer_disjunction) {
               // For the current expression_in_disjunction, these hold the PredicateExpressions that need to be true
               // on the left/right side

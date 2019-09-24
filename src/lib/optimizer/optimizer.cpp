@@ -112,7 +112,7 @@ std::shared_ptr<Optimizer> Optimizer::create_default_optimizer() {
   // for now we want the PredicateReorderingRule to have the final say on predicate positions
   optimizer->add_rule(std::make_unique<PredicatePlacementRule>());
 
-  optimizer->add_rule(std::make_unique<PredicatePlacementRule>(true));
+  optimizer->add_rule(std::make_unique<PredicateSplitUpRule>(true));
 
   optimizer->add_rule(std::make_unique<JoinPredicateOrderingRule>());
 
