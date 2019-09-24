@@ -1,7 +1,9 @@
 #include "predicate_placement_rule.hpp"
 
 #include "all_parameter_variant.hpp"
+#include "cost_estimation/abstract_cost_estimator.hpp"
 #include "expression/expression_utils.hpp"
+#include "expression/logical_expression.hpp"
 #include "expression/lqp_subquery_expression.hpp"
 #include "logical_query_plan/abstract_lqp_node.hpp"
 #include "logical_query_plan/join_node.hpp"
@@ -11,6 +13,7 @@
 #include "logical_query_plan/projection_node.hpp"
 #include "logical_query_plan/sort_node.hpp"
 #include "operators/operator_scan_predicate.hpp"
+#include "statistics/cardinality_estimator.hpp"
 
 namespace opossum {
 
@@ -26,7 +29,7 @@ void PredicatePlacementRule::apply_to(const std::shared_ptr<AbstractLQPNode>& no
 
 void PredicatePlacementRule::_push_down_traversal(const std::shared_ptr<AbstractLQPNode>& current_node,
                                                   const LQPInputSide input_side,
-                                                  std::vector<std::shared_ptr<AbstractLQPNode>>& push_down_nodes) {
+                                                  std::vector<std::shared_ptr<AbstractLQPNode>>& push_down_nodes) const {
   const auto input_node = current_node->input(input_side);
   if (!input_node) return;  // Allow calling without checks
 
@@ -106,11 +109,133 @@ void PredicatePlacementRule::_push_down_traversal(const std::shared_ptr<Abstract
           const auto move_to_right =
               _is_evaluable_on_lqp(push_down_node, join_node->right_input());
 
-          if (!move_to_left && !move_to_right) {
-            _insert_nodes(current_node, input_side, {push_down_node});
-          }
+          if (!move_to_left && !move_to_right && join_node->join_mode == JoinMode::Inner) {
+            // The current predicate could not be pushed down to either side. If we cannot push it down, we might be
+            // able to create additional predicates that perform some pre-selection before the tuples reach the join.
+            // An example can be found in TPC-H query 7, with the predicate
+            //   (n1.name = 'DE' AND n2.name = 'FR') OR (n1.name = 'FR' AND n2.n_name = 'DE'
+            // We cannot push it to either n1 or n2 as the selected values depend on the result of the other table.
+            // However, we can create a predicate (n1.name = 'DE' OR n1.name = 'FR') and reduce the number of tuples
+            // that reach the joins from all countries to just two. This behavior is also described in the TPC-H
+            // Analyzed paper as "CP4.2b: Join-Dependent Expression Filter Pushdown".
+            //
+            // For now, this is indiscriminate. For predicates that throw out only few rows, it might actually  // TODO TPC-H 13 seems to regress - evaluate
+            // hurt the performance as the predicate will be evaluated twice. Once we see such a case, we could
+            // estimate the selectivity of the predicate and decide whether it is worth creating a pre-join predicate.
+            //
+            // Here are the rules that determine whether we can create a pre-join predicate for the tables l or r with
+            // predicates that operate on l (l1, l2), r (r1, r2), or are independent of either table (u1, u2). To
+            // produce a predicate for a table, it is required that each expression in the disjunction has a predicate
+            // for that table:
+            //
+            // (l1 AND r1) OR (l2)        -> create predicate (l1 OR l2) on left side, everything on right side might
+            //                               qualify, so do not create a predicate there
+            // (l1 AND r2) OR (l2 AND r1) -> create (l1 OR l2) on left, (r1 OR r2) on right (example from above)
+            // (l1 AND u1) OR (r1 AND u2) -> do nothing
+            // You will also find these examples in the tests.
+            //
+            // For now, this rule deals only with inner joins. It might also work for other join types, but the
+            // implications of creating a pre-join predicate on the NULL-producing side need to be carefully thought
+            // through once the need arises.
+            //
+            // NAMING:
+            // Input
+            // (l1 AND r2) OR (l2 AND r1)
+            // ^^^^^^^^^^^    ^^^^^^^^^^^ outer_disjunction holds two (or more) elements from flattening the OR.
+            //                            One of these elements is called expression_in_disjunction.
+            //  ^^     ^^                 inner_conjunction holds two (or more) elements from flattening the AND.
+            //                            One of these elements is called expression_in_conjunction.
 
-          if (move_to_left && move_to_right) {
+            std::vector<std::shared_ptr<AbstractExpression>> left_disjunction{};
+            std::vector<std::shared_ptr<AbstractExpression>> right_disjunction{};
+
+            // Tracks whether we had to abort the search for one of the sides as an inner_conjunction was found that
+            // did not cover the side.
+            auto aborted_left_side = false;
+            auto aborted_right_side = false;
+
+            const auto outer_disjunction =
+                flatten_logical_expressions(push_down_node->predicate(), LogicalOperator::Or);
+            for (const auto& expression_in_disjunction : outer_disjunction) {
+              // For the current expression_in_disjunction, these hold the PredicateExpressions that need to be true
+              // on the left/right side
+              std::vector<std::shared_ptr<AbstractExpression>> left_conjunction{};
+              std::vector<std::shared_ptr<AbstractExpression>> right_conjunction{};
+
+              // Fill left/right_conjunction
+              const auto inner_conjunction =
+                  flatten_logical_expressions(expression_in_disjunction, LogicalOperator::And);
+              for (const auto& expression_in_conjunction : inner_conjunction) {
+                const auto evaluable_on_left_side =
+                    expression_evaluable_on_lqp(expression_in_conjunction, *join_node->left_input());
+                const auto evaluable_on_right_side =
+                    expression_evaluable_on_lqp(expression_in_conjunction, *join_node->right_input());
+
+                // We can only work with expressions that are specific to one side.
+                if (evaluable_on_left_side && !evaluable_on_right_side && !aborted_left_side) {
+                  left_conjunction.emplace_back(expression_in_conjunction);
+                }
+                if (evaluable_on_right_side && !evaluable_on_left_side && !aborted_right_side) {
+                  right_conjunction.emplace_back(expression_in_conjunction);
+                }
+              }
+
+              if (!left_conjunction.empty()) {
+                // If we have found one or more predicates for the left side, connect them using AND and add them to
+                // the disjunction that will be pushed to the left side.
+                left_disjunction.emplace_back(inflate_logical_expressions(left_conjunction, LogicalOperator::And));
+              } else {
+                // If, within the current expression_in_disjunction, we have not found a matching predicate for the
+                // left side, all tuples for the left side qualify and it makes no sense to create a filter.
+                aborted_left_side = true;
+                left_disjunction.clear();
+              }
+              if (!right_conjunction.empty()) {
+                right_disjunction.emplace_back(inflate_logical_expressions(right_conjunction, LogicalOperator::And));
+              } else {
+                aborted_right_side = true;
+                right_disjunction.clear();
+              }
+            }
+
+            // const auto& cardinality_estimator = *cost_estimator->cardinality_estimator;
+            // if (!left_disjunction.empty()) {
+            //   // Connect all options (e.g., l.name = 'DE' and l.name = 'FR') with a disjunction, create a predicate,
+            //   // and add it to the list of nodes that will be pushed to the left side
+            //   const auto left_expression = inflate_logical_expressions(left_disjunction, LogicalOperator::Or);
+            //   const auto pre_filter_predicate_node = PredicateNode::make(left_expression, join_node->left_input());
+
+            //   const auto old_cardinality = cardinality_estimator.estimate_cardinality(join_node->left_input());
+            //   const auto new_cardinality = cardinality_estimator.estimate_cardinality(pre_filter_predicate_node);
+            //   std::cout << pre_filter_predicate_node->description() << " reduces cardinality from " << old_cardinality << " to " << new_cardinality << std::endl;
+            //   // TODO dedup with right side
+
+            //   // Unset the left input, as it will be re-set later
+            //   pre_filter_predicate_node->set_left_input(nullptr);
+
+            //   left_push_down_nodes.emplace_back(pre_filter_predicate_node);
+            // }
+
+            const auto add_disjunction_to_nodes = [](const std::vector<std::shared_ptr<AbstractExpression>>& disjunction, std::vector<std::shared_ptr<AbstractExpression>> predicate_nodes) {
+              if (disjunction.empty()) return;
+
+              if (disjunction.size() <= 3) { // TODO as constant
+                // We are doing the job of the ... here, but we need to do it now so that we can add the nodes to the pushdown list. Otherwise, we would need to iteratively run both queries again and again.
+                // TODO add OR/AND flattened
+              } else {
+                const auto expression = inflate_logical_expressions(disjunction, LogicalOperator::Or);
+                const auto predicate_node = PredicateNode::make(expression);
+                predicate_nodes.emplace_back(predicate_node);
+              }
+            };
+
+            add_disjunction_to_nodes(left_disjunction, left_push_down_nodes);
+            add_disjunction_to_nodes(right_disjunction, right_push_down_nodes);
+
+            _insert_nodes(current_node, input_side, {push_down_node});
+
+            // End of the pre-join filter code
+          } else if (move_to_left && move_to_right) {
             // Do not push down uncorrelated predicates
             _insert_nodes(current_node, input_side, {push_down_node});
           } else {
