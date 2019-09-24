@@ -109,7 +109,7 @@ void PredicatePlacementRule::_push_down_traversal(const std::shared_ptr<Abstract
           const auto move_to_right =
               _is_evaluable_on_lqp(push_down_node, join_node->right_input());
 
-          if (!move_to_left && !move_to_right && push_down_node->type == AbstractLQPNode::Predicate && join_node->join_mode == JoinMode::Inner) {
+          if (!move_to_left && !move_to_right && push_down_node->type == LQPNodeType::Predicate && join_node->join_mode == JoinMode::Inner) {
             // The current predicate could not be pushed down to either side. If we cannot push it down, we might be
             // able to create additional predicates that perform some pre-selection before the tuples reach the join.
             // An example can be found in TPC-H query 7, with the predicate
@@ -216,11 +216,11 @@ void PredicatePlacementRule::_push_down_traversal(const std::shared_ptr<Abstract
             //   left_push_down_nodes.emplace_back(pre_filter_predicate_node);
             // }
 
-            const auto add_disjunction_to_nodes = [](const std::vector<std::shared_ptr<AbstractExpression>>& disjunction, std::vector<std::shared_ptr<AbstractExpression>> predicate_nodes) {
+            const auto add_disjunction_to_nodes = [](const std::vector<std::shared_ptr<AbstractExpression>>& disjunction, std::vector<std::shared_ptr<AbstractLQPNode>>& predicate_nodes) {
               if (disjunction.empty()) return;
 
-              if (disjunction.size() <= 3) { // TODO as constant
-                // We are doing the job of the ... here, but we need to do it now so that we can add the nodes to the pushdown list. Otherwise, we would need to iteratively run both queries again and again.
+              if (disjunction.size() <= 3) { // TODO get constant from OR Rule
+                // We are doing the job of the ... here, but we need to do it now so that we can add the nodes to the pushdown list. Otherwise, we would need to iteratively run both rules again and again.
                 // TODO add OR/AND flattened
               } else {
                 const auto expression = inflate_logical_expressions(disjunction, LogicalOperator::Or);
