@@ -32,7 +32,7 @@ using namespace opossum::expression_functional;  // NOLINT
 
 namespace opossum {
 
-class ChunkPruningTest : public StrategyBaseTest {
+class ChunkPruningRuleTest : public StrategyBaseTest {
  protected:
   void SetUp() override {
     auto& storage_manager = Hyrise::get().storage_manager;
@@ -58,7 +58,7 @@ class ChunkPruningTest : public StrategyBaseTest {
   std::shared_ptr<ChunkPruningRule> _rule;
 };
 
-TEST_F(ChunkPruningTest, SimplePruningTest) {
+TEST_F(ChunkPruningRuleTest, SimplePruningTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   auto predicate_node =
@@ -71,9 +71,19 @@ TEST_F(ChunkPruningTest, SimplePruningTest) {
   std::vector<ChunkID> expected_chunk_ids = {ChunkID{1}};
   std::vector<ChunkID> pruned_chunk_ids = stored_table_node->pruned_chunk_ids();
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
+
+  EXPECT_TRUE(stored_table_node->table_statistics);
+
+  // clang-format off
+  const auto expected_histogram = GenericHistogram<int32_t>{
+    std::vector<int32_t>            {12, 123, 12345},
+    std::vector<int32_t>            {12, 123, 12345},
+    std::vector<HistogramCountType> {0,  0,   2},
+    std::vector<HistogramCountType> {1,  1,   1}};
+  // clang-format on
 }
 
-TEST_F(ChunkPruningTest, SimpleChinkPruningTestWithColumnPruning) {
+TEST_F(ChunkPruningRuleTest, SimpleChinkPruningTestWithColumnPruning) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
   stored_table_node->set_pruned_column_ids({ColumnID{0}});
 
@@ -89,7 +99,7 @@ TEST_F(ChunkPruningTest, SimpleChinkPruningTestWithColumnPruning) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, BetweenPruningTest) {
+TEST_F(ChunkPruningRuleTest, BetweenPruningTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   auto predicate_node = std::make_shared<PredicateNode>(
@@ -104,7 +114,7 @@ TEST_F(ChunkPruningTest, BetweenPruningTest) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, NoStatisticsAvailable) {
+TEST_F(ChunkPruningRuleTest, NoStatisticsAvailable) {
   auto table = Hyrise::get().storage_manager.get_table("uncompressed");
   auto chunk = table->get_chunk(ChunkID(0));
   EXPECT_FALSE(chunk->pruning_statistics());
@@ -123,7 +133,7 @@ TEST_F(ChunkPruningTest, NoStatisticsAvailable) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, TwoOperatorPruningTest) {
+TEST_F(ChunkPruningRuleTest, TwoOperatorPruningTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   auto predicate_node_0 =
@@ -142,7 +152,7 @@ TEST_F(ChunkPruningTest, TwoOperatorPruningTest) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, IntersectionPruningTest) {
+TEST_F(ChunkPruningRuleTest, IntersectionPruningTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   auto predicate_node_0 =
@@ -165,7 +175,7 @@ TEST_F(ChunkPruningTest, IntersectionPruningTest) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, ComparatorEdgeCasePruningTest_GreaterThan) {
+TEST_F(ChunkPruningRuleTest, ComparatorEdgeCasePruningTest_GreaterThan) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   auto predicate_node =
@@ -180,7 +190,7 @@ TEST_F(ChunkPruningTest, ComparatorEdgeCasePruningTest_GreaterThan) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, ComparatorEdgeCasePruningTest_Equals) {
+TEST_F(ChunkPruningRuleTest, ComparatorEdgeCasePruningTest_Equals) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   auto predicate_node =
@@ -195,7 +205,7 @@ TEST_F(ChunkPruningTest, ComparatorEdgeCasePruningTest_Equals) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, RangeFilterTest) {
+TEST_F(ChunkPruningRuleTest, RangeFilterTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   auto predicate_node =
@@ -210,7 +220,7 @@ TEST_F(ChunkPruningTest, RangeFilterTest) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, LotsOfRangesFilterTest) {
+TEST_F(ChunkPruningRuleTest, LotsOfRangesFilterTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("long_compressed");
 
   auto predicate_node =
@@ -225,7 +235,7 @@ TEST_F(ChunkPruningTest, LotsOfRangesFilterTest) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, RunLengthSegmentPruningTest) {
+TEST_F(ChunkPruningRuleTest, RunLengthSegmentPruningTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("run_length_compressed");
 
   auto predicate_node = std::make_shared<PredicateNode>(equals_(LQPColumnReference(stored_table_node, ColumnID{0}), 2));
@@ -239,7 +249,7 @@ TEST_F(ChunkPruningTest, RunLengthSegmentPruningTest) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, GetTablePruningTest) {
+TEST_F(ChunkPruningRuleTest, GetTablePruningTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   auto predicate_node =
@@ -264,7 +274,7 @@ TEST_F(ChunkPruningTest, GetTablePruningTest) {
   EXPECT_EQ(result_table->get_value<int>(ColumnID{0}, 0), 12345);
 }
 
-TEST_F(ChunkPruningTest, StringPruningTest) {
+TEST_F(ChunkPruningRuleTest, StringPruningTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("string_compressed");
 
   auto predicate_node =
@@ -279,7 +289,7 @@ TEST_F(ChunkPruningTest, StringPruningTest) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, FixedStringPruningTest) {
+TEST_F(ChunkPruningRuleTest, FixedStringPruningTest) {
   auto stored_table_node = std::make_shared<StoredTableNode>("fixed_string_compressed");
 
   auto predicate_node =
@@ -294,7 +304,7 @@ TEST_F(ChunkPruningTest, FixedStringPruningTest) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, PrunePastNonFilteringNodes) {
+TEST_F(ChunkPruningRuleTest, PrunePastNonFilteringNodes) {
   auto stored_table_node = std::make_shared<StoredTableNode>("compressed");
 
   const auto a = stored_table_node->get_column("a");
@@ -318,7 +328,7 @@ TEST_F(ChunkPruningTest, PrunePastNonFilteringNodes) {
   EXPECT_EQ(pruned_chunk_ids, expected_chunk_ids);
 }
 
-TEST_F(ChunkPruningTest, ValueOutOfRange) {
+TEST_F(ChunkPruningRuleTest, ValueOutOfRange) {
   // Filters are not required to handle values out of their data type's range and the ColumnPruningRule currently
   // doesn't convert out-of-range values into the type's range
   // TODO(anybody) In the test LQP below, the ChunkPruningRule could convert the -3'000'000'000 to MIN_INT (but ONLY
