@@ -225,7 +225,7 @@ void PredicatePlacementRule::_push_down_traversal(const std::shared_ptr<Abstract
               } else {
                 const auto expression = inflate_logical_expressions(disjunction, LogicalOperator::Or);
                 const auto predicate_node = PredicateNode::make(expression);
-                predicate_nodes.emplace_back(predicate_node);
+                predicate_nodes.emplace_back(std::static_pointer_cast<AbstractLQPNode>(predicate_node));
               }
             };
 
