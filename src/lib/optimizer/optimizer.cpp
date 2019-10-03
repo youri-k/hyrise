@@ -23,6 +23,7 @@
 #include "strategy/predicate_reordering_rule.hpp"
 #include "strategy/predicate_split_up_rule.hpp"
 #include "strategy/subquery_to_join_rule.hpp"
+#include "strategy/subplan_reuse_rule.hpp"
 #include "utils/performance_warning.hpp"
 
 /**
@@ -94,7 +95,6 @@ std::shared_ptr<Optimizer> Optimizer::create_default_optimizer() {
 
   optimizer->add_rule(std::make_unique<PredicateSplitUpRule>());
 
-  optimizer->add_rule(std::make_unique<ColumnPruningRule>());
 
   // The JoinOrderingRule cannot proceed past Semi/Anti Joins. These may be part of the initial query plan (in which
   // case we are out of luck and the join ordering will be sub-optimal), but many of them are also introduced by the
@@ -128,6 +128,8 @@ std::shared_ptr<Optimizer> Optimizer::create_default_optimizer() {
   optimizer->add_rule(std::make_unique<InExpressionRewriteRule>());
 
   optimizer->add_rule(std::make_unique<IndexScanRule>());
+  optimizer->add_rule(std::make_unique<SubplanReuseRule>());
+  optimizer->add_rule(std::make_unique<ColumnPruningRule>());
 
   return optimizer;
 }

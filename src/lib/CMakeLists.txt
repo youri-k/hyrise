@@ -310,6 +310,8 @@ set(
     optimizer/strategy/predicate_reordering_rule.hpp
     optimizer/strategy/predicate_split_up_rule.cpp
     optimizer/strategy/predicate_split_up_rule.hpp
+    optimizer/strategy/subplan_reuse_rule.cpp
+    optimizer/strategy/subplan_reuse_rule.hpp
     optimizer/strategy/subquery_to_join_rule.cpp
     optimizer/strategy/subquery_to_join_rule.hpp
     resolve_type.hpp
