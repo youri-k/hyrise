@@ -6,10 +6,12 @@
 #include "abstract_lqp_node.hpp"
 #include "expression/abstract_expression.hpp"
 #include "lqp_column_reference.hpp"
+#include "storage/index/index_statistics.hpp"
 
 namespace opossum {
 
 class LQPColumnExpression;
+class TableStatistics;
 
 /**
  * Represents a Table from the StorageManager in an LQP
@@ -35,13 +37,20 @@ class StoredTableNode : public EnableMakeForLQPNode<StoredTableNode>, public Abs
   const std::vector<ColumnID>& pruned_column_ids() const;
   /** @} */
 
+  std::vector<IndexStatistics> indexes_statistics() const;
+
   std::string description() const override;
   const std::vector<std::shared_ptr<AbstractExpression>>& column_expressions() const override;
   bool is_column_nullable(const ColumnID column_id) const override;
 
   const std::string table_name;
 
+  // By default, the StoredTableNode takes its statistics from the table. This field can be used to overwrite these
+  // statistics if they have changed from the original table, e.g., as the result of chunk pruning.
+  std::shared_ptr<TableStatistics> table_statistics;
+
  protected:
+  size_t _shallow_hash() const override;
   std::shared_ptr<AbstractLQPNode> _on_shallow_copy(LQPNodeMapping& node_mapping) const override;
   bool _on_shallow_equals(const AbstractLQPNode& rhs, const LQPNodeMapping& node_mapping) const override;
 

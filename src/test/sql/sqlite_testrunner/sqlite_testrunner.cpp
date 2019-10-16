@@ -46,8 +46,8 @@ void SQLiteTestRunner::SetUpTestCase() {
 
   _table_cache_per_encoding.emplace(EncodingType::Unencoded, unencoded_table_cache);
 
-  opossum::Topology::use_numa_topology();
-  opossum::CurrentScheduler::set(std::make_shared<opossum::NodeQueueScheduler>());
+  opossum::Hyrise::get().topology.use_numa_topology();
+  opossum::Hyrise::get().set_scheduler(std::make_shared<NodeQueueScheduler>());
 }
 
 void SQLiteTestRunner::SetUp() {
@@ -120,11 +120,11 @@ void SQLiteTestRunner::SetUp() {
         ChunkEncoder::encode_all_chunks(reloaded_table, table_cache_entry.chunk_encoding_spec);
       }
 
-      StorageManager::get().add_table(table_name, reloaded_table);
+      Hyrise::get().storage_manager.add_table(table_name, reloaded_table);
       table_cache.emplace(table_name, TableCacheEntry{reloaded_table, table_cache_entry.filename});
 
     } else {
-      StorageManager::get().add_table(table_name, table_cache_entry.table);
+      Hyrise::get().storage_manager.add_table(table_name, table_cache_entry.table);
     }
   }
 }
@@ -179,8 +179,9 @@ TEST_P(SQLiteTestRunner, CompareToSQLite) {
     }
   }
 
-  const auto table_comparison_msg = check_table_equal(result_table, sqlite_result_table, order_sensitivity,
-                                                      TypeCmpMode::Lenient, FloatComparisonMode::RelativeDifference);
+  const auto table_comparison_msg =
+      check_table_equal(result_table, sqlite_result_table, order_sensitivity, TypeCmpMode::Lenient,
+                        FloatComparisonMode::RelativeDifference, IgnoreNullable::Yes);
 
   if (table_comparison_msg) {
     FAIL() << "Query failed: " << *table_comparison_msg << std::endl;

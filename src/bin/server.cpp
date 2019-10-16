@@ -4,11 +4,9 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "scheduler/current_scheduler.hpp"
+#include "hyrise.hpp"
 #include "scheduler/node_queue_scheduler.hpp"
-#include "scheduler/topology.hpp"
 #include "server/server.hpp"
-#include "storage/storage_manager.hpp"
 #include "utils/load_table.hpp"
 
 int main(int argc, char* argv[]) {
@@ -23,7 +21,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Set scheduler so that the server can execute the tasks on separate threads.
-  opossum::CurrentScheduler::set(std::make_shared<opossum::NodeQueueScheduler>());
+  opossum::Hyrise::get().set_scheduler(std::make_shared<opossum::NodeQueueScheduler>());
 
   boost::asio::io_service io_service;
 

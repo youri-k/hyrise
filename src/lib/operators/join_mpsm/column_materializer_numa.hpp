@@ -6,11 +6,10 @@
 #include <utility>
 #include <vector>
 
+#include "hyrise.hpp"
 #include "memory/numa_memory_resource.hpp"
 #include "resolve_type.hpp"
-#include "scheduler/current_scheduler.hpp"
 #include "scheduler/job_task.hpp"
-#include "scheduler/topology.hpp"
 #include "storage/create_iterable_from_segment.hpp"
 #include "storage/segment_iterate.hpp"
 #include "types.hpp"
@@ -39,7 +38,9 @@ struct MaterializedNUMAPartition {
   std::vector<std::shared_ptr<MaterializedSegmentNUMA<T>>> materialized_segments;
 
   explicit MaterializedNUMAPartition(NodeID node_id, size_t reserve_size)
-      : node_id{node_id}, alloc{Topology::get().get_memory_resource(node_id)}, materialized_segments(reserve_size) {}
+      : node_id{node_id},
+        alloc{Hyrise::get().topology.get_memory_resource(node_id)},
+        materialized_segments(reserve_size) {}
 
   MaterializedNUMAPartition() {}
 
@@ -71,7 +72,7 @@ class ColumnMaterializerNUMA {
   std::pair<std::unique_ptr<MaterializedNUMAPartitionList<T>>, std::unique_ptr<PosList>> materialize(
       std::shared_ptr<const Table> input, ColumnID column_id) {
     auto output = std::make_unique<MaterializedNUMAPartitionList<T>>();
-    const auto node_count = Topology::get().nodes().size();
+    const auto node_count = Hyrise::get().topology.nodes().size();
 
     // ensure we have enough lists to represent the NUMA Nodes
     output->reserve(node_count);
@@ -84,9 +85,13 @@ class ColumnMaterializerNUMA {
     auto null_rows = std::make_unique<PosList>();
 
     auto jobs = std::vector<std::shared_ptr<AbstractTask>>();
-    for (auto chunk_id = ChunkID{0}; chunk_id < input->chunk_count(); ++chunk_id) {
+    const auto chunk_count = input->chunk_count();
+    for (auto chunk_id = ChunkID{0}; chunk_id < chunk_count; ++chunk_id) {
+      const auto chunk = input->get_chunk(chunk_id);
+      Assert(chunk, "Did not expect deleted chunk here.");  // see #1686
+
       // This allocator is used to ensure that materialized chunks are colocated with the original chunks
-      auto alloc = MaterializedValueAllocatorNUMA<T>{input->get_chunk(chunk_id)->get_allocator()};
+      auto alloc = MaterializedValueAllocatorNUMA<T>{chunk->get_allocator()};
 
       auto numa_node_id = NodeID{0};  // default NUMA Node, everything is on the same node for non numa systems
 
@@ -102,7 +107,7 @@ class ColumnMaterializerNUMA {
       jobs.back()->schedule(numa_node_id);
     }
 
-    CurrentScheduler::wait_for_tasks(jobs);
+    Hyrise::get().scheduler()->wait_for_tasks(jobs);
 
     for (auto& partition : (*output)) {
       // removes null pointers, this is important since we currently opt against using mutexes so we have sparse vectors

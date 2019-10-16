@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "abstract_rule.hpp"
+#include "operators/operator_scan_predicate.hpp"
 #include "statistics/table_statistics.hpp"
 #include "types.hpp"
 
@@ -25,8 +26,6 @@ class Table;
  */
 class ChunkPruningRule : public AbstractRule {
  public:
-  std::string name() const override;
-
   void apply_to(const std::shared_ptr<AbstractLQPNode>& node) const override;
 
  protected:
@@ -38,6 +37,10 @@ class ChunkPruningRule : public AbstractRule {
                   const AllTypeVariant& variant_value, const std::optional<AllTypeVariant>& variant_value2) const;
 
   bool _is_non_filtering_node(const AbstractLQPNode& node) const;
+
+  std::shared_ptr<TableStatistics> _prune_table_statistics(const TableStatistics& old_statistics,
+                                                           OperatorScanPredicate predicate,
+                                                           size_t num_rows_pruned) const;
 };
 
 }  // namespace opossum

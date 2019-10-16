@@ -19,7 +19,6 @@
 #include "logical_query_plan/abstract_lqp_node.hpp"
 #include "operators/abstract_operator.hpp"
 #include "scheduler/node_queue_scheduler.hpp"
-#include "scheduler/topology.hpp"
 #include "sql/sql_pipeline_statement.hpp"
 #include "sql/sql_plan_cache.hpp"
 #include "storage/chunk.hpp"
@@ -35,7 +34,7 @@ class SQLiteWrapper;
 // The BenchmarkRunner is the main class for the benchmark framework. It gets initialized by the benchmark binaries
 // (e.g., tpch_benchmark.cpp). They then hand over the control to the BenchmarkRunner (inversion of control), which
 // calls the supplied table generator, runs and times the benchmark items, and reports the benchmark results.
-class BenchmarkRunner {
+class BenchmarkRunner : Noncopyable {
  public:
   BenchmarkRunner(const BenchmarkConfig& config, std::unique_ptr<AbstractBenchmarkItemRunner> benchmark_item_runner,
                   std::unique_ptr<AbstractTableGenerator> table_generator, const nlohmann::json& context);
@@ -80,13 +79,15 @@ class BenchmarkRunner {
 
   std::optional<PerformanceWarningDisabler> _performance_warning_disabler;
 
+  std::chrono::steady_clock::time_point _benchmark_start;
   Duration _total_run_duration{};
 
   // The atomic uints are modified by other threads when finishing an item, to keep track of when we can
   // let a simulated client schedule the next item, as well as the total number of finished items so far
   std::atomic_uint _currently_running_clients{0};
 
-  // For BenchmarkMode::Shuffled, we count the number of runs executed across all items.
+  // For BenchmarkMode::Shuffled, we count the number of runs executed across all items. This also includes items that
+  // were unsuccessful (e.g., because of transaction aborts).
   std::atomic_uint _total_finished_runs{0};
 
   BenchmarkState _state{Duration{0}};

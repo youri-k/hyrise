@@ -19,7 +19,6 @@
 #include "operators/table_scan.hpp"
 #include "operators/table_wrapper.hpp"
 #include "storage/chunk_encoder.hpp"
-#include "storage/storage_manager.hpp"
 #include "storage/table.hpp"
 #include "types.hpp"
 
@@ -140,7 +139,7 @@ class OperatorsAggregateTest : public BaseTest {
 };
 
 using AggregateTypes = ::testing::Types<AggregateHash, AggregateSort>;
-TYPED_TEST_CASE(OperatorsAggregateTest, AggregateTypes, );  // NOLINT(whitespace/parens)
+TYPED_TEST_SUITE(OperatorsAggregateTest, AggregateTypes, );  // NOLINT(whitespace/parens)
 
 TYPED_TEST(OperatorsAggregateTest, OperatorName) {
   auto aggregate = std::make_shared<TypeParam>(

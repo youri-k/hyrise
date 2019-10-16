@@ -6,9 +6,9 @@
 #include <utility>
 
 #include "SQLParser.h"
-#include "concurrency/transaction_manager.hpp"
 #include "create_sql_parser_error_message.hpp"
 #include "expression/value_expression.hpp"
+#include "hyrise.hpp"
 #include "logical_query_plan/lqp_utils.hpp"
 #include "operators/maintenance/create_prepared_plan.hpp"
 #include "operators/maintenance/create_table.hpp"
@@ -16,11 +16,9 @@
 #include "operators/maintenance/drop_table.hpp"
 #include "operators/maintenance/drop_view.hpp"
 #include "optimizer/optimizer.hpp"
-#include "scheduler/current_scheduler.hpp"
 #include "sql/sql_pipeline_builder.hpp"
 #include "sql/sql_plan_cache.hpp"
 #include "sql/sql_translator.hpp"
-#include "storage/storage_manager.hpp"
 #include "utils/assert.hpp"
 #include "utils/tracing/probes.hpp"
 
@@ -146,7 +144,7 @@ const std::shared_ptr<AbstractOperator>& SQLPipelineStatement::get_physical_plan
 
   // If we need a transaction context but haven't passed one in, this is the latest point where we can create it
   if (!_transaction_context && _use_mvcc == UseMvcc::Yes) {
-    _transaction_context = TransactionManager::get().new_transaction_context();
+    _transaction_context = Hyrise::get().transaction_manager.new_transaction_context();
   }
 
   // Stores when the actual compilation started/ended
@@ -228,7 +226,7 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
 
   DTRACE_PROBE3(HYRISE, TASKS_PER_STATEMENT, reinterpret_cast<uintptr_t>(&tasks), _sql_string.c_str(),
                 reinterpret_cast<uintptr_t>(this));
-  CurrentScheduler::schedule_and_wait_for_tasks(tasks);
+  Hyrise::get().scheduler()->schedule_and_wait_for_tasks(tasks);
 
   if (was_rolled_back()) {
     return {SQLPipelineStatus::RolledBack, _result_table};
@@ -266,7 +264,7 @@ const std::shared_ptr<TransactionContext>& SQLPipelineStatement::transaction_con
 const std::shared_ptr<SQLPipelineStatementMetrics>& SQLPipelineStatement::metrics() const { return _metrics; }
 
 void SQLPipelineStatement::_precheck_ddl_operators(const std::shared_ptr<AbstractOperator>& pqp) const {
-  const auto& storage_manager = StorageManager::get();
+  const auto& storage_manager = Hyrise::get().storage_manager;
 
   /**
    * Only look at the root operator, because as of now DDL operators are always at the root.

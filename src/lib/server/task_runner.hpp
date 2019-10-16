@@ -5,7 +5,7 @@
 
 #include <memory>
 
-#include "scheduler/current_scheduler.hpp"
+#include "hyrise.hpp"
 #include "tasks/server/abstract_server_task.hpp"
 #include "then_operator.hpp"
 #include "use_boost_future.hpp"
@@ -30,11 +30,11 @@ auto TaskRunner::dispatch_server_task(std::shared_ptr<TResult> task) -> decltype
   using opossum::then_operator::then;
   using TaskList = std::vector<std::shared_ptr<AbstractTask>>;
 
-  CurrentScheduler::schedule_tasks(TaskList({task}));
+  Hyrise::get().scheduler()->schedule_tasks(TaskList({task}));
 
   return task->get_future()
       .then(boost::launch::sync,
-            [=](auto result) {
+            [this](auto result) {
               // This result comes in on the scheduler thread, so we want to dispatch it back to the io_service
               return _io_service.post(boost::asio::use_boost_future)
                      // Make sure to be on the main thread before re-throwing the exceptions

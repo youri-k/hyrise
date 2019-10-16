@@ -7,7 +7,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "storage/storage_manager.hpp"
+#include "hyrise.hpp"
 #include "types.hpp"
 
 namespace opossum {
@@ -35,7 +35,7 @@ GetTable::GetTable(const std::string& name, const std::vector<ChunkID>& pruned_c
 const std::string GetTable::name() const { return "GetTable"; }
 
 const std::string GetTable::description(DescriptionMode description_mode) const {
-  const auto stored_table = StorageManager::get().get_table(_name);
+  const auto stored_table = Hyrise::get().storage_manager.get_table(_name);
 
   const auto separator = description_mode == DescriptionMode::MultiLine ? "\n" : " ";
 
@@ -66,7 +66,7 @@ std::shared_ptr<AbstractOperator> GetTable::_on_deep_copy(
 void GetTable::_on_set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {}
 
 std::shared_ptr<const Table> GetTable::_on_execute() {
-  const auto stored_table = StorageManager::get().get_table(_name);
+  const auto stored_table = Hyrise::get().storage_manager.get_table(_name);
 
   /**
    * Build a sorted vector (`excluded_chunk_ids`) of physically/logically deleted and pruned ChunkIDs
@@ -155,11 +155,17 @@ std::shared_ptr<const Table> GetTable::_on_execute() {
     // The Chunk is to be included in the output Table, now we progress to excluding Columns
     const auto stored_chunk = stored_table->get_chunk(stored_chunk_id);
 
+    // Make a copy of the order-by information of the current chunk. This information is adapted when columns are
+    // pruned and will be set on the outputted chunk.
+    const auto& current_chunk_order = stored_chunk->ordered_by();
+    std::optional<std::pair<ColumnID, OrderByMode>> adapted_chunk_order;
+
     if (_pruned_column_ids.empty()) {
       *output_chunks_iter = stored_chunk;
     } else {
       auto output_segments = Segments{stored_table->column_count() - _pruned_column_ids.size()};
       auto output_segments_iter = output_segments.begin();
+      auto output_indexes = Indexes{};
 
       auto pruned_column_ids_iter = _pruned_column_ids.begin();
       for (auto stored_column_id = ColumnID{0}; stored_column_id < stored_table->column_count(); ++stored_column_id) {
@@ -169,12 +175,25 @@ std::shared_ptr<const Table> GetTable::_on_execute() {
           continue;
         }
 
+        if (current_chunk_order && current_chunk_order->first == stored_column_id) {
+          adapted_chunk_order = {
+              ColumnID{static_cast<uint16_t>(std::distance(_pruned_column_ids.begin(), pruned_column_ids_iter))},
+              current_chunk_order->second};
+        }
+
         *output_segments_iter = stored_chunk->get_segment(stored_column_id);
+        auto indexes = stored_chunk->get_indexes({*output_segments_iter});
+        if (!indexes.empty()) {
+          output_indexes.insert(std::end(output_indexes), std::begin(indexes), std::end(indexes));
+        }
         ++output_segments_iter;
       }
 
-      *output_chunks_iter =
-          std::make_shared<Chunk>(std::move(output_segments), stored_chunk->mvcc_data(), stored_chunk->get_allocator());
+      *output_chunks_iter = std::make_shared<Chunk>(std::move(output_segments), stored_chunk->mvcc_data(),
+                                                    stored_chunk->get_allocator(), std::move(output_indexes));
+      if (adapted_chunk_order) {
+        (*output_chunks_iter)->set_ordered_by(*adapted_chunk_order);
+      }
     }
 
     ++output_chunks_iter;
