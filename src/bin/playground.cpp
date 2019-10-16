@@ -176,7 +176,7 @@ int main(int argc, const char* argv[]) {
   constexpr auto SCALE_FACTOR = 1.0f;
 
   auto start_config = std::make_shared<BenchmarkConfig>(BenchmarkConfig::get_default_config());
-  start_config->max_runs = 1;
+  start_config->max_runs = 5;
   start_config->enable_visualization = false;
   start_config->chunk_size = 100'000;
   start_config->cache_binary_tables = true;
@@ -244,6 +244,7 @@ int main(int argc, const char* argv[]) {
         chunk->replace_segment(column_id, encoded_segment);
         std::cout << "." << std::flush;
       }
+      chunk->mark_immutable();
       std::cout << " done." << std::endl;
       configuration_file.close();
   const std::vector<BenchmarkItemID> tpch_query_ids2 = {BenchmarkItemID{1}};
