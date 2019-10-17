@@ -19,6 +19,7 @@
 #include "statistics/table_statistics.hpp"
 #include "storage/create_iterable_from_segment.hpp"
 #include "storage/storage_manager.hpp"
+#include "hyrise.hpp"
 #include "types.hpp"
 
 #include "benchmark_config.hpp"
@@ -27,7 +28,6 @@
 #include "expression/abstract_predicate_expression.hpp"
 #include "expression/lqp_column_expression.hpp"
 #include "logical_query_plan/join_node.hpp"
-#include "storage/index/group_key/group_key_index.hpp"
 #include "logical_query_plan/lqp_utils.hpp"
 #include "logical_query_plan/predicate_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
@@ -35,7 +35,6 @@
 #include "operators/operator_scan_predicate.hpp"
 #include "sql/sql_pipeline_builder.hpp"
 #include "sql/sql_plan_cache.hpp"
-#include "storage/index/base_index.hpp"
 #include "storage/storage_manager.hpp"
 #include "tpch/tpch_benchmark_item_runner.hpp"
 #include "tpch/tpch_queries.hpp"
@@ -86,8 +85,8 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
   uint16_t next_table_id = 0;
   uint16_t next_attribute_id = 0;
 
-  for (const auto& table_name : StorageManager::get().table_names()) {
-    const auto& table = StorageManager::get().get_table(table_name);
+  for (const auto& table_name : Hyrise::get().storage_manager.table_names()) {
+    const auto& table = Hyrise::get().storage_manager.get_table(table_name);
 
     // might be an overkill here?
     const auto table_id = next_table_id;
@@ -181,29 +180,33 @@ int main(int argc, const char* argv[]) {
   start_config->chunk_size = 100'000;
   start_config->cache_binary_tables = true;
 
-  const std::vector<BenchmarkItemID> tpch_query_ids = {BenchmarkItemID{5}};
+  // const std::vector<BenchmarkItemID> tpch_query_ids_warmup = {BenchmarkItemID{5}};
   const bool use_prepared_statements = false;
   auto start_context = BenchmarkRunner::create_context(*start_config);
 
-  auto start_item_runner = std::make_unique<TPCHBenchmarkItemRunner>(start_config, use_prepared_statements, SCALE_FACTOR, tpch_query_ids);
-  BenchmarkRunner(*start_config, std::move(start_item_runner), std::make_unique<TpchTableGenerator>(SCALE_FACTOR, start_config), start_context).run();
+  auto start_item_runner = std::make_unique<TPCHBenchmarkItemRunner>(start_config, use_prepared_statements, SCALE_FACTOR);//, tpch_query_ids_warmup);
+  BenchmarkRunner(*start_config, std::move(start_item_runner), std::make_unique<TPCHTableGenerator>(SCALE_FACTOR, start_config), start_context).run();
 
   std::string path = "/Users/martin/Programming/compression_selection_python/configurations_debug";
   for (const auto& entry : std::filesystem::directory_iterator(path)) {
     const auto conf_path = entry.path();
     const auto conf_name = conf_path.stem();
+    const auto filename = conf_path.filename().string();
+
+    if (filename.find("conf") != 0 || filename.find(".json") != std::string::npos) {
+      std::cout << "Skipping " << conf_path << std::endl;
+      continue;
+    }
 
     std::cout << "Benchmarking " << conf_name << " ..." << std::endl;
 
     {
       auto config = std::make_shared<BenchmarkConfig>(BenchmarkConfig::get_default_config());
       config->max_runs = 10;
-      config->max_runs = 1;
       config->enable_visualization = false;
       config->output_file_path = conf_name.string() + ".json";
       config->chunk_size = 100'000;
       config->cache_binary_tables = true;
-      config->enable_visualization = true;
 
       auto context = BenchmarkRunner::create_context(*config);
 
@@ -226,7 +229,7 @@ int main(int argc, const char* argv[]) {
         const auto encoding_type_str = line_values[3];
         const auto vector_compression_type_str = line_values[4];
 
-        const auto& table = StorageManager::get().get_table(table_name);
+        const auto& table = Hyrise::get().storage_manager.get_table(table_name);
         const auto& chunk = table->get_chunk(ChunkID{static_cast<uint32_t>(chunk_id)});
         const auto& column_id = table->column_id_by_name(column_name);
         const auto& segment = chunk->get_segment(column_id);
@@ -244,12 +247,11 @@ int main(int argc, const char* argv[]) {
         chunk->replace_segment(column_id, encoded_segment);
         std::cout << "." << std::flush;
       }
-      chunk->mark_immutable();
       std::cout << " done." << std::endl;
       configuration_file.close();
-  const std::vector<BenchmarkItemID> tpch_query_ids2 = {BenchmarkItemID{1}};
+      // const std::vector<BenchmarkItemID> tpch_query_ids_benchmark = {BenchmarkItemID{1}};
 
-      auto item_runner = std::make_unique<TPCHBenchmarkItemRunner>(config, use_prepared_statements, SCALE_FACTOR, tpch_query_ids2);
+      auto item_runner = std::make_unique<TPCHBenchmarkItemRunner>(config, use_prepared_statements, SCALE_FACTOR);//, tpch_query_ids_benchmark);
       BenchmarkRunner(*config, std::move(item_runner), nullptr, context).run();
 
       // TableIdentifierMap table_name_table_id_to_map;

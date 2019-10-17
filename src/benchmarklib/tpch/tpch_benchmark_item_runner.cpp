@@ -89,7 +89,7 @@ void TPCHBenchmarkItemRunner::on_tables_loaded() {
     sql << "PREPARE TPCH" << (item_id + 1) << " FROM '" << query_template << "';\n";
   }
 
-  SQLPipelineBuilder{sql.str()}.create_pipeline().get_result_table();
+  SQLPipelineBuilder{sql.str()}.disable_mvcc().create_pipeline().get_result_table();
 }
 
 std::string TPCHBenchmarkItemRunner::_build_query(const BenchmarkItemID item_id) {
