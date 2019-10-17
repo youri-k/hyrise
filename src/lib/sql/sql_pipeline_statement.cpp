@@ -171,6 +171,7 @@ const std::shared_ptr<AbstractOperator>& SQLPipelineStatement::get_physical_plan
 
     // Reset time to exclude previous pipeline steps
     started = std::chrono::high_resolution_clock::now();
+    std::cout << "LqpTranslator\n" << *lqp << std::endl;
     _physical_plan = _lqp_translator->translate_node(lqp);
   }
 

@@ -129,6 +129,7 @@ set(
     optimizer/strategy/semi_join_reduction_rule_test.cpp
     optimizer/strategy/strategy_base_test.cpp
     optimizer/strategy/strategy_base_test.hpp
+    optimizer/strategy/subplan_resuse_rule_test.cpp
     optimizer/strategy/subquery_to_join_rule_test.cpp
     scheduler/scheduler_test.cpp
     server/mock_connection.hpp

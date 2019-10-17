@@ -163,16 +163,16 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_statistics(
       const auto stored_table = Hyrise::get().storage_manager.get_table(stored_table_node->table_name);
       Assert(stored_table->table_statistics(), "Stored Table should have cardinality estimation statistics");
 
-      if (stored_table_node->table_statistics) {
-        // TableStatistics have changed from the original table's statistics
-        Assert(stored_table_node->table_statistics->column_statistics.size() == stored_table->column_count(),
-               "Statistics in StoredTableNode should have same number of columns as original table");
-        output_table_statistics =
-            prune_column_statistics(stored_table_node->table_statistics, stored_table_node->pruned_column_ids());
-      } else {
+//      if (stored_table_node->table_statistics) {
+//        // TableStatistics have changed from the original table's statistics
+//        Assert(stored_table_node->table_statistics->column_statistics.size() == stored_table->column_count(),
+//               "Statistics in StoredTableNode should have same number of columns as original table");
+//        output_table_statistics =
+//            prune_column_statistics(stored_table_node->table_statistics, stored_table_node->pruned_column_ids());
+//      } else {
         output_table_statistics =
             prune_column_statistics(stored_table->table_statistics(), stored_table_node->pruned_column_ids());
-      }
+//      }
     } break;
 
     case LQPNodeType::Validate: {

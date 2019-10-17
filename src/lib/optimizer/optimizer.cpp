@@ -22,6 +22,8 @@
 #include "strategy/predicate_split_up_rule.hpp"
 #include "strategy/semi_join_reduction_rule.hpp"
 #include "strategy/subquery_to_join_rule.hpp"
+#include "strategy/subplan_reuse_rule.hpp"
+#include "utils/performance_warning.hpp"
 
 /**
  * IMPORTANT NOTES ON OPTIMIZING SUBQUERY LQPS
@@ -90,8 +92,6 @@ std::shared_ptr<Optimizer> Optimizer::create_default_optimizer() {
 
   optimizer->add_rule(std::make_unique<ExpressionReductionRule>());
 
-  optimizer->add_rule(std::make_unique<ColumnPruningRule>());
-
   optimizer->add_rule(std::make_unique<ChunkPruningRule>());
 
   // Run before the JoinOrderingRule so that the latter has simple (non-conjunctive) predicates. However, as the
@@ -134,8 +134,9 @@ std::shared_ptr<Optimizer> Optimizer::create_default_optimizer() {
   optimizer->add_rule(std::make_unique<InExpressionRewriteRule>());
 
   optimizer->add_rule(std::make_unique<IndexScanRule>());
+  optimizer->add_rule(std::make_unique<SubplanReuseRule>());
 
-  optimizer->add_rule(std::make_unique<PredicateMergeRule>());
+  //optimizer->add_rule(std::make_unique<PredicateMergeRule>());
 
   return optimizer;
 }
