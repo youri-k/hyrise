@@ -159,10 +159,20 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_statistics(
 
     case LQPNodeType::StoredTable: {
       const auto stored_table_node = std::dynamic_pointer_cast<StoredTableNode>(lqp);
+
       const auto stored_table = Hyrise::get().storage_manager.get_table(stored_table_node->table_name);
       Assert(stored_table->table_statistics(), "Stored Table should have cardinality estimation statistics");
-      output_table_statistics =
-          prune_column_statistics(stored_table->table_statistics(), stored_table_node->pruned_column_ids());
+
+      if (stored_table_node->table_statistics) {
+        // TableStatistics have changed from the original table's statistics
+        Assert(stored_table_node->table_statistics->column_statistics.size() == stored_table->column_count(),
+               "Statistics in StoredTableNode should have same number of columns as original table");
+        output_table_statistics =
+            prune_column_statistics(stored_table_node->table_statistics, stored_table_node->pruned_column_ids());
+      } else {
+        output_table_statistics =
+            prune_column_statistics(stored_table->table_statistics(), stored_table_node->pruned_column_ids());
+      }
     } break;
 
     case LQPNodeType::Validate: {
@@ -376,7 +386,7 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_join_node(
             case PredicateCondition::IsNotNull:
               Fail("IS NULL is an invalid join predicate");
           }
-          Fail("GCC thinks this is reachable");
+          Fail("Invalid enum value");
 
         case JoinMode::Cross:
           // Should have been forwarded to estimate_cross_join()
@@ -397,7 +407,7 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_join_node(
     }
   }
 
-  Fail("GCC thinks this is reachable");
+  Fail("Invalid enum value");
 }
 
 std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_union_node(
@@ -514,8 +524,10 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_operator_scan_pr
 
         const auto right_data_type = input_table_statistics->column_data_type(*right_column_id);
 
-        if (left_data_type != right_data_type) {
+        if (left_data_type != right_data_type || left_data_type == DataType::String) {
           // TODO(anybody) Cannot estimate column-vs-column scan for differing data types, yet
+          // Also, as split_at_bin_bounds is not yet supported for strings, we cannot properly estimate string
+          // comparisons, either.
           selectivity = PLACEHOLDER_SELECTIVITY_ALL;
           return;
         }
