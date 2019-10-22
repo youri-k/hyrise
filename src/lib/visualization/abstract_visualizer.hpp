@@ -94,7 +94,7 @@ class AbstractVisualizer {
   void visualize(const GraphBase& graph_base, const std::string& img_filename) {
     _build_graph(graph_base);
 
-    char* tmpname = strdup("/tmp/hyrise_viz_XXXXXX");
+    auto tmpname = strdup("/tmp/hyrise_viz_XXXXXX");  // TODO lol this leaks
     auto file_descriptor = mkstemp(tmpname);
     Assert(file_descriptor > 0, "mkstemp failed");
 
@@ -106,6 +106,7 @@ class AbstractVisualizer {
     // method.
     const auto delete_temp_file = [&tmpname](auto ptr) {
       delete ptr;
+      free(tmpname);
       std::remove(tmpname);
     };
     const auto delete_guard = std::unique_ptr<char, decltype(delete_temp_file)>(new char, delete_temp_file);
