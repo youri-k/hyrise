@@ -126,7 +126,7 @@ class AbstractLQPNode : public std::enable_shared_from_this<AbstractLQPNode> {
   /**
    * @return The ColumnID of the @param expression, or std::nullopt if it can't be found
    */
-  std::optional<ColumnID> find_column_id(const AbstractExpression& expression) const;
+  virtual std::optional<ColumnID> find_column_id(const AbstractExpression& expression) const;
 
   /**
    * @return The ColumnID of the @param expression. Assert()s that it can be found

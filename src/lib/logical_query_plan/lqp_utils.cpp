@@ -126,7 +126,7 @@ void lqp_replace_node(const std::shared_ptr<AbstractLQPNode>& original_node,
   /**
    * Tie the replacement_node with this nodes outputs.
    */
-  for (size_t output_idx = 0; output_idx < outputs.size(); ++output_idx) {
+  for (size_t output_idx = 0; output_idx < outputs.size(); ++output_idx) {  // TODO change to use output_relations
     outputs[output_idx]->set_input(input_sides[output_idx], replacement_node);
   }
 

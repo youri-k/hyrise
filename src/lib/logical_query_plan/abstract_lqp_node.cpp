@@ -225,10 +225,26 @@ const std::vector<std::shared_ptr<AbstractExpression>>& AbstractLQPNode::column_
 }
 
 std::optional<ColumnID> AbstractLQPNode::find_column_id(const AbstractExpression& expression) const {
+  std::cout << description() << " @ " << this << ".find_column_id " << expression << " START" << std::endl;
   const auto& column_expressions = this->column_expressions();  // Avoid redundant retrieval in loop below
-  for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
-    if (*column_expressions[column_id] == expression) return column_id;
+
+  if constexpr (HYRISE_DEBUG) {
+    auto matches = 0;
+    for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
+      if (*column_expressions[column_id] == expression) ++matches;
+    }
+    DebugAssert(matches <= 1, "Ambiguous expression detected");
   }
+
+  std::cout << description() << " @ " << this << ".find_column_id " << expression << ": ";
+
+  for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
+    if (*column_expressions[column_id] == expression) {
+      std::cout << column_id << std::endl;
+      return column_id;
+    }
+  }
+  std::cout << "not found" << std::endl;
   return std::nullopt;
 }
 
@@ -326,6 +342,7 @@ std::ostream& operator<<(std::ostream& stream, const AbstractLQPNode& node) {
       if (!node2->comment.empty()) {
         stream2 << " (" << node2->comment << ")";
       }
+      stream2 << " @ " << node2;
     };
 
     print_directed_acyclic_graph<const AbstractLQPNode>(root.shared_from_this(), get_inputs_fn, node_print_fn, stream);

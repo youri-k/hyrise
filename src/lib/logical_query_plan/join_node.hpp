@@ -34,6 +34,9 @@ class JoinNode : public EnableMakeForLQPNode<JoinNode>, public AbstractLQPNode {
 
   const std::vector<std::shared_ptr<AbstractExpression>>& join_predicates() const;
 
+  // TODO doc
+  std::optional<ColumnID> find_column_id(const AbstractExpression& expression) const override;
+
   const JoinMode join_mode;
 
  protected:

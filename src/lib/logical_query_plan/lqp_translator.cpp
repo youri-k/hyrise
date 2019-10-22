@@ -91,13 +91,13 @@ std::shared_ptr<AbstractOperator> LQPTranslator::translate_node(const std::share
    * would result in multiple operators created from predicate_c and thus in performance drops
    */
 
-  const auto operator_iter = _operator_by_lqp_node.find(node);
-  if (operator_iter != _operator_by_lqp_node.end()) {
-    return operator_iter->second;
-  }
+  // const auto operator_iter = _operator_by_lqp_node.find(node);
+  // if (operator_iter != _operator_by_lqp_node.end()) {
+  //   return operator_iter->second;
+  // }
 
   const auto pqp = _translate_by_node_type(node->type, node);
-  _operator_by_lqp_node.emplace(node, pqp);
+  // _operator_by_lqp_node.emplace(node, pqp);
 
   return pqp;
 }
@@ -303,7 +303,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_join_node(
 
   for (const auto& predicate_expression : join_node->join_predicates()) {
     auto join_predicate =
-        OperatorJoinPredicate::from_expression(*predicate_expression, *node->left_input(), *node->right_input());
+        OperatorJoinPredicate::from_expression(*predicate_expression, *node);
     // Assert that the Join Predicates are simple, e.g. of the form <column_a> <predicate> <column_b>.
     // <column_a> and <column_b> must be on separate sides, but <column_a> need not be on the left.
     Assert(join_predicate, "Couldn't translate join predicate: "s + predicate_expression->as_column_name());
@@ -496,6 +496,7 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
     */
   visit_expression(pqp_expression, [&](auto& expression) {
     // Try to resolve the Expression to a column from the input node
+    std::cout << "Node: " << node->description() << ", try to resolve " << *expression;
     const auto column_id = node->find_column_id(*expression);
     if (column_id) {
       const auto referenced_expression = node->column_expressions()[*column_id];
@@ -503,8 +504,10 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
           std::make_shared<PQPColumnExpression>(*column_id, referenced_expression->data_type(),
                                                 node->is_column_nullable(node->get_column_id(*referenced_expression)),
                                                 referenced_expression->as_column_name());
+      std::cout << " - column id " << *column_id << std::endl;
       return ExpressionVisitation::DoNotVisitArguments;
     }
+    std::cout << " - failed" << std::endl;
 
     // Resolve SubqueryExpression
     if (expression->type == ExpressionType::LQPSubquery) {

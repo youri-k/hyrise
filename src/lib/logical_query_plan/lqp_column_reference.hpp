@@ -2,12 +2,14 @@
 
 #include <memory>
 
+#include "abstract_lqp_node.hpp"
 #include "types.hpp"
 
 namespace opossum {
 
-class AbstractLQPNode;
+class JoinNode;
 
+// TODO update comment: LQPColumnReferences DO NOT point to aggregate / projection nodes
 /**
  * Used for identifying a Column in an LQP by the Node and the ColumnID in that node in which it was created.
  * Currently this happens in StoredTableNode (which creates all of its columns), AggregateNode (which creates all
@@ -22,6 +24,10 @@ class LQPColumnReference final {
   ColumnID original_column_id() const;
 
   bool operator==(const LQPColumnReference& rhs) const;
+  bool operator!=(const LQPColumnReference& rhs) const;
+
+  // TODO I'd rather have a weak_ptr here, but that is not hashable. Make sure we don't have any cycles
+  std::unordered_map<std::shared_ptr<const AbstractLQPNode>, LQPInputSide> lineage{};
 
  private:
   // Needs to be weak since Nodes can hold ColumnReferences referring to themselves

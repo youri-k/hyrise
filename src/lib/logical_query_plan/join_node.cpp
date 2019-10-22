@@ -44,7 +44,7 @@ std::string JoinNode::description() const {
 }
 
 const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::column_expressions() const {
-  Assert(left_input() && right_input(), "Both inputs need to be set to determine a JoiNode's output expressions");
+  Assert(left_input() && right_input(), "Both inputs need to be set to determine a JoinNode's output expressions");
 
   /**
    * Update the JoinNode's output expressions every time they are requested. An overhead, but keeps the LQP code simple.
@@ -55,14 +55,100 @@ const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::column_express
   const auto& left_expressions = left_input()->column_expressions();
   const auto& right_expressions = right_input()->column_expressions();
 
+  // TODO assert that we do not emit duplicates here
+
   const auto output_both_inputs =
       join_mode != JoinMode::Semi && join_mode != JoinMode::AntiNullAsTrue && join_mode != JoinMode::AntiNullAsFalse;
 
-  _column_expressions.resize(left_expressions.size() + (output_both_inputs ? right_expressions.size() : 0));
+  if (!output_both_inputs) {
+    _column_expressions = left_expressions;
+    return _column_expressions;
+  }
+
+  _column_expressions.resize(left_expressions.size() + right_expressions.size());
 
   auto right_begin = std::copy(left_expressions.begin(), left_expressions.end(), _column_expressions.begin());
 
-  if (output_both_inputs) std::copy(right_expressions.begin(), right_expressions.end(), right_begin);
+  std::copy(right_expressions.begin(), right_expressions.end(), right_begin);
+
+  const auto collect_column_references = [](const std::vector<std::shared_ptr<AbstractExpression>>& expressions) {  // TODO dedup
+    auto column_references = std::unordered_set<LQPColumnReference>{};
+    for (const auto& expression : expressions) {
+      visit_expression(expression, [&](const auto& sub_expression) {
+        if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
+          column_references.emplace(column_expression->column_reference);
+        }
+        return ExpressionVisitation::VisitArguments;
+      });
+    }
+    return column_references;
+  };
+
+  const auto left_column_references = collect_column_references(left_expressions);
+  const auto right_column_references = collect_column_references(right_expressions);
+
+  std::cout << "! " << description() << " @ " << this << " - left ";
+  for (const auto& x : left_column_references) std::cout << x << " ";
+  std::cout << std::endl;
+  std::cout << "! " << description() << " @ " << this << " - right ";
+  for (const auto& x : right_column_references) std::cout << x << " ";
+  std::cout << std::endl;
+
+  auto ambiguous_references = std::unordered_set<LQPColumnReference>{};
+  for (const auto& left_column_reference : left_column_references) {
+    // TODO optimize this
+    if (right_column_references.contains(left_column_reference)) {
+      ambiguous_references.emplace(left_column_reference);
+    }
+  }
+
+  std::cout << "For " << description() << std::endl;
+  std::cout << "\tdisambiguating left side" << std::endl;
+  for (auto left_expression_iter = _column_expressions.begin(); left_expression_iter != _column_expressions.begin() + left_expressions.size(); ++left_expression_iter) {
+    auto expression_copy = (*left_expression_iter)->deep_copy();
+    auto replacement_occured = false;
+    visit_expression(expression_copy, [&](auto& sub_expression) {
+      if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
+        if (!ambiguous_references.contains(column_expression->column_reference)) return ExpressionVisitation::DoNotVisitArguments;
+
+        std::cout << "\tdisambiguated " << column_expression->column_reference << " to ";
+        auto disambiguated_column_reference = column_expression->column_reference;
+        disambiguated_column_reference.lineage.emplace(shared_from_this(), LQPInputSide::Left);
+        auto disambiguated_expression = std::make_shared<LQPColumnExpression>(disambiguated_column_reference);
+        sub_expression = disambiguated_expression;
+        std::cout << disambiguated_expression->column_reference << std::endl;
+
+        replacement_occured = true;
+      }
+      return ExpressionVisitation::VisitArguments;
+    });
+    if (replacement_occured) *left_expression_iter = expression_copy;
+  }
+
+  std::cout << "\tdisambiguating right side" << std::endl;
+  for (auto right_expression_iter = _column_expressions.begin() + left_expressions.size(); right_expression_iter != _column_expressions.end(); ++right_expression_iter) {
+    auto expression_copy = (*right_expression_iter)->deep_copy();
+    auto replacement_occured = false;
+    visit_expression(expression_copy, [&](auto& sub_expression) {
+      if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
+        if (!ambiguous_references.contains(column_expression->column_reference)) return ExpressionVisitation::DoNotVisitArguments;
+
+        std::cout << "\tdisambiguated " << column_expression->column_reference << " to ";
+        auto disambiguated_column_reference = column_expression->column_reference;
+        disambiguated_column_reference.lineage.emplace(shared_from_this(), LQPInputSide::Right);
+        auto disambiguated_expression = std::make_shared<LQPColumnExpression>(disambiguated_column_reference);
+        sub_expression = disambiguated_expression;
+        std::cout << disambiguated_expression->column_reference << std::endl;
+
+        replacement_occured = true;
+      }
+      return ExpressionVisitation::VisitArguments;
+    });
+    if (replacement_occured) *right_expression_iter = expression_copy;
+  }
+  std::cout << std::endl;
+
+  if (!output_both_inputs) _column_expressions.resize(left_expressions.size());
 
   return _column_expressions;
 }
@@ -95,6 +181,63 @@ bool JoinNode::is_column_nullable(const ColumnID column_id) const {
 }
 
 const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::join_predicates() const { return node_expressions; }
+
+std::optional<ColumnID> JoinNode::find_column_id(const AbstractExpression& expression) const {
+  std::cout << description() << " - " << "override find_column_id(" << expression << std::endl;
+
+  std::optional<ColumnID> column_id_on_left;
+  std::optional<ColumnID> column_id_on_right;
+
+  // We might need to disambiguate the expression using the lineage information in the LQPColumnReferences.
+  std::optional<LQPInputSide> disambiguated_input_side;
+  auto disambiguated_expression = expression.deep_copy();
+
+  visit_expression(disambiguated_expression, [&](auto& sub_expression) {
+    if (const auto column_expression = dynamic_cast<LQPColumnExpression*>(&*sub_expression)) {
+      auto& column_reference = column_expression->column_reference;
+      const auto lineage_iter = column_reference.lineage.find(shared_from_this()); // TODO fix shared_from_this
+      if (lineage_iter == column_reference.lineage.end()) return ExpressionVisitation::VisitArguments;
+
+      if(disambiguated_input_side && *disambiguated_input_side == lineage_iter->second) return ExpressionVisitation::DoNotVisitArguments;
+
+      disambiguated_input_side = lineage_iter->second;
+
+      // Remove this node from the lineage information of sub_expression
+      const_cast<std::unordered_map<std::shared_ptr<const AbstractLQPNode>, LQPInputSide>&>(column_reference.lineage).erase(lineage_iter);  // TODO remove const_cast
+    }
+    return ExpressionVisitation::VisitArguments;
+  });
+
+  const auto left_input_column_count = left_input()->column_expressions().size();
+  const auto& this_column_expressions = column_expressions();
+  for (auto column_id = ColumnID{0}; column_id < this_column_expressions.size(); ++column_id) {
+    // TODO can we do the first part earlier?
+    if (*this_column_expressions[column_id] != expression && *this_column_expressions[column_id] != *disambiguated_expression) continue;
+    if (column_id < left_input_column_count) {
+      column_id_on_left = column_id;
+    } else {
+      column_id_on_right = column_id;
+    }
+  }
+
+  std::cout << "\tremoved lineage as find_column_id(" << *disambiguated_expression << ") - left: " << (column_id_on_left ? *column_id_on_left : -1) << ", right: " << (column_id_on_right ? *column_id_on_right : -1);
+
+  if (column_id_on_left && (!column_id_on_right || (disambiguated_input_side && *disambiguated_input_side == LQPInputSide::Left))) {
+    // Found unambiguously on left side
+    std::cout << " using left" << std::endl;
+    return column_id_on_left;
+  }
+
+  if (column_id_on_right && (!column_id_on_left || (disambiguated_input_side && *disambiguated_input_side == LQPInputSide::Right))) {
+    // Found unambiguously on right side
+    std::cout << " using right" << std::endl;
+    return column_id_on_right;
+  }
+
+  return std::nullopt;
+}
+
+//   // TODO pseudo-ambiguity could also come from literal columns on both sides. Test that those also work
 
 size_t JoinNode::_shallow_hash() const { return boost::hash_value(join_mode); }
 
