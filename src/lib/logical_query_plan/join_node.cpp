@@ -82,9 +82,22 @@ const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::column_express
     auto column_references = std::unordered_set<std::reference_wrapper<const LQPColumnReference>, std::hash<const opossum::LQPColumnReference>, std::equal_to<const opossum::LQPColumnReference>>{};
     column_references.reserve(expressions.size() * 10);
     for (const auto& expression : expressions) {
+      {
+        //Shortcut
+        if (const auto column_expression = dynamic_cast<const LQPColumnExpression*>(&*expression)) {
+          if (!column_references.contains(std::cref(column_expression->column_reference))) {
+            column_references.emplace(std::cref(column_expression->column_reference));
+          }
+          continue;
+        }
+      }
+
       const auto lambda = [&](const auto& sub_expression) {
         if (const auto column_expression = dynamic_cast<const LQPColumnExpression*>(&*sub_expression)) {
-          column_references.emplace(std::cref(column_expression->column_reference));
+          if (!column_references.contains(std::cref(column_expression->column_reference))) {
+            column_references.emplace(std::cref(column_expression->column_reference));
+          }
+          return ExpressionVisitation::DoNotVisitArguments;
         }
         return ExpressionVisitation::VisitArguments;
       };

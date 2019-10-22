@@ -21,11 +21,15 @@ ColumnID LQPColumnReference::original_column_id() const { return _original_colum
 bool LQPColumnReference::operator==(const LQPColumnReference& rhs) const {
   if (_original_column_id != rhs._original_column_id) return false;
   if (lineage.size() != rhs.lineage.size()) return false;
-  if (original_node() != rhs.original_node()) return false;
+  if (_original_node.owner_before(rhs._original_node)) return false;
+  if (rhs._original_node.owner_before(_original_node)) return false;
 
   for (auto lineage_iter = lineage.begin(), rhs_lineage_iter = rhs.lineage.begin(); lineage_iter != lineage.end(); ++lineage_iter, ++rhs_lineage_iter) {
     if (lineage_iter->second != rhs_lineage_iter->second) return false;
-    if (lineage_iter->first.lock() != rhs_lineage_iter->first.lock()) return false;
+
+    // http://open-std.org/JTC1/SC22/WG21/docs/papers/2019/p1901r0.html
+    if (lineage_iter->first.owner_before(rhs_lineage_iter->first)) return false;
+    if (rhs_lineage_iter->first.owner_before(lineage_iter->first)) return false;
   }
 
   return true;
@@ -42,13 +46,15 @@ std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_refe
   const auto stored_table_node = std::static_pointer_cast<const StoredTableNode>(column_reference.original_node());
   const auto table = Hyrise::get().storage_manager.get_table(stored_table_node->table_name);
 
-  // os << table->column_name(column_reference.original_column_id());
+  os << table->column_name(column_reference.original_column_id());
 
-  os << '"' << table->column_name(column_reference.original_column_id()) << " from " << column_reference.original_node();
-  for (const auto& step : column_reference.lineage) {
-    os << " via " << step.first.lock() << "(" << (step.second == LQPInputSide::Left ? "left" : "right") << ")";
-  }
-  os << '"';
+  // TODO without this, SELECT * FROM nation n1, nation n2 WHERE n1.n_regionkey = n2.n_regionkey AND n1.n_name != n2.n_name AND n1.n_name LIKE 'A%' AND n2.n_name LIKE 'B%' does not work
+  // TODO test the fix
+  // os << '"' << table->column_name(column_reference.original_column_id()) << " from " << column_reference.original_node();
+  // for (const auto& step : column_reference.lineage) {
+  //   os << " via " << step.first.lock() << "(" << (step.second == LQPInputSide::Left ? "left" : "right") << ")";
+  // }
+  // os << '"';
 
   return os;
 }
