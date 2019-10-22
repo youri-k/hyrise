@@ -885,10 +885,10 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_semi_join(
      * Write out the AttributeStatistics of all output columns. With no correlation info available, simply scale all
      * those that didn't participate in the join predicate
      */
-    std::vector<std::shared_ptr<BaseAttributeStatistics>> column_statistics{
-        left_input_table_statistics.column_statistics.size()};
-
     const auto left_column_count = left_input_table_statistics.column_statistics.size();
+
+    std::vector<std::shared_ptr<BaseAttributeStatistics>> column_statistics{
+        left_column_count};
 
     const auto join_columns_output_statistics = std::make_shared<AttributeStatistics<ColumnDataType>>();
     join_columns_output_statistics->histogram = join_column_histogram;

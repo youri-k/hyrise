@@ -37,7 +37,7 @@ class JoinNode : public EnableMakeForLQPNode<JoinNode>, public AbstractLQPNode {
   // TODO doc
   std::optional<ColumnID> find_column_id(const AbstractExpression& expression) const override;
 
-  const JoinMode join_mode;
+  mutable JoinMode join_mode;  // TODO
 
  protected:
   size_t _shallow_hash() const override;

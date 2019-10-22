@@ -23,7 +23,7 @@ struct OperatorJoinPredicate {
                                                               const AbstractLQPNode& right_input);
 
   static std::optional<OperatorJoinPredicate> from_expression(const AbstractExpression& predicate,
-                                                              const AbstractLQPNode& join_node);
+                                                              AbstractLQPNode& join_node);
   /**
    * Flip operands and PredicateCondition
    */

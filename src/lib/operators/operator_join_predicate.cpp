@@ -46,7 +46,7 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
 }
 
 std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(const AbstractExpression& predicate,
-                                                                            const AbstractLQPNode& join_node) {
+                                                                            AbstractLQPNode& join_node) {
   const auto* abstract_predicate_expression = dynamic_cast<const AbstractPredicateExpression*>(&predicate);
   if (!abstract_predicate_expression) return std::nullopt;
 
@@ -67,12 +67,15 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
   // Overwrite mode so that find_column_id is not left with only the left side
   // TODO do this somehow differently
 
-  auto& casted_join_node = const_cast<JoinNode&>(static_cast<const JoinNode&>(join_node));
+  auto& casted_join_node =static_cast<const JoinNode&>(join_node);
   const auto old_mode = casted_join_node.join_mode;
-  const_cast<JoinMode&>(casted_join_node.join_mode) = JoinMode::Inner;
+  casted_join_node.join_mode = JoinMode::Inner;
   auto left_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[0]);
   auto right_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[1]);
-  const_cast<JoinMode&>(casted_join_node.join_mode) = old_mode;
+  casted_join_node.join_mode = old_mode;
+
+  // Reset column expressions
+  casted_join_node.column_expressions();
 
   if (!left_arg_column_id || !right_arg_column_id) return std::nullopt;
 
