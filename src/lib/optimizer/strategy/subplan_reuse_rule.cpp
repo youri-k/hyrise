@@ -27,6 +27,30 @@ std::unordered_set<LQPColumnReference> get_column_references(
 }
 
 using ColumnReplacementMappings = std::unordered_map<LQPColumnReference, LQPColumnReference>;
+
+void add_to_column_mapping(const std::shared_ptr<AbstractExpression>& from_expression, const std::shared_ptr<AbstractExpression>& to_expression, ColumnReplacementMappings& mappings) {
+  Assert(from_expression->type == to_expression->type, "Expected same type");
+
+  // TODO test that LQPColumnExpressions hidden in an argument (e.g., SUM(x) or AND(x, y)) are also detected
+
+  if (const auto from_column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(from_expression)) {
+    const auto to_column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(to_expression);
+    mappings.emplace(from_column_expression->column_reference, to_column_expression->column_reference);
+  } else {
+    auto from_expressions_arguments_iter = from_expression->arguments.begin();
+    auto from_expressions_arguments_end_iter = from_expression->arguments.end();
+    auto to_expressions_arguments_iter = to_expression->arguments.begin();
+
+    DebugAssert(from_expressions_arguments_end_iter - from_expressions_arguments_iter == to_expression->arguments.end() - to_expressions_arguments_iter, "Mismatching number of expression arguments");
+
+    while (from_expressions_arguments_iter != from_expressions_arguments_end_iter) {
+      add_to_column_mapping(*from_expressions_arguments_iter, *to_expressions_arguments_iter, mappings);
+      ++from_expressions_arguments_iter;
+      ++to_expressions_arguments_iter;
+    }
+  }
+}
+
 ColumnReplacementMappings create_column_mapping(const AbstractLQPNode& from_node, const AbstractLQPNode& to_node) {
   auto mapping = std::unordered_map<LQPColumnReference, LQPColumnReference>{};
 
@@ -35,21 +59,8 @@ ColumnReplacementMappings create_column_mapping(const AbstractLQPNode& from_node
 
   Assert(from_expressions.size() == to_expressions.size(), "Expected same number of expressions");
 
-  const auto traverse_expressions = [&](const auto& expression_a, const auto& expression_b) {
-    if (!expression_a) {
-      return;
-    }
-
-    Assert(expression_a->type == expression_b->type, "Expected same type");
-
-    if (const auto column_expression_a = std::dynamic_pointer_cast<LQPColumnExpression>(expression_a)) {
-      const auto column_expression_b = std::dynamic_pointer_cast<LQPColumnExpression>(expression_b);
-      mapping.emplace(column_expression_a->column_reference, column_expression_b->column_reference);
-    }
-  };
-
   for (auto column_id = ColumnID{0}; column_id < from_expressions.size(); ++column_id) {
-    traverse_expressions(from_expressions[column_id], to_expressions[column_id]);
+    add_to_column_mapping(from_expressions[column_id], to_expressions[column_id], mapping);
   }
 
   return mapping;
@@ -60,6 +71,7 @@ void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expr
 
   for ([[maybe_unused]] const auto& [from, to] : column_replacement_mappings) {
     // Not sure if this is a valid assertion. In any case, lineage on the `from` side is unhandled.
+    // std::cout << "\t" << from << " -> " << to << std::endl;
     DebugAssert(from.lineage.empty(), "Expected lineage of `from` side to be empty");
   }
 
@@ -68,6 +80,7 @@ void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expr
   auto replacement_occured = false;
   visit_expression(expression_copy, [&column_replacement_mappings, &replacement_occured](auto& sub_expression) {
     if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
+      // std::cout << "\tshould I replace " << column_expression->column_reference << "?" << std::endl;
       auto column_reference_without_lineage = LQPColumnReference{column_expression->column_reference.original_node(), column_expression->column_reference.original_column_id()};
       const auto column_replacement_iter = column_replacement_mappings.find(column_reference_without_lineage);
       if (column_replacement_iter != column_replacement_mappings.end()) {
@@ -220,6 +233,9 @@ using LQPNodeUnorderedSet =  // TODO move to abstract_lqp_node.hpp
 void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) const {
   Assert(root->type == LQPNodeType::Root, "SubplanReuseRule needs root to hold onto");
 
+  // std::cout << "\n\n\n=== IN ===" << std::endl;
+  // std::cout << *root << std::endl;
+
   bool more = true;
   while (more) {
     LQPNodeUnorderedSet primary_subplans;
@@ -233,11 +249,18 @@ void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) co
       const auto& primary_subplan = *primary_subplan_iter;
 
       auto column_mapping = create_column_mapping(*node, *primary_subplan);
+
+      // std::cout << "initial mapping" << std::endl;
+      // for (const auto& [from, to] : column_mapping) {
+      //   std::cout << "\t" << from << " -> " << to << std::endl;
+      // }
+
       std::unordered_map<std::shared_ptr<AbstractLQPNode>, ColumnReplacementMappings> per_node_replacements;  // TODO does this have to be a map?
 
       apply_column_replacement_mappings_upwards(node, column_mapping, per_node_replacements);
 
       for (const auto& [node, mapping] : per_node_replacements) {
+        // std::cout << node->description() << std::endl;
         apply_column_replacement_mappings(node->node_expressions, mapping);
       }
 
@@ -245,11 +268,14 @@ void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) co
         output->set_input(input_side, primary_subplan);
       }
 
-      more = true;
+      // more = true;
 
       return LQPVisitation::DoNotVisitInputs;
     });
   }
+
+  // std::cout << "\n\n\n=== OUT ===" << std::endl;
+  // std::cout << *root << std::endl;
 }
 
 }  // namespace opossum
