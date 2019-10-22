@@ -250,6 +250,8 @@ void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) co
       return LQPVisitation::DoNotVisitInputs;
     });
   }
+
+  std::cout << *root << std::endl;
 }
 
 }  // namespace opossum

@@ -33,13 +33,13 @@ std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_refe
   const auto stored_table_node = std::static_pointer_cast<const StoredTableNode>(column_reference.original_node());
   const auto table = Hyrise::get().storage_manager.get_table(stored_table_node->table_name);
 
-  os << table->column_name(column_reference.original_column_id());
+  // os << table->column_name(column_reference.original_column_id());
 
-  // os << '"' << table->column_name(column_reference.original_column_id()) << " from " << column_reference.original_node();
-  // for (const auto& step : column_reference.lineage) {
-  //   os << " via " << step.first << "(" << (step.second == LQPInputSide::Left ? "left" : "right") << ")";
-  // }
-  // os << '"';
+  os << '"' << table->column_name(column_reference.original_column_id()) << " from " << column_reference.original_node();
+  for (const auto& step : column_reference.lineage) {
+    os << " via " << step.first << "(" << (step.second == LQPInputSide::Left ? "left" : "right") << ")";
+  }
+  os << '"';
 
   return os;
 }
