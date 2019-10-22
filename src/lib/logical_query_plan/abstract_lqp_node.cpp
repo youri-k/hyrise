@@ -225,7 +225,6 @@ const std::vector<std::shared_ptr<AbstractExpression>>& AbstractLQPNode::column_
 }
 
 std::optional<ColumnID> AbstractLQPNode::find_column_id(const AbstractExpression& expression) const {
-  std::cout << description() << " @ " << this << ".find_column_id " << expression << " START" << std::endl;
   const auto& column_expressions = this->column_expressions();  // Avoid redundant retrieval in loop below
 
   if constexpr (HYRISE_DEBUG) {
@@ -236,15 +235,11 @@ std::optional<ColumnID> AbstractLQPNode::find_column_id(const AbstractExpression
     DebugAssert(matches <= 1, "Ambiguous expression detected");
   }
 
-  std::cout << description() << " @ " << this << ".find_column_id " << expression << ": ";
-
   for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
     if (*column_expressions[column_id] == expression) {
-      std::cout << column_id << std::endl;
       return column_id;
     }
   }
-  std::cout << "not found" << std::endl;
   return std::nullopt;
 }
 

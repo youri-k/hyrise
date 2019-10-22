@@ -67,14 +67,12 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
   // Overwrite mode so that find_column_id is not left with only the left side
   // TODO do this somehow differently
 
-  std::cout << "vvvvvv" << std::endl;
   auto& casted_join_node = const_cast<JoinNode&>(static_cast<const JoinNode&>(join_node));
   const auto old_mode = casted_join_node.join_mode;
   const_cast<JoinMode&>(casted_join_node.join_mode) = JoinMode::Inner;
   auto left_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[0]);
   auto right_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[1]);
   const_cast<JoinMode&>(casted_join_node.join_mode) = old_mode;
-  std::cout << "^^^^^^" << std::endl;
 
   if (!left_arg_column_id || !right_arg_column_id) return std::nullopt;
 

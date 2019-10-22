@@ -496,7 +496,6 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
     */
   visit_expression(pqp_expression, [&](auto& expression) {
     // Try to resolve the Expression to a column from the input node
-    std::cout << "Node: " << node->description() << ", try to resolve " << *expression;
     const auto column_id = node->find_column_id(*expression);
     if (column_id) {
       const auto referenced_expression = node->column_expressions()[*column_id];
@@ -504,10 +503,8 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
           std::make_shared<PQPColumnExpression>(*column_id, referenced_expression->data_type(),
                                                 node->is_column_nullable(node->get_column_id(*referenced_expression)),
                                                 referenced_expression->as_column_name());
-      std::cout << " - column id " << *column_id << std::endl;
       return ExpressionVisitation::DoNotVisitArguments;
     }
-    std::cout << " - failed" << std::endl;
 
     // Resolve SubqueryExpression
     if (expression->type == ExpressionType::LQPSubquery) {
