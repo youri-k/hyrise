@@ -51,9 +51,12 @@ size_t hash<opossum::LQPColumnReference>::operator()(const opossum::LQPColumnRef
   // It is important not to combine the pointer of the original_node with the hash code as it was done before #1795.
   // If this pointer is combined with the return hash code, equal LQP nodes that are not identical and that have
   // LQPColumnExpressions or child nodes with LQPColumnExpressions would have different hash codes.
+
+  // We could include `column_reference.original_node()->hash()` in the hash, but since hashing an LQP node has a
+  // certain cost, we allow those collisions and rely on operator== to sort it out.
+
   DebugAssert(column_reference.original_node(), "OriginalNode has expired");
-  auto hash = boost::hash_value(column_reference.original_node()->hash());
-  boost::hash_combine(hash, static_cast<size_t>(column_reference.original_column_id()));
+  return column_reference.original_column_id();
 
   // TODO include lineage?
 
