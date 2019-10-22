@@ -350,7 +350,7 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_join_node(
   } else {
     // TODO(anybody) Join cardinality estimation is consciously only performed for the primary join predicate. #1560
     const auto primary_operator_join_predicate = OperatorJoinPredicate::from_expression(
-        *join_node.join_predicates()[0], *join_node.left_input(), *join_node.right_input());
+        *join_node.join_predicates()[0], join_node);
 
     if (primary_operator_join_predicate) {
       switch (join_node.join_mode) {
@@ -403,7 +403,11 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_join_node(
       }
     } else {
       // TODO(anybody) For now, estimate a selectivity of one. #1830
-      return estimate_cross_join(*left_input_table_statistics, *right_input_table_statistics);
+      if (join_node.join_mode == JoinMode::Semi || join_node.join_mode == JoinMode::AntiNullAsTrue || join_node.join_mode == JoinMode::AntiNullAsFalse) {
+        return left_input_table_statistics;
+      } else {
+        return estimate_cross_join(*left_input_table_statistics, *right_input_table_statistics);
+      }
     }
   }
 
@@ -887,8 +891,7 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_semi_join(
      */
     const auto left_column_count = left_input_table_statistics.column_statistics.size();
 
-    std::vector<std::shared_ptr<BaseAttributeStatistics>> column_statistics{
-        left_column_count};
+    std::vector<std::shared_ptr<BaseAttributeStatistics>> column_statistics{left_column_count};
 
     const auto join_columns_output_statistics = std::make_shared<AttributeStatistics<ColumnDataType>>();
     join_columns_output_statistics->histogram = join_column_histogram;
