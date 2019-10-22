@@ -75,7 +75,7 @@ const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::column_express
     auto column_references = std::unordered_set<LQPColumnReference>{};
     for (const auto& expression : expressions) {
       visit_expression(expression, [&](const auto& sub_expression) {
-        if (const auto column_expression = dynamic_cast<LQPColumnExpression&>(*sub_expression)) {
+        if (const auto column_expression = dynamic_cast<const LQPColumnExpression&>(*sub_expression)) {
           column_references.emplace(column_expression->column_reference);
         }
         return ExpressionVisitation::VisitArguments;
