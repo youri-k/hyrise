@@ -26,8 +26,7 @@ class LQPColumnReference final {
   bool operator==(const LQPColumnReference& rhs) const;
   bool operator!=(const LQPColumnReference& rhs) const;
 
-  // TODO I'd rather have a weak_ptr here, but that is not hashable. Make sure we don't have any cycles
-  std::unordered_map<std::shared_ptr<const AbstractLQPNode>, LQPInputSide> lineage{};
+  std::vector<std::pair<std::weak_ptr<const AbstractLQPNode>, LQPInputSide>> lineage{};
 
  private:
   // Needs to be weak since Nodes can hold ColumnReferences referring to themselves

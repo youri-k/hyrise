@@ -86,12 +86,13 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_statistics(
    * Lookup in `join_graph_statistics_cache` is expected to have a higher hit rate (since every bitmask represents
    * multiple LQPs) than `statistics_by_lqp`. Thus lookup in `join_graph_statistics_cache` is performed first.
    */
+  const auto& column_expressions = lqp->column_expressions();
   auto join_graph_bitmask = std::optional<JoinGraphStatisticsCache::Bitmask>{};
   if (cardinality_estimation_cache.join_graph_statistics_cache) {
     join_graph_bitmask = cardinality_estimation_cache.join_graph_statistics_cache->bitmask(lqp);
     if (join_graph_bitmask) {
       const auto cached_statistics =
-          cardinality_estimation_cache.join_graph_statistics_cache->get(*join_graph_bitmask, lqp->column_expressions());
+          cardinality_estimation_cache.join_graph_statistics_cache->get(*join_graph_bitmask, column_expressions);
       if (cached_statistics) {
         return cached_statistics;
       }
@@ -210,7 +211,7 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_statistics(
    * 3. Store output_table_statistics in cache
    */
   if (join_graph_bitmask) {
-    cardinality_estimation_cache.join_graph_statistics_cache->set(*join_graph_bitmask, lqp->column_expressions(),
+    cardinality_estimation_cache.join_graph_statistics_cache->set(*join_graph_bitmask, column_expressions,
                                                                   output_table_statistics);
   }
 
@@ -225,11 +226,12 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_alias_node(
     const AliasNode& alias_node, const std::shared_ptr<TableStatistics>& input_table_statistics) {
   // For AliasNodes, just reorder/remove AttributeStatistics from the input
 
+  const auto column_expressions = alias_node.column_expressions();
   auto column_statistics =
-      std::vector<std::shared_ptr<BaseAttributeStatistics>>{alias_node.column_expressions().size()};
+      std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
 
-  for (size_t expression_idx{0}; expression_idx < alias_node.column_expressions().size(); ++expression_idx) {
-    const auto& expression = *alias_node.column_expressions()[expression_idx];
+  for (size_t expression_idx{0}; expression_idx < column_expressions.size(); ++expression_idx) {
+    const auto& expression = *column_expressions[expression_idx];
     const auto input_column_id = alias_node.left_input()->get_column_id(expression);
     column_statistics[expression_idx] = input_table_statistics->column_statistics[input_column_id];
   }
@@ -244,11 +246,12 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_projection_node(
   // TODO(anybody) For columns newly created by a Projection no meaningful statistics can be generated yet, hence an
   //               empty AttributeStatistics object is created.
 
+  const auto column_expressions = projection_node.column_expressions();
   auto column_statistics =
-      std::vector<std::shared_ptr<BaseAttributeStatistics>>{projection_node.column_expressions().size()};
+      std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
 
-  for (size_t expression_idx{0}; expression_idx < projection_node.column_expressions().size(); ++expression_idx) {
-    const auto& expression = *projection_node.column_expressions()[expression_idx];
+  for (size_t expression_idx{0}; expression_idx < column_expressions.size(); ++expression_idx) {
+    const auto& expression = *column_expressions[expression_idx];
     const auto input_column_id = projection_node.left_input()->find_column_id(expression);
     if (input_column_id) {
       column_statistics[expression_idx] = input_table_statistics->column_statistics[*input_column_id];
@@ -268,11 +271,12 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_aggregate_node(
   // For AggregateNodes, statistics from group-by columns are forwarded and for the aggregate columns
   // dummy statistics are created for now.
 
+  const auto column_expressions = aggregate_node.column_expressions();
   auto column_statistics =
-      std::vector<std::shared_ptr<BaseAttributeStatistics>>{aggregate_node.column_expressions().size()};
+      std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
 
-  for (size_t expression_idx{0}; expression_idx < aggregate_node.column_expressions().size(); ++expression_idx) {
-    const auto& expression = *aggregate_node.column_expressions()[expression_idx];
+  for (size_t expression_idx{0}; expression_idx < column_expressions.size(); ++expression_idx) {
+    const auto& expression = *column_expressions[expression_idx];
     const auto input_column_id = aggregate_node.left_input()->find_column_id(expression);
     if (input_column_id) {
       column_statistics[expression_idx] = input_table_statistics->column_statistics[*input_column_id];

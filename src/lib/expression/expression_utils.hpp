@@ -87,19 +87,22 @@ enum class ExpressionVisitation { VisitArguments, DoNotVisitArguments };
  * @tparam Visitor      Functor called with every sub expression as a param.
  *                      Return `ExpressionVisitation`
  */
-template <typename Expression, typename Visitor>
+template <typename Expression, typename Visitor, int DISAMBIGUATOR = 0>
 void visit_expression(Expression& expression, Visitor visitor) {
   // The reference wrapper bit is important so we can manipulate the Expression even by replacing sub expression
-  std::queue<std::reference_wrapper<Expression>> expression_queue;
-  expression_queue.push(expression);
+  std::vector<std::reference_wrapper<Expression>> expression_queue;
+  expression_queue.reserve(100);
+  expression_queue.emplace_back(expression);
 
-  while (!expression_queue.empty()) {
-    auto expression_reference = expression_queue.front();
-    expression_queue.pop();
+  auto expression_iter = expression_queue.begin();
+
+  while (expression_iter != expression_queue.end()) {
+    auto expression_reference = *expression_iter;
+    ++expression_iter;
 
     if (visitor(expression_reference.get()) == ExpressionVisitation::VisitArguments) {
       for (auto& argument : expression_reference.get()->arguments) {
-        expression_queue.push(argument);
+        expression_queue.emplace_back(argument);
       }
     }
   }

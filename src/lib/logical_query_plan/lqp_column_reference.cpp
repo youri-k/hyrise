@@ -19,7 +19,16 @@ std::shared_ptr<const AbstractLQPNode> LQPColumnReference::original_node() const
 ColumnID LQPColumnReference::original_column_id() const { return _original_column_id; }
 
 bool LQPColumnReference::operator==(const LQPColumnReference& rhs) const {
-  return lineage == rhs.lineage && original_node() == rhs.original_node() && _original_column_id == rhs._original_column_id;
+  if (_original_column_id != rhs._original_column_id) return false;
+  if (lineage.size() != rhs.lineage.size()) return false;
+  if (original_node() != rhs.original_node()) return false;
+
+  for (auto lineage_iter = lineage.begin(), rhs_lineage_iter = rhs.lineage.begin(); lineage_iter != lineage.end(); ++lineage_iter, ++rhs_lineage_iter) {
+    if (lineage_iter->second != rhs_lineage_iter->second) return false;
+    if (lineage_iter->first.lock() != rhs_lineage_iter->first.lock()) return false;
+  }
+
+  return true;
 }
 
 bool LQPColumnReference::operator!=(const LQPColumnReference& rhs) const {
@@ -37,7 +46,7 @@ std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_refe
 
   os << '"' << table->column_name(column_reference.original_column_id()) << " from " << column_reference.original_node();
   for (const auto& step : column_reference.lineage) {
-    os << " via " << step.first << "(" << (step.second == LQPInputSide::Left ? "left" : "right") << ")";
+    os << " via " << step.first.lock() << "(" << (step.second == LQPInputSide::Left ? "left" : "right") << ")";
   }
   os << '"';
 
@@ -55,12 +64,11 @@ size_t hash<opossum::LQPColumnReference>::operator()(const opossum::LQPColumnRef
   // We could include `column_reference.original_node()->hash()` in the hash, but since hashing an LQP node has a
   // certain cost, we allow those collisions and rely on operator== to sort it out.
 
-  DebugAssert(column_reference.original_node(), "OriginalNode has expired");
+  // DebugAssert(column_reference.original_node(), "OriginalNode has expired");
+  // TODO reactivate
   return column_reference.original_column_id();
 
   // TODO include lineage?
-
-  return hash;
 }
 
 }  // namespace std

@@ -74,10 +74,6 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
   auto right_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[1]);
   casted_join_node.join_mode = old_mode;
 
-  // Reset column expressions
-  casted_join_node.column_expressions();
-
-
   if (!left_arg_column_id || !right_arg_column_id) return std::nullopt;
 
 

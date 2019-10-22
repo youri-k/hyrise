@@ -87,7 +87,7 @@ void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expr
         auto new_column_reference = column_replacement_iter->second;
         // Restore lineage
         for (const auto& via : column_expression->column_reference.lineage) {
-          new_column_reference.lineage.emplace(via);
+          new_column_reference.lineage.emplace_back(via);
         }
 
         sub_expression = std::make_shared<LQPColumnExpression>(new_column_reference);
@@ -131,80 +131,26 @@ void apply_column_replacement_mappings_upwards(const std::shared_ptr<AbstractLQP
 
         if (left_column_references.contains(from) && right_column_references.contains(to)) {
           auto updated_to_left = to;
-          updated_to_left.lineage.emplace(join_node->shared_from_this(), LQPInputSide::Left);
+          updated_to_left.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Left);
           updated_mappings[from] = updated_to_left;
 
           auto updated_to_right = to;
-          updated_to_right.lineage.emplace(join_node->shared_from_this(), LQPInputSide::Right);
+          updated_to_right.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Right);
           updated_mappings[to] = updated_to_right;
 
         }
 
         if (right_column_references.contains(from) && left_column_references.contains(to)) {
           auto updated_to_right = to;
-          updated_to_right.lineage.emplace(join_node->shared_from_this(), LQPInputSide::Right);
+          updated_to_right.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Right);
           updated_mappings[from] = updated_to_right;
 
           auto updated_to_left = to;
-          updated_to_left.lineage.emplace(join_node->shared_from_this(), LQPInputSide::Left);
+          updated_to_left.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Left);
           updated_mappings[to] = updated_to_left;
 
         }
       }
-
-      // TODO: Test multiple joins where only an upper join disambiguates
-
-      // Problem: "ps_supplycost from 0x11ff43dd8 via 0x120ebc258(right)" wird angeblich von der rechten Seite eines Semi-Joins bedient
-      // 1. OperatorJoinPredicate muss lernen, selbst lineage für den untersuchten Join rauszunehmen / oooder find_column_id anpassen/überschreiben
-      // 2. Für Semi/Anti-Joins dürfen hier nur die join_predicates umgeschrieben werden.
-      //   - Das Mapping darf nicht geupdated werden
-      //   - Der JoinNode darf keine Lineage hinzufügen
-
-
-
-
-      // auto join_column_references = left_column_references;
-      // auto right_column_references_copy = right_column_references;
-      // join_column_references.merge(right_column_references_copy);
-
-
-      // // TODO Rename join_predicate here
-      // for (const auto& join_predicate : join_node->column_expressions()) {  // TODO do we really need this loop or can we iterate over the mappings
-      //   visit_expression(join_predicate, [&](const auto& sub_expression) {
-      //     if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
-
-      //       const auto& local = column_expression->column_reference;
-
-      //       const auto comes_from_left = left_column_references.contains(local);
-      //       const auto comes_from_right = right_column_references.contains(local);
-      //       DebugAssert(comes_from_left != comes_from_right, "Expected LQPColumnExpression to come from exactly one join side");
-      //       const auto side = comes_from_left ? LQPInputSide::Left : LQPInputSide::Right;
-
-
-      //       for (auto& [from, to] : column_replacement_mappings) {
-      //         if (!join_column_references.contains(to)) {
-      //           continue;
-      //         }
-
-      //         DebugAssert(from != to, "Invalid mapping");
-
-      //         auto updated_to = to;
-      //         updated_to.lineage.emplace(join_node, side);
-
-      //         if (local == from) {
-      //           updated_mappings.emplace(from, updated_to);
-      //           continue;
-      //         }
-
-      //         if (local == to) {
-      //           updated_mappings.emplace(to, updated_to);
-      //         }
-      //       }
-
-      //     }
-      //     return ExpressionVisitation::VisitArguments;
-      //   });
-      // }
 
       for (const auto& [from, to] : updated_mappings) {
         column_replacement_mappings_local[from] = to;
