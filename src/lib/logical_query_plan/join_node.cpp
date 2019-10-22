@@ -96,6 +96,11 @@ const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::column_express
     }
   }
 
+  if (ambiguous_references.empty()) {
+    if (!output_both_inputs) _column_expressions.resize(left_expressions.size());
+    return _column_expressions;
+  }
+
   for (auto left_expression_iter = _column_expressions.begin(); left_expression_iter != _column_expressions.begin() + left_expressions.size(); ++left_expression_iter) {
     auto expression_copy = (*left_expression_iter)->deep_copy();
     auto replacement_occured = false;
