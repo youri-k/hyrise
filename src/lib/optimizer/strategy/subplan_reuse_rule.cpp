@@ -58,9 +58,11 @@ ColumnReplacementMappings create_column_mapping(const AbstractLQPNode& from_node
 void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expression,
                                       const ColumnReplacementMappings& column_replacement_mappings) {
 
-  for (const auto& [from, to] : column_replacement_mappings) {
-    // Not sure if this is a valid assertion. In any case, lineage on the `from` side is unhandled.
-    DebugAssert(from.lineage.empty(), "Expected lineage of `from` side to be empty");
+  if constexpr (HYRISE_DEBUG) {
+    for (const auto& [from, to] : column_replacement_mappings) {
+      // Not sure if this is a valid assertion. In any case, lineage on the `from` side is unhandled.
+      DebugAssert(from.lineage.empty(), "Expected lineage of `from` side to be empty");
+    }
   }
 
   // need copy so that we do not manipulate upstream expressions
