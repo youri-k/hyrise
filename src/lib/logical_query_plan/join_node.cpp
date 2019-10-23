@@ -83,7 +83,7 @@ const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::column_express
     column_references.reserve(expressions.size() * 10);
     for (const auto& expression : expressions) {
       {
-        //Shortcut
+        // TODO test if shortcut is good for performance
         if (const auto column_expression = dynamic_cast<const LQPColumnExpression*>(&*expression)) {
           if (!column_references.contains(std::cref(column_expression->column_reference))) {
             column_references.emplace(std::cref(column_expression->column_reference));

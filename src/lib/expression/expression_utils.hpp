@@ -91,14 +91,14 @@ template <typename Expression, typename Visitor, int DISAMBIGUATOR = 0>
 void visit_expression(Expression& expression, Visitor visitor) {
   // The reference wrapper bit is important so we can manipulate the Expression even by replacing sub expression
   std::vector<std::reference_wrapper<Expression>> expression_queue;
-  expression_queue.reserve(100);
+  expression_queue.reserve(10);
   expression_queue.emplace_back(expression);
 
-  auto expression_iter = expression_queue.begin();
+  auto i = size_t{0};
 
-  while (expression_iter != expression_queue.end()) {
-    auto expression_reference = *expression_iter;
-    ++expression_iter;
+  while (i < expression_queue.size()) {
+    auto& expression_reference = expression_queue[i];
+    ++i;
 
     if (visitor(expression_reference.get()) == ExpressionVisitation::VisitArguments) {
       for (auto& argument : expression_reference.get()->arguments) {
