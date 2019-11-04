@@ -544,6 +544,7 @@ set(
     utils/abstract_plugin.hpp
     utils/aligned_size.hpp
     utils/assert.hpp
+    utils/boost_curry_override.hpp
     utils/check_table_equal.cpp
     utils/check_table_equal.hpp
     utils/column_ids_after_pruning.cpp
@@ -612,6 +613,10 @@ set(
     ${CMAKE_DL_LIBS}
 )
 
+if (NOT APPLE)
+    set(LIBRARIES ${LIBRARIES} atomic)
+endif()
+
 if (${ENABLE_NUMA_SUPPORT})
     set(LIBRARIES ${LIBRARIES} ${NUMA_LIBRARY} hpinuma_msource_s)
 endif()
@@ -637,7 +642,13 @@ add_custom_command (
 set(SOURCES ${SOURCES} ${PROVIDER_FILE})
 
 # Configure the regular hyrise library used for tests/server/playground...
-add_library(hyrise STATIC ${SOURCES})
+if(NOT ${ENABLE_COVERAGE} AND NOT APPLE AND NOT ENABLE_ADDR_UB_SANITIZATION AND NOT ENABLE_THREAD_SANITIZATION)
+    add_library(hyrise SHARED ${SOURCES})
+else()
+    # Use a static build for coverage information - otherwise .cpp files are missing from the report
+    # Also, the sanitizer builds on Mac require static linkage
+    add_library(hyrise STATIC ${SOURCES})
+endif() 
 
 # Work around an stdlibc++ bug, see list_directory.hpp for details
 set_source_files_properties(
@@ -661,6 +672,7 @@ add_custom_target(resourceLink
 
 # -rdynamic tells the linker to export the library's symbols so that plugins can use them.
 target_link_libraries(hyrise ${LIBRARIES} -rdynamic)
+target_link_libraries_system(hyrise nlohmann_json::nlohmann_json)
 target_include_directories(hyrise PUBLIC ${CMAKE_BINARY_DIR})
 
 # -fPIC generates position independent code which is necessary because plugins might access hyrise functions.
