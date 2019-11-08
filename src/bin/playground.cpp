@@ -392,10 +392,10 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
   table_meta_data_csv_file << "TABLE_ID,TABLE_NAME,ROW_COUNT,MAX_CHUNK_SIZE\n";
 
   std::ofstream attribute_meta_data_csv_file("attribute_meta_data.csv");
-  attribute_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,DATA_TYPE,IS_NULLABLE\n";
+  attribute_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,DATA_TYPE,DISTINCT_VALUE_COUNT,IS_NULLABLE\n";
 
   std::ofstream segment_meta_data_csv_file("segment_meta_data.csv");
-  segment_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,CHUNK_ID,ENCODING,COMPRESSION,SIZE\n";
+  segment_meta_data_csv_file << "ATTRIBUTE_ID,TABLE_NAME,COLUMN_NAME,CHUNK_ID,ENCODING,COMPRESSION,ROW_COUNT,SIZE_IN_BYTES\n";
 
   uint16_t next_table_id = 0;
   uint16_t next_attribute_id = 0;
@@ -422,8 +422,9 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
       attribute_to_attribute_id_map.emplace(std::make_pair(table_name, column_name), attr_table_id.str());
       ++next_attribute_id;
 
+      // TODO(Bouncner): get distinct count via histogram as soon as we have merged the current master
       attribute_meta_data_csv_file << attr_table_id.str() << "," << table_name << "," << column_name << ","
-                                   << data_type_to_string.left.at(column_def.data_type) << ","
+                                   << data_type_to_string.left.at(column_def.data_type) << ",100,"
                                    << (column_def.nullable ? "TRUE" : "FALSE") << "\n";
 
       for (auto chunk_id = ChunkID{0}, end = table->chunk_count(); chunk_id < end; ++chunk_id) {
@@ -434,7 +435,7 @@ void extract_meta_data(TableIdentifierMap& table_name_table_id_to_map,
         const auto encoded_segment = std::dynamic_pointer_cast<const BaseEncodedSegment>(segment);
         const auto encoding_type = encoded_segment->encoding_type();
 
-        segment_meta_data_csv_file << attr_table_id.str() << "," << table_name << "," << column_name << "," << chunk_id << "," << encoding_type_to_string.left.at(encoding_type) << ",";
+        segment_meta_data_csv_file << attr_table_id.str() << "," << table_name << "," << column_name << "," << chunk_id << "," << segment->size() << "," << encoding_type_to_string.left.at(encoding_type) << ",";
 
         if (encoded_segment->compressed_vector_type()) {
           switch (*encoded_segment->compressed_vector_type()) {
@@ -492,11 +493,12 @@ void extract_physical_query_plan_cache_data() {
 
 int main(int argc, const char* argv[]) {
   auto config = BenchmarkConfig::get_default_config();
-  config.max_num_query_runs = 5;
+  config.max_num_query_runs = 10;
   config.enable_visualization = false;
   config.output_file_path = "perf.json";
-  config.chunk_size = 1'000'000;
+  config.chunk_size = 100'000;
   config.cache_binary_tables = true;
+  config.cache_binary_tables = false;
   
   // const std::vector<QueryID> tpch_query_ids = {QueryID{0},  QueryID{1},  QueryID{2},  QueryID{3},  QueryID{4},
   //                                              QueryID{5},  QueryID{6},  QueryID{7},  QueryID{8},  QueryID{3},
@@ -532,12 +534,11 @@ int main(int argc, const char* argv[]) {
   // auto br = std::make_shared<BenchmarkRunner>(config, std::make_unique<TPCHQueryGenerator>(false, SCALE_FACTOR, tpch_query_ids),
   //                 std::make_unique<TpchTableGenerator>(SCALE_FACTOR, std::make_shared<BenchmarkConfig>(config)), 100'000);
 
-  const std::vector<QueryID> tpch_query_ids = {QueryID{5}, QueryID{8}};
+  const std::vector<QueryID> tpch_query_ids = {QueryID{1}};
 
-  BenchmarkRunner(config, std::make_unique<TPCHQueryGenerator>(false, SCALE_FACTOR, tpch_query_ids),
+  BenchmarkRunner(config, std::make_unique<TPCHQueryGenerator>(false, SCALE_FACTOR),//, tpch_query_ids),
                   std::make_unique<TpchTableGenerator>(SCALE_FACTOR, std::make_shared<BenchmarkConfig>(config)),
-                  100'000)
-      .run();
+                  100'000).run();
 
   // StorageManager::get().add_benchmark_runner(br);
   // auto& query_gen = br->query_generator();
