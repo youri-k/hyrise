@@ -255,7 +255,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_projection_node(
   const auto input_operator = translate_node(input_node);
 
   return std::make_shared<Projection>(input_operator,
-                                      _translate_expressions(projection_node->node_expressions, input_node));
+                                      _translate_expressions(projection_node->node_expressions, input_node), node->deep_copy());
 }
 
 std::shared_ptr<AbstractOperator> LQPTranslator::_translate_sort_node(
