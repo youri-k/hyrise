@@ -9,7 +9,7 @@
 
 namespace opossum {
 
-class SubplanReuseRule: public AbstractRule {
+class SubplanReuseRule : public AbstractRule {
  public:
   void apply_to(const std::shared_ptr<AbstractLQPNode>& root) const override;
 };

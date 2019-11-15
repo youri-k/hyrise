@@ -19,8 +19,8 @@
 #include "strategy/predicate_placement_rule.hpp"
 #include "strategy/predicate_reordering_rule.hpp"
 #include "strategy/predicate_split_up_rule.hpp"
-#include "strategy/subquery_to_join_rule.hpp"
 #include "strategy/subplan_reuse_rule.hpp"
+#include "strategy/subquery_to_join_rule.hpp"
 #include "utils/performance_warning.hpp"
 
 /**

@@ -28,7 +28,9 @@ std::unordered_set<LQPColumnReference> get_column_references(
 
 using ColumnReplacementMappings = std::unordered_map<LQPColumnReference, LQPColumnReference>;
 
-void add_to_column_mapping(const std::shared_ptr<AbstractExpression>& from_expression, const std::shared_ptr<AbstractExpression>& to_expression, ColumnReplacementMappings& mappings) {
+void add_to_column_mapping(const std::shared_ptr<AbstractExpression>& from_expression,
+                           const std::shared_ptr<AbstractExpression>& to_expression,
+                           ColumnReplacementMappings& mappings) {
   Assert(from_expression->type == to_expression->type, "Expected same type");
 
   // TODO test that LQPColumnExpressions hidden in an argument (e.g., SUM(x) or AND(x, y)) are also detected
@@ -41,7 +43,9 @@ void add_to_column_mapping(const std::shared_ptr<AbstractExpression>& from_expre
     auto from_expressions_arguments_end_iter = from_expression->arguments.end();
     auto to_expressions_arguments_iter = to_expression->arguments.begin();
 
-    DebugAssert(from_expressions_arguments_end_iter - from_expressions_arguments_iter == to_expression->arguments.end() - to_expressions_arguments_iter, "Mismatching number of expression arguments");
+    DebugAssert(from_expressions_arguments_end_iter - from_expressions_arguments_iter ==
+                    to_expression->arguments.end() - to_expressions_arguments_iter,
+                "Mismatching number of expression arguments");
 
     while (from_expressions_arguments_iter != from_expressions_arguments_end_iter) {
       add_to_column_mapping(*from_expressions_arguments_iter, *to_expressions_arguments_iter, mappings);
@@ -67,8 +71,7 @@ ColumnReplacementMappings create_column_mapping(const AbstractLQPNode& from_node
 }
 
 void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expression,
-                                      const ColumnReplacementMappings& column_replacement_mappings) {
-
+                                       const ColumnReplacementMappings& column_replacement_mappings) {
   for ([[maybe_unused]] const auto& [from, to] : column_replacement_mappings) {
     // Not sure if this is a valid assertion. In any case, lineage on the `from` side is unhandled.
     // std::cout << "\t" << from << " -> " << to << std::endl;
@@ -81,7 +84,9 @@ void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expr
   visit_expression(expression_copy, [&column_replacement_mappings, &replacement_occured](auto& sub_expression) {
     if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
       // std::cout << "\tshould I replace " << column_expression->column_reference << "?" << std::endl;
-      auto column_reference_without_lineage = LQPColumnReference{column_expression->column_reference.original_node(), column_expression->column_reference.original_column_id()};
+      auto column_reference_without_lineage =
+          LQPColumnReference{column_expression->column_reference.original_node(),
+                             column_expression->column_reference.original_column_id()};
       const auto column_replacement_iter = column_replacement_mappings.find(column_reference_without_lineage);
       if (column_replacement_iter != column_replacement_mappings.end()) {
         auto new_column_reference = column_replacement_iter->second;
@@ -101,33 +106,32 @@ void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expr
 }
 
 void apply_column_replacement_mappings(std::vector<std::shared_ptr<AbstractExpression>>& expressions,
-                                      const ColumnReplacementMappings& column_replacement_mappings) {
+                                       const ColumnReplacementMappings& column_replacement_mappings) {
   for (auto& expression : expressions) {
     apply_column_replacement_mappings(expression, column_replacement_mappings);
   }
 }
 
-void apply_column_replacement_mappings_upwards(const std::shared_ptr<AbstractLQPNode>& node,
-                                      ColumnReplacementMappings& column_replacement_mappings,
-                                      std::unordered_map<std::shared_ptr<AbstractLQPNode>, ColumnReplacementMappings>& per_node_replacements) {
+void apply_column_replacement_mappings_upwards(
+    const std::shared_ptr<AbstractLQPNode>& node, ColumnReplacementMappings& column_replacement_mappings,
+    std::unordered_map<std::shared_ptr<AbstractLQPNode>, ColumnReplacementMappings>& per_node_replacements) {
   visit_lqp_upwards(node, [&column_replacement_mappings, &per_node_replacements](const auto& sub_node) {
-
     auto column_replacement_mappings_local = column_replacement_mappings;
-
 
     if (const auto join_node = std::dynamic_pointer_cast<JoinNode>(sub_node)) {
       const auto left_column_references = get_column_references(join_node->left_input()->column_expressions());
       const auto right_column_references = get_column_references(join_node->right_input()->column_expressions());
 
-
       ColumnReplacementMappings updated_mappings;
 
       for (auto& [from, to] : column_replacement_mappings) {
-        if (join_node->join_mode != JoinMode::Semi && join_node->join_mode != JoinMode::AntiNullAsTrue && join_node->join_mode != JoinMode::AntiNullAsFalse) {
-          DebugAssert(!left_column_references.contains(from) || !right_column_references.contains(from), "Ambiguous mapping 1");
-          DebugAssert(!left_column_references.contains(to) || !right_column_references.contains(to), "Ambiguous mapping 2");
+        if (join_node->join_mode != JoinMode::Semi && join_node->join_mode != JoinMode::AntiNullAsTrue &&
+            join_node->join_mode != JoinMode::AntiNullAsFalse) {
+          DebugAssert(!left_column_references.contains(from) || !right_column_references.contains(from),
+                      "Ambiguous mapping 1");
+          DebugAssert(!left_column_references.contains(to) || !right_column_references.contains(to),
+                      "Ambiguous mapping 2");
         }
-
 
         if (left_column_references.contains(from) && right_column_references.contains(to)) {
           auto updated_to_left = to;
@@ -137,7 +141,6 @@ void apply_column_replacement_mappings_upwards(const std::shared_ptr<AbstractLQP
           auto updated_to_right = to;
           updated_to_right.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Right);
           updated_mappings[to] = updated_to_right;
-
         }
 
         if (right_column_references.contains(from) && left_column_references.contains(to)) {
@@ -148,13 +151,13 @@ void apply_column_replacement_mappings_upwards(const std::shared_ptr<AbstractLQP
           auto updated_to_left = to;
           updated_to_left.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Left);
           updated_mappings[to] = updated_to_left;
-
         }
       }
 
       for (const auto& [from, to] : updated_mappings) {
         column_replacement_mappings_local[from] = to;
-        if (join_node->join_mode != JoinMode::Semi && join_node->join_mode != JoinMode::AntiNullAsTrue && join_node->join_mode != JoinMode::AntiNullAsFalse) {
+        if (join_node->join_mode != JoinMode::Semi && join_node->join_mode != JoinMode::AntiNullAsTrue &&
+            join_node->join_mode != JoinMode::AntiNullAsFalse) {
           column_replacement_mappings[from] = to;
         }
       }
@@ -172,7 +175,7 @@ void apply_column_replacement_mappings_upwards(const std::shared_ptr<AbstractLQP
 namespace opossum {
 
 using LQPNodeUnorderedSet =  // TODO move to abstract_lqp_node.hpp
-    std::unordered_set<std::shared_ptr<AbstractLQPNode>, LQPNodeSharedPtrHash, LQPNodeSharedPtrEqual>;  
+    std::unordered_set<std::shared_ptr<AbstractLQPNode>, LQPNodeSharedPtrHash, LQPNodeSharedPtrEqual>;
 
 // TODO Is it necessary to update the lineage? Test this
 
@@ -201,7 +204,8 @@ void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) co
       //   std::cout << "\t" << from << " -> " << to << std::endl;
       // }
 
-      std::unordered_map<std::shared_ptr<AbstractLQPNode>, ColumnReplacementMappings> per_node_replacements;  // TODO does this have to be a map?
+      std::unordered_map<std::shared_ptr<AbstractLQPNode>, ColumnReplacementMappings>
+          per_node_replacements;  // TODO does this have to be a map?
 
       apply_column_replacement_mappings_upwards(node, column_mapping, per_node_replacements);
 

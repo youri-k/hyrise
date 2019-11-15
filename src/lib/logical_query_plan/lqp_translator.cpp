@@ -296,8 +296,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_join_node(
   join_predicates.reserve(join_node->join_predicates().size());
 
   for (const auto& predicate_expression : join_node->join_predicates()) {
-    auto join_predicate =
-        OperatorJoinPredicate::from_expression(*predicate_expression, *node);
+    auto join_predicate = OperatorJoinPredicate::from_expression(*predicate_expression, *node);
     // Assert that the Join Predicates are simple, e.g. of the form <column_a> <predicate> <column_b>.
     // <column_a> and <column_b> must be on separate sides, but <column_a> need not be on the left.
     Assert(join_predicate, "Couldn't translate join predicate: "s + predicate_expression->as_column_name());

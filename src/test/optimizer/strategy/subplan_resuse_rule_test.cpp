@@ -1,10 +1,10 @@
 #include "gtest/gtest.h"
 
-#include "strategy_base_test.hpp"
-#include "logical_query_plan/predicate_node.hpp"
-#include "logical_query_plan/mock_node.hpp"
 #include "logical_query_plan/lqp_utils.hpp"
+#include "logical_query_plan/mock_node.hpp"
+#include "logical_query_plan/predicate_node.hpp"
 #include "optimizer/strategy/subplan_reuse_rule.hpp"
+#include "strategy_base_test.hpp"
 
 #include "testing_assert.hpp"
 

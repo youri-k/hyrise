@@ -76,17 +76,23 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
 
   if (!left_arg_column_id || !right_arg_column_id) return std::nullopt;
 
-
   auto predicate_condition = abstract_predicate_expression->predicate_condition;
 
   // TODO assert that one is left and one is right
 
-  const auto num_left_column_expressions = static_cast<ColumnID::base_type>(join_node.left_input()->column_expressions().size());
+  const auto num_left_column_expressions =
+      static_cast<ColumnID::base_type>(join_node.left_input()->column_expressions().size());
   if (*left_arg_column_id < *right_arg_column_id) {
-    return OperatorJoinPredicate{{*left_arg_column_id, ColumnID{static_cast<ColumnID::base_type>(*right_arg_column_id - num_left_column_expressions)}}, predicate_condition};
+    return OperatorJoinPredicate{
+        {*left_arg_column_id,
+         ColumnID{static_cast<ColumnID::base_type>(*right_arg_column_id - num_left_column_expressions)}},
+        predicate_condition};
   } else {
     predicate_condition = flip_predicate_condition(predicate_condition);
-    return OperatorJoinPredicate{{*right_arg_column_id, ColumnID{static_cast<ColumnID::base_type>(*left_arg_column_id - num_left_column_expressions)}}, predicate_condition};
+    return OperatorJoinPredicate{
+        {*right_arg_column_id,
+         ColumnID{static_cast<ColumnID::base_type>(*left_arg_column_id - num_left_column_expressions)}},
+        predicate_condition};
   }
 }
 

@@ -235,8 +235,7 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_alias_node(
   // For AliasNodes, just reorder/remove AttributeStatistics from the input
 
   const auto column_expressions = alias_node.column_expressions();
-  auto column_statistics =
-      std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
+  auto column_statistics = std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
 
   for (size_t expression_idx{0}; expression_idx < column_expressions.size(); ++expression_idx) {
     const auto& expression = *column_expressions[expression_idx];
@@ -255,8 +254,7 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_projection_node(
   //               empty AttributeStatistics object is created.
 
   const auto column_expressions = projection_node.column_expressions();
-  auto column_statistics =
-      std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
+  auto column_statistics = std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
 
   for (size_t expression_idx{0}; expression_idx < column_expressions.size(); ++expression_idx) {
     const auto& expression = *column_expressions[expression_idx];
@@ -280,8 +278,7 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_aggregate_node(
   // dummy statistics are created for now.
 
   const auto column_expressions = aggregate_node.column_expressions();
-  auto column_statistics =
-      std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
+  auto column_statistics = std::vector<std::shared_ptr<BaseAttributeStatistics>>{column_expressions.size()};
 
   for (size_t expression_idx{0}; expression_idx < column_expressions.size(); ++expression_idx) {
     const auto& expression = *column_expressions[expression_idx];
@@ -404,8 +401,8 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_join_node(
     return estimate_cross_join(*left_input_table_statistics, *right_input_table_statistics);
   } else {
     // TODO(anybody) Join cardinality estimation is consciously only performed for the primary join predicate. #1560
-    const auto primary_operator_join_predicate = OperatorJoinPredicate::from_expression(
-        *join_node.join_predicates()[0], join_node);
+    const auto primary_operator_join_predicate =
+        OperatorJoinPredicate::from_expression(*join_node.join_predicates()[0], join_node);
 
     if (primary_operator_join_predicate) {
       switch (join_node.join_mode) {
@@ -458,7 +455,8 @@ std::shared_ptr<TableStatistics> CardinalityEstimator::estimate_join_node(
       }
     } else {
       // TODO(anybody) For now, estimate a selectivity of one. #1830
-      if (join_node.join_mode == JoinMode::Semi || join_node.join_mode == JoinMode::AntiNullAsTrue || join_node.join_mode == JoinMode::AntiNullAsFalse) {
+      if (join_node.join_mode == JoinMode::Semi || join_node.join_mode == JoinMode::AntiNullAsTrue ||
+          join_node.join_mode == JoinMode::AntiNullAsFalse) {
         return left_input_table_statistics;
       } else {
         return estimate_cross_join(*left_input_table_statistics, *right_input_table_statistics);
