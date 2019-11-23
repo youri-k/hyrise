@@ -25,7 +25,7 @@ std::string LQPColumnReference::description() const {// TODO dedup
 std::ostringstream address;
 address << reinterpret_cast<const void*>(original_node().get());
 
-  if ( original_column_id() == INVALID_COLUMN_ID) return std::string{"CoUnT("} + address.str() + ".*)";
+  if ( original_column_id() == INVALID_COLUMN_ID) return std::string{"INVALID_COLUMN_ID from "} + address.str() + ".*)";
   Assert(original_column_id() != INVALID_COLUMN_ID, "Tried to print an uninitialized column or COUNT(*)"); // TODO Reenable
 
   std::stringstream os;
@@ -82,12 +82,10 @@ std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_refe
   const auto original_node = column_reference.original_node();
   Assert(original_node, "OriginalNode has expired");
 
-  if ( column_reference.original_column_id() == INVALID_COLUMN_ID) {
-    os << std::string{"CoUnT("} << original_node << ".*)";
+  if (column_reference.original_column_id() == INVALID_COLUMN_ID) {
+    os << "INVALID_COLUMN_ID";
     return os;
   }
-  Assert(column_reference.original_column_id() != INVALID_COLUMN_ID,
-         "Tried to print an uninitialized column or COUNT(*)");
 
   switch (original_node->type) {
     case LQPNodeType::StoredTable: {
