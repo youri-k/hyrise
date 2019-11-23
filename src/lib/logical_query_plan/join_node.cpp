@@ -234,10 +234,8 @@ std::optional<ColumnID> JoinNode::find_column_id(const AbstractExpression& expre
         *this_column_expressions[column_id] != *disambiguated_expression)
       continue;
     if (column_id < left_input_column_count) {
-      DebugAssert(!column_id_on_left, "Expression ambiguous");
       column_id_on_left = column_id;
     } else {
-      DebugAssert(!column_id_on_right, "Expression ambiguous");
       column_id_on_right = column_id;
     }
   }

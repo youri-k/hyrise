@@ -82,6 +82,10 @@ std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_refe
   const auto original_node = column_reference.original_node();
   Assert(original_node, "OriginalNode has expired");
 
+  if ( column_reference.original_column_id() == INVALID_COLUMN_ID) {
+    os << std::string{"CoUnT("} << original_node << ".*)";
+    return os;
+  }
   Assert(column_reference.original_column_id() != INVALID_COLUMN_ID,
          "Tried to print an uninitialized column or COUNT(*)");
 

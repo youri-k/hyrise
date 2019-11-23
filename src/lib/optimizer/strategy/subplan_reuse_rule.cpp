@@ -95,37 +95,19 @@ void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expr
   auto replacement_occured = false;
   visit_expression(expression_copy, [&column_replacement_mappings, &replacement_occured](auto& sub_expression) {
     if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
-      auto reduced_column_reference = column_expression->column_reference;
+      const auto column_reference = column_expression->column_reference;
       auto upstream_lineage = std::vector<std::pair<std::weak_ptr<const AbstractLQPNode>, LQPInputSide>>{};
-      auto new_column_reference = LQPColumnReference{};
 
-      auto try_again = false;
-      do {
-        try_again = false;
-        std::cout << "\tshould I replace " << reduced_column_reference.description() << "?" << std::endl;
-        const auto column_replacement_iter = column_replacement_mappings.find(reduced_column_reference);
-        if (column_replacement_iter != column_replacement_mappings.end()) {
-          new_column_reference = column_replacement_iter->second;
+      std::cout << "\tshould I replace " << column_reference.description() << "?" << std::endl;
+      const auto column_replacement_iter = column_replacement_mappings.find(column_reference);
+      if (column_replacement_iter != column_replacement_mappings.end()) {
+        auto new_column_reference = column_replacement_iter->second;
 
-
-          std::cout << "replaced with " << new_column_reference.description() << std::endl;
-
-          replacement_occured = true;
-        } else {
-          // if (!reduced_column_reference.lineage.empty()) {
-          //   upstream_lineage.emplace_back(reduced_column_reference.lineage.back());
-          //   reduced_column_reference.lineage.pop_back();
-          //   try_again = true;
-          // }
-        }
-      } while (try_again);
-
-      if (replacement_occured) {
-        // for (auto lineage_iter = upstream_lineage.rbegin(); lineage_iter != upstream_lineage.rend(); ++lineage_iter) {
-        //   new_column_reference.lineage.emplace_back(*lineage_iter);
-        // }
-        // std::cout << "but restored lineage as " << new_column_reference.description() << std::endl;
         sub_expression = std::make_shared<LQPColumnExpression>(new_column_reference);
+
+        std::cout << "replaced with " << new_column_reference.description() << std::endl;
+
+        replacement_occured = true;
       }
 
       // TheLQPColumnExpression has no inputs, so at this point, we have reached the end of visit_expression.
