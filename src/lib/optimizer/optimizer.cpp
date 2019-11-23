@@ -129,15 +129,15 @@ std::shared_ptr<Optimizer> Optimizer::create_default_optimizer() {
 
   optimizer->add_rule(std::make_unique<IndexScanRule>());
 
+  optimizer->add_rule(std::make_unique<PredicateMergeRule>());
+
   optimizer->add_rule(std::make_unique<SubplanReuseRule>());
 
   // After LQP deduplication, LQPColumnReferences may contain lineage information. Working with these deduplicated plans
   // is more difficult. We do not expect any rule other than the ColumnPruningRule to mandatorily run after the
   // SubplanReuseRule - carefully consider if you really have to add yours below.
 
-  // optimizer->add_rule(std::make_unique<ColumnPruningRule>());
-
-  // optimizer->add_rule(std::make_unique<PredicateMergeRule>());
+  // optimizer->add_rule(std::make_unique<ColumnPruningRule>());  //TODO
 
   return optimizer;
 }
