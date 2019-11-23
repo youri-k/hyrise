@@ -65,9 +65,10 @@ class AbstractExpression : public std::enable_shared_from_this<AbstractExpressio
   virtual std::shared_ptr<AbstractExpression> deep_copy() const = 0;
 
   /**
-   * @return a human readable string representing the Expression that can be used as a column name
+   * @return the expression's column name or, optionally, a more detailed description of the expression
    */
-  virtual std::string as_column_name() const = 0;
+  enum class DescriptionMode : bool { ColumnName, Detailed };
+  virtual std::string description(const DescriptionMode mode = DescriptionMode::ColumnName) const = 0;
 
   /**
    * @return the DataType of the result of the expression
@@ -105,7 +106,7 @@ class AbstractExpression : public std::enable_shared_from_this<AbstractExpressio
   virtual bool _on_is_nullable_on_lqp(const AbstractLQPNode& lqp) const;
 
   /**
-   * Used internally in _enclose_argument_as_column_name() to put parentheses around expression arguments if they have a lower
+   * Used internally in _enclose_argument_description(AbstractExpression::DescriptionMode::ColumnName) to put parentheses around expression arguments if they have a lower
    * precedence than the expression itself.
    * Lower precedence indicates tighter binding, compare https://en.cppreference.com/w/cpp/language/operator_precedence
    *
@@ -114,15 +115,15 @@ class AbstractExpression : public std::enable_shared_from_this<AbstractExpressio
   virtual ExpressionPrecedence _precedence() const;
 
   /**
-   * @return    argument.as_column_name(), enclosed by parentheses if the argument precedence is lower than
+   * @return    argument.description(mode), enclosed by parentheses if the argument precedence is lower than
    *            this->_precedence()
    */
-  std::string _enclose_argument_as_column_name(const AbstractExpression& argument) const;
+  std::string _enclose_argument_as_column_name(const AbstractExpression& argument, const DescriptionMode mode) const;
 };
 
 // So that google test, e.g., prints readable error messages
 inline std::ostream& operator<<(std::ostream& stream, const AbstractExpression& expression) {
-  return stream << expression.as_column_name();
+  return stream << expression.description();
 }
 
 // Wrapper around expression->hash(), to enable hash based containers containing std::shared_ptr<AbstractExpression>

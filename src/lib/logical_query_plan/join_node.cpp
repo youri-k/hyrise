@@ -17,15 +17,6 @@
 #include "types.hpp"
 #include "utils/assert.hpp"
 
-namespace std {
-template <>
-struct hash<const opossum::LQPColumnReference> {  // TODO MOVE
-  size_t operator()(const opossum::LQPColumnReference& column_reference) const {
-    return column_reference.original_column_id();
-  }
-};
-}  // namespace std
-
 namespace opossum {
 
 JoinNode::JoinNode(const JoinMode join_mode) : AbstractLQPNode(LQPNodeType::Join), join_mode(join_mode) {
@@ -46,7 +37,7 @@ std::string JoinNode::description() const {
   stream << "[Join] Mode: " << join_mode;
 
   for (const auto& predicate : join_predicates()) {
-    stream << " [" << predicate->as_column_name() << "]";
+    stream << " [" << predicate->description(AbstractExpression::DescriptionMode::Detailed) << "]";
   }
 
   return stream.str();
@@ -225,32 +216,43 @@ std::optional<ColumnID> JoinNode::find_column_id(const AbstractExpression& expre
 
       // Remove this node from the lineage information of sub_expression
       column_reference.lineage.pop_back();
+
+      // visit_expression ends here
     }
     return ExpressionVisitation::VisitArguments;
   });
 
   const auto left_input_column_count = left_input()->column_expressions().size();
   const auto& this_column_expressions = column_expressions();
+  std::cout << "node " << description() << " @ " << this << std::endl;
+  std::cout << "find_column_id " << expression.description(AbstractExpression::DescriptionMode::Detailed) << std::endl;
+  std::cout << "disambiguated_expression " << disambiguated_expression->description(AbstractExpression::DescriptionMode::Detailed) << std::endl;
   for (auto column_id = ColumnID{0}; column_id < this_column_expressions.size(); ++column_id) {
+    std::cout << "Candidate " << this_column_expressions[column_id]->description(AbstractExpression::DescriptionMode::Detailed) << std::endl;
     // TODO can we do the first part earlier?
     if (*this_column_expressions[column_id] != expression &&
         *this_column_expressions[column_id] != *disambiguated_expression)
       continue;
     if (column_id < left_input_column_count) {
+      DebugAssert(!column_id_on_left, "Expression ambiguous");
       column_id_on_left = column_id;
     } else {
+      DebugAssert(!column_id_on_right, "Expression ambiguous");
       column_id_on_right = column_id;
     }
   }
 
-  if (column_id_on_left &&
-      (!column_id_on_right || (disambiguated_input_side && *disambiguated_input_side == LQPInputSide::Left))) {
+  if (disambiguated_input_side) {
+    if (column_id_on_left) DebugAssert(*disambiguated_input_side == LQPInputSide::Left, "Expression has lineage information pointing to left side, but could not be resolved there");
+    if (column_id_on_right) DebugAssert(*disambiguated_input_side == LQPInputSide::Right, "Expression has lineage information pointing to right side, but could not be resolved there");
+  }
+
+  if (column_id_on_left && !column_id_on_right) {
     // Found unambiguously on left side
     return column_id_on_left;
   }
 
-  if (column_id_on_right &&
-      (!column_id_on_left || (disambiguated_input_side && *disambiguated_input_side == LQPInputSide::Right))) {
+  if (column_id_on_right && !column_id_on_left) {
     // Found unambiguously on right side
     return column_id_on_right;
   }
@@ -264,7 +266,15 @@ size_t JoinNode::_shallow_hash() const { return boost::hash_value(join_mode); }
 
 std::shared_ptr<AbstractLQPNode> JoinNode::_on_shallow_copy(LQPNodeMapping& node_mapping) const {
   if (!join_predicates().empty()) {
-    return JoinNode::make(join_mode, expressions_copy_and_adapt_to_different_lqp(join_predicates(), node_mapping));
+    const auto copy = JoinNode::make(join_mode, join_predicates());
+
+    // Join predicates may self-reference the join as part of their LQPColumnReference's lineage. We need to first
+    // create the JoinNode so that we have its address, then we can update the lineage information.
+    node_mapping.emplace(shared_from_this(), copy);
+    for (auto& join_predicate : copy->node_expressions) {
+      expression_adapt_to_different_lqp(join_predicate, node_mapping);
+    }
+    return copy;
   } else {
     return JoinNode::make(join_mode);
   }

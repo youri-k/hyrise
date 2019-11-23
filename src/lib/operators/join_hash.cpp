@@ -109,6 +109,8 @@ size_t JoinHash::calculate_radix_bits(const size_t build_relation_size, const si
 }
 
 std::shared_ptr<const Table> JoinHash::_on_execute() {
+  std::cout << "in JoinHash: " << _primary_predicate.column_ids.first << " x " << _primary_predicate.column_ids.second << std::endl; 
+
   Assert(supports({_mode, _primary_predicate.predicate_condition,
                    input_table_left()->column_data_type(_primary_predicate.column_ids.first),
                    input_table_right()->column_data_type(_primary_predicate.column_ids.second),

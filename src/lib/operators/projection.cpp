@@ -96,7 +96,7 @@ std::shared_ptr<const Table> Projection::_on_execute() {
    */
   TableColumnDefinitions column_definitions;
   for (auto column_id = ColumnID{0}; column_id < expressions.size(); ++column_id) {
-    column_definitions.emplace_back(expressions[column_id]->as_column_name(), expressions[column_id]->data_type(),
+    column_definitions.emplace_back(expressions[column_id]->description(AbstractExpression::DescriptionMode::ColumnName), expressions[column_id]->data_type(),
                                     column_is_nullable[column_id]);
   }
 

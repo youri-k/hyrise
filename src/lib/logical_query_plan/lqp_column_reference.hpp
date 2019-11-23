@@ -9,7 +9,7 @@ namespace opossum {
 
 class JoinNode;
 
-// TODO update comment: LQPColumnReferences DO NOT point to aggregate / projection nodes
+// TODO update comment: LQPColumnReferences DO NOT point to aggregate / projection nodes, add lineage
 /**
  * Used for identifying a Column in an LQP by the Node and the ColumnID in that node in which it was created.
  * Currently this happens in StoredTableNode (which creates all of its columns), AggregateNode (which creates all
@@ -26,12 +26,16 @@ class LQPColumnReference final {
   bool operator==(const LQPColumnReference& rhs) const;
   bool operator!=(const LQPColumnReference& rhs) const;
 
+  std::string description() const;
+
+
+  // TODO doc that lineage is not added for every join, only if ambiguity exists - even for the same original_node / original_column_id pair, ambiguity does not exist if one side already has lineage information
   std::vector<std::pair<std::weak_ptr<const AbstractLQPNode>, LQPInputSide>> lineage{};
 
  private:
   // Needs to be weak since Nodes can hold ColumnReferences referring to themselves
   std::weak_ptr<const AbstractLQPNode> _original_node;
-  ColumnID _original_column_id{INVALID_COLUMN_ID};
+  ColumnID _original_column_id{1337};
 };
 
 std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_reference);
@@ -41,6 +45,11 @@ namespace std {
 
 template <>
 struct hash<opossum::LQPColumnReference> {
+  size_t operator()(const opossum::LQPColumnReference& column_reference) const;
+};
+
+template <>
+struct hash<const opossum::LQPColumnReference> {
   size_t operator()(const opossum::LQPColumnReference& column_reference) const;
 };
 

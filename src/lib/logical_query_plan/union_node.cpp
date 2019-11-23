@@ -16,9 +16,17 @@ UnionNode::UnionNode(const UnionMode union_mode) : AbstractLQPNode(LQPNodeType::
 std::string UnionNode::description() const { return "[UnionNode] Mode: " + union_mode_to_string.left.at(union_mode); }
 
 const std::vector<std::shared_ptr<AbstractExpression>>& UnionNode::column_expressions() const {
-  // This is certainly true for UnionMode::Positions, but once we allow a union, we need to revisit this
-  Assert(expressions_equal(left_input()->column_expressions(), right_input()->column_expressions()),
-         "Input Expressions must match");
+  // This is certainly true for UnionMode::Positions, but once we allow a proper SQL-style union, where the two
+  // expressions might even come from different tables, we need to revisit this
+
+  std::cout << "left: ";
+  for (const auto& x : left_input()->column_expressions()) std::cout << *x << "\t";
+  std::cout << "\nright: ";
+  for (const auto& x : right_input()->column_expressions()) std::cout << *x << "\t";
+  std::cout << std::endl;
+
+  // Assert(expressions_equal(left_input()->column_expressions(), right_input()->column_expressions()),
+  //        "Input Expressions must match");
   return left_input()->column_expressions();
 }
 

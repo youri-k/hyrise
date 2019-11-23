@@ -108,23 +108,36 @@ void expression_adapt_to_different_lqp(std::shared_ptr<AbstractExpression>& expr
 
 std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQPColumnExpression& lqp_column_expression,
                                                                        const LQPNodeMapping& node_mapping) {
+  std::cout << "adapting " << lqp_column_expression.description(AbstractExpression::DescriptionMode::Detailed) << std::endl;
   const auto node = lqp_column_expression.column_reference.original_node();
   const auto node_mapping_iter = node_mapping.find(node);
-  Assert(node_mapping_iter != node_mapping.end(),
-         "Couldn't find referenced node (" + node->description() + ") in NodeMapping");
+  std::cout << node << std::endl;
+  if (node_mapping_iter == node_mapping.end()) {
+    // Was already adapted
+    // TODO Debug check if matches any on right side - otherwise failure
+    return std::static_pointer_cast<LQPColumnExpression>(lqp_column_expression.deep_copy());  // TODO probably not necessary
+  }
 
   LQPColumnReference adapted_column_reference{node_mapping_iter->second,
                                               lqp_column_expression.column_reference.original_column_id()};
+  adapted_column_reference.lineage = lqp_column_expression.column_reference.lineage;
+  for (auto& [step_node, step_side] : adapted_column_reference.lineage) {
+    const auto adapted_step_iter = node_mapping.find(step_node.lock());
+    std::cout << step_node.lock() << std::endl;
+    Assert(adapted_step_iter != node_mapping.end(),
+       "Couldn't find referenced node (" + step_node.lock()->description() + ") in NodeMapping");
+    step_node = adapted_step_iter->second;
+  }
 
   return std::make_shared<LQPColumnExpression>(adapted_column_reference);
 }
 
-std::string expression_column_names(const std::vector<std::shared_ptr<AbstractExpression>>& expressions) {
+std::string expression_descriptions(const std::vector<std::shared_ptr<AbstractExpression>>& expressions, const AbstractExpression::DescriptionMode mode) {
   std::stringstream stream;
 
-  if (!expressions.empty()) stream << expressions.front()->as_column_name();
+  if (!expressions.empty()) stream << expressions.front()->description(mode);
   for (auto expression_idx = size_t{1}; expression_idx < expressions.size(); ++expression_idx) {
-    stream << ", " << expressions[expression_idx]->as_column_name();
+    stream << ", " << expressions[expression_idx]->description(mode);
   }
 
   return stream.str();

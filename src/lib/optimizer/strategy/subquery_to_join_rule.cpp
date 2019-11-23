@@ -501,7 +501,7 @@ std::shared_ptr<AliasNode> SubqueryToJoinRule::adapt_alias_node(
   for (const auto& expression : required_column_expressions) {
     if (original_expressions.find(expression) == not_found_it) {
       expressions.emplace_back(expression);
-      aliases.emplace_back(expression->as_column_name());
+      aliases.emplace_back(expression->description(AbstractExpression::DescriptionMode::ColumnName));
     }
   }
 

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "enable_make_for_lqp_node.hpp"
@@ -208,6 +209,9 @@ struct LQPNodeSharedPtrEqual final {
     return lhs == rhs || *lhs == *rhs;
   }
 };
+
+using LQPNodeUnorderedSet =
+    std::unordered_set<std::shared_ptr<AbstractLQPNode>, LQPNodeSharedPtrHash, LQPNodeSharedPtrEqual>;
 
 template <typename Value>
 using LQPNodeUnorderedMap =

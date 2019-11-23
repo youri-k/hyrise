@@ -95,7 +95,7 @@ class AbstractVisualizer {
   void visualize(const GraphBase& graph_base, const std::string& img_filename) {
     _build_graph(graph_base);
 
-    auto tmpname = strdup("/tmp/hyrise_viz_XXXXXX");  // TODO lol this leaks
+    auto tmpname = strdup("/tmp/hyrise_viz_XXXXXX");
     auto file_descriptor = mkstemp(tmpname);
     Assert(file_descriptor > 0, "mkstemp failed");
 

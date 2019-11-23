@@ -256,14 +256,14 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_select_statement(cons
   auto need_alias_node = std::any_of(
       _inflated_select_list_elements.begin(), _inflated_select_list_elements.end(), [](const auto& element) {
         return std::any_of(element.identifiers.begin(), element.identifiers.end(), [&](const auto& identifier) {
-          return identifier.column_name != element.expression->as_column_name();
+          return identifier.column_name != element.expression->description(AbstractExpression::DescriptionMode::ColumnName);
         });
       });
 
   if (need_alias_node) {
     std::vector<std::string> aliases;
     for (const auto& element : _inflated_select_list_elements) {
-      aliases.emplace_back(element.expression->as_column_name());
+      aliases.emplace_back(element.expression->description(AbstractExpression::DescriptionMode::ColumnName));
 
       if (!element.identifiers.empty()) {
         aliases.back() = element.identifiers.back().column_name;
@@ -572,7 +572,7 @@ SQLTranslator::TableSourceState SQLTranslator::_translate_table_origin(const hsq
 
         // Make sure each column from the Subquery has a name
         if (identifiers.empty()) {
-          sql_identifier_resolver->add_column_name(subquery_expression, subquery_expression->as_column_name());
+          sql_identifier_resolver->add_column_name(subquery_expression, subquery_expression->description(AbstractExpression::DescriptionMode::ColumnName));
         }
         for (const auto& identifier : identifiers[select_list_element_idx]) {
           sql_identifier_resolver->add_column_name(subquery_expression, identifier.column_name);
@@ -972,7 +972,7 @@ void SQLTranslator::_translate_select_groupby_having(const hsql::SelectStatement
                                    [&](const auto& group_by_expression) {
                                      return *pre_aggregate_expression == *group_by_expression;
                                    }) != group_by_expressions.end(),
-                      std::string("Expression ") + pre_aggregate_expression->as_column_name() +
+                      std::string("Expression ") + pre_aggregate_expression->description(AbstractExpression::DescriptionMode::ColumnName) +
                           " was added to SELECT list when resolving *, but it is not part of the GROUP BY clause");
         }
       }

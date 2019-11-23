@@ -8,7 +8,7 @@ namespace opossum {
 
 std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(const AbstractExpression& predicate,
                                                                             const AbstractLQPNode& left_input,
-                                                                            const AbstractLQPNode& right_input) {
+                                                                            const AbstractLQPNode& right_input) {  // TODO is this still used?
   const auto* abstract_predicate_expression = dynamic_cast<const AbstractPredicateExpression*>(&predicate);
   if (!abstract_predicate_expression) return std::nullopt;
 
@@ -34,11 +34,13 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
   auto predicate_condition = abstract_predicate_expression->predicate_condition;
 
   if (left_in_left && right_in_right) {
+    std::cout << *left_in_left << " x " << *right_in_right << std::endl;
     return OperatorJoinPredicate{{*left_in_left, *right_in_right}, predicate_condition};
   }
 
   if (right_in_left && left_in_right) {
     predicate_condition = flip_predicate_condition(predicate_condition);
+    std::cout << *right_in_left << " x " << *left_in_right << std::endl;
     return OperatorJoinPredicate{{*right_in_left, *left_in_right}, predicate_condition};
   }
 
@@ -70,18 +72,23 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
   auto& casted_join_node = const_cast<JoinNode&>(static_cast<const JoinNode&>(join_node));
   const auto old_mode = casted_join_node.join_mode;
   casted_join_node.join_mode = JoinMode::Inner;
+  std::cout << abstract_predicate_expression->arguments[0]->description() << " x " << abstract_predicate_expression->arguments[1]->description() << std::endl;
   auto left_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[0]);
   auto right_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[1]);
   casted_join_node.join_mode = old_mode;
 
   if (!left_arg_column_id || !right_arg_column_id) return std::nullopt;
 
+  std::cout << *left_arg_column_id << " x " << *right_arg_column_id << std::endl;
+
   auto predicate_condition = abstract_predicate_expression->predicate_condition;
 
-  // TODO assert that one is left and one is right
 
   const auto num_left_column_expressions =
       static_cast<ColumnID::base_type>(join_node.left_input()->column_expressions().size());
+
+  DebugAssert(*left_arg_column_id >= num_left_column_expressions || *right_arg_column_id >= num_left_column_expressions, "Join arguments are not unambiguously from left or right");
+
   if (*left_arg_column_id < *right_arg_column_id) {
     return OperatorJoinPredicate{
         {*left_arg_column_id,

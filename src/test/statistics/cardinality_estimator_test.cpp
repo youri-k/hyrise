@@ -855,22 +855,22 @@ TEST_F(CardinalityEstimatorTest, Validate) {
 }
 
 TEST_F(CardinalityEstimatorTest, Union) {
-  // Test that UnionNodes sum up the input row counts and return the left input statistics (for now)
+  // Test that UnionNodes sum up the input row counts
 
   // clang-format off
   const auto input_lqp =
   UnionNode::make(UnionMode::Positions,
-    node_a,
-    node_b);
+    PredicateNode::make(less_than_equals_(a_a, 25),
+      node_a),
+    PredicateNode::make(greater_than_(a_a, 75),
+      node_a));
   // clang-format on
 
-  EXPECT_FLOAT_EQ(estimator.estimate_cardinality(input_lqp), 132.0f);
+  EXPECT_FLOAT_EQ(estimator.estimate_cardinality(input_lqp), 50.0f);
 
   const auto result_statistics = estimator.estimate_statistics(input_lqp);
 
   ASSERT_EQ(result_statistics->column_statistics.size(), 2u);
-  ASSERT_EQ(result_statistics->column_statistics.at(0), node_a->table_statistics()->column_statistics.at(0));
-  ASSERT_EQ(result_statistics->column_statistics.at(1), node_a->table_statistics()->column_statistics.at(1));
 }
 
 TEST_F(CardinalityEstimatorTest, NonQueryNodes) {

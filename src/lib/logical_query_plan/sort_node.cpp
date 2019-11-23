@@ -23,7 +23,7 @@ std::string SortNode::description() const {
   stream << "[Sort] ";
 
   for (auto expression_idx = size_t{0}; expression_idx < node_expressions.size(); ++expression_idx) {
-    stream << node_expressions[expression_idx]->as_column_name() << " ";
+    stream << node_expressions[expression_idx]->description(AbstractExpression::DescriptionMode::ColumnName) << " ";
     stream << "(" << order_by_modes[expression_idx] << ")";
 
     if (expression_idx + 1 < node_expressions.size()) stream << ", ";

@@ -58,7 +58,7 @@ std::string TableScan::description(DescriptionMode description_mode) const {
 
   stream << name() << separator;
   stream << "Impl: " << _impl_description;
-  stream << separator << _predicate->as_column_name();
+  stream << separator << _predicate->description(AbstractExpression::DescriptionMode::ColumnName);
 
   return stream.str();
 }
