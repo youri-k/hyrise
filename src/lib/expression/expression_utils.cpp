@@ -110,7 +110,6 @@ std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQP
                                                                        const LQPNodeMapping& node_mapping) {
   const auto node = lqp_column_expression.column_reference.original_node();
   const auto node_mapping_iter = node_mapping.find(node);
-  std::cout << node << std::endl;
   if (node_mapping_iter == node_mapping.end()) {
     // Was already adapted
     // TODO Debug check if matches any on right side - otherwise failure
@@ -122,7 +121,6 @@ std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQP
   adapted_column_reference.lineage = lqp_column_expression.column_reference.lineage;
   for (auto& [step_node, step_side] : adapted_column_reference.lineage) {
     const auto adapted_step_iter = node_mapping.find(step_node.lock());
-    std::cout << step_node.lock() << std::endl;
     Assert(adapted_step_iter != node_mapping.end(),
        "Couldn't find referenced node (" + step_node.lock()->description() + ") in NodeMapping");
     step_node = adapted_step_iter->second;

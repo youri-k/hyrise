@@ -46,10 +46,7 @@ TEST_F(SubplanReuseRuleTest, BasicReuseMadePossibleByAggregate) {
       mock_node_b));
   // clang-format on
 
-  std::cout << *input_lqp << std::endl;
-
   const auto actual_lqp = apply_rule(rule, input_lqp);
-  std::cout << *actual_lqp << std::endl;
 
   EXPECT_LQP_EQ(actual_lqp, expected_lqp);
 }
