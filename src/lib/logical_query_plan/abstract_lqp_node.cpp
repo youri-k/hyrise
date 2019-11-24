@@ -269,6 +269,7 @@ std::shared_ptr<AbstractLQPNode> AbstractLQPNode::_shallow_copy(LQPNodeMapping& 
   const auto node_mapping_iter = node_mapping.find(shared_from_this());
 
   // Handle diamond shapes in the LQP; don't copy nodes twice
+  // TODO is this tested?
   if (node_mapping_iter != node_mapping.end()) return node_mapping_iter->second;
 
   auto shallow_copy = _on_shallow_copy(node_mapping);

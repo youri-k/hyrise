@@ -270,7 +270,7 @@ std::shared_ptr<AbstractLQPNode> JoinNode::_on_shallow_copy(LQPNodeMapping& node
     // create the JoinNode so that we have its address, then we can update the lineage information.
     node_mapping.emplace(shared_from_this(), copy);
     for (auto& join_predicate : copy->node_expressions) {
-      expression_adapt_to_different_lqp(join_predicate, node_mapping);
+      join_predicate = expression_copy_and_adapt_to_different_lqp(*join_predicate, node_mapping);
     }
     return copy;
   } else {
