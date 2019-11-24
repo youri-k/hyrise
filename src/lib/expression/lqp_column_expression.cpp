@@ -18,7 +18,7 @@ std::shared_ptr<AbstractExpression> LQPColumnExpression::deep_copy() const {
   return std::make_shared<LQPColumnExpression>(column_reference);
 }
 
-std::string LQPColumnExpression::description(const DescriptionMode mode) const {
+std::string LQPColumnExpression::as_column_name() const {
   // Even if the LQP is invalid, we still want to be able to print it as good as possible
   const auto original_node = column_reference.original_node();
   if (!original_node) return "<Expired Column>";
@@ -26,11 +26,7 @@ std::string LQPColumnExpression::description(const DescriptionMode mode) const {
 
   if (original_node->type == LQPNodeType::StoredTable) {
     std::stringstream stream;
-    if (mode == DescriptionMode::ColumnName) {
-      stream << column_reference;
-    } else {
-      stream << column_reference.description();
-    }
+    stream << column_reference;
     return stream.str();
 
   } else if (original_node->type == LQPNodeType::Mock) {

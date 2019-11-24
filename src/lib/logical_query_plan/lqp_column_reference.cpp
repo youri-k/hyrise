@@ -89,7 +89,7 @@ std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_refe
 
   switch (original_node->type) {
     case LQPNodeType::StoredTable: {
-      const auto stored_table_node = std::static_pointer_cast<const StoredTableNode>(column_reference.original_node()); // TODO use original_node variable
+      const auto stored_table_node = std::static_pointer_cast<const StoredTableNode>(column_reference.original_node());
       const auto table = Hyrise::get().storage_manager.get_table(stored_table_node->table_name);
       os << table->column_name(column_reference.original_column_id());
     } break;

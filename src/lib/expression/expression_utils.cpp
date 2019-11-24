@@ -108,7 +108,6 @@ void expression_adapt_to_different_lqp(std::shared_ptr<AbstractExpression>& expr
 
 std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQPColumnExpression& lqp_column_expression,
                                                                        const LQPNodeMapping& node_mapping) {
-  std::cout << "adapting " << lqp_column_expression.description(AbstractExpression::DescriptionMode::Detailed) << std::endl;
   const auto node = lqp_column_expression.column_reference.original_node();
   const auto node_mapping_iter = node_mapping.find(node);
   std::cout << node << std::endl;
@@ -132,12 +131,12 @@ std::shared_ptr<LQPColumnExpression> expression_adapt_to_different_lqp(const LQP
   return std::make_shared<LQPColumnExpression>(adapted_column_reference);
 }
 
-std::string expression_descriptions(const std::vector<std::shared_ptr<AbstractExpression>>& expressions, const AbstractExpression::DescriptionMode mode) {
+std::string expression_column_names(const std::vector<std::shared_ptr<AbstractExpression>>& expressions) {
   std::stringstream stream;
 
-  if (!expressions.empty()) stream << expressions.front()->description(mode);
+  if (!expressions.empty()) stream << expressions.front()->as_column_name();
   for (auto expression_idx = size_t{1}; expression_idx < expressions.size(); ++expression_idx) {
-    stream << ", " << expressions[expression_idx]->description(mode);
+    stream << ", " << expressions[expression_idx]->as_column_name();
   }
 
   return stream.str();

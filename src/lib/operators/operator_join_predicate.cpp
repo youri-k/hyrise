@@ -34,13 +34,11 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
   auto predicate_condition = abstract_predicate_expression->predicate_condition;
 
   if (left_in_left && right_in_right) {
-    std::cout << *left_in_left << " x " << *right_in_right << std::endl;
     return OperatorJoinPredicate{{*left_in_left, *right_in_right}, predicate_condition};
   }
 
   if (right_in_left && left_in_right) {
     predicate_condition = flip_predicate_condition(predicate_condition);
-    std::cout << *right_in_left << " x " << *left_in_right << std::endl;
     return OperatorJoinPredicate{{*right_in_left, *left_in_right}, predicate_condition};
   }
 
@@ -72,14 +70,11 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
   auto& casted_join_node = const_cast<JoinNode&>(static_cast<const JoinNode&>(join_node));
   const auto old_mode = casted_join_node.join_mode;
   casted_join_node.join_mode = JoinMode::Inner;
-  std::cout << abstract_predicate_expression->arguments[0]->description() << " x " << abstract_predicate_expression->arguments[1]->description() << std::endl;
   auto left_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[0]);
   auto right_arg_column_id = casted_join_node.find_column_id(*abstract_predicate_expression->arguments[1]);
   casted_join_node.join_mode = old_mode;
 
   if (!left_arg_column_id || !right_arg_column_id) return std::nullopt;
-
-  std::cout << *left_arg_column_id << " x " << *right_arg_column_id << std::endl;
 
   auto predicate_condition = abstract_predicate_expression->predicate_condition;
 

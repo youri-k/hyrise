@@ -84,9 +84,6 @@ std::shared_ptr<AbstractOperator> LQPTranslator::translate_node(const std::share
    * would result in multiple operators created from predicate_c and thus in performance drops
    */
 
-  std::cout << "=== TRANSLATING ===" << std::endl;
-  std::cout << *node << std::endl;
-
   const auto operator_iter = _operator_by_lqp_node.find(node);
   if (operator_iter != _operator_by_lqp_node.end()) {
     return operator_iter->second;
@@ -282,7 +279,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_sort_node(
     const auto& pqp_expression = *pqp_expression_iter;
     const auto pqp_column_expression = std::dynamic_pointer_cast<PQPColumnExpression>(pqp_expression);
     Assert(pqp_column_expression,
-           "Sort Expression '"s + pqp_expression->description(AbstractExpression::DescriptionMode::Detailed) + "' must be available as column, LQP is invalid");
+           "Sort Expression '"s + pqp_expression->as_column_name() + "' must be available as column, LQP is invalid");
 
     current_pqp = std::make_shared<Sort>(current_pqp, pqp_column_expression->column_id, *order_by_mode_iter);
   }
@@ -313,7 +310,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_join_node(
     std::cout << "^^^" << std::endl;
     // Assert that the Join Predicates are simple, e.g. of the form <column_a> <predicate> <column_b>.
     // <column_a> and <column_b> must be on separate sides, but <column_a> need not be on the left.
-    Assert(join_predicate, "Couldn't translate join predicate: "s + predicate_expression->description(AbstractExpression::DescriptionMode::Detailed));
+    Assert(join_predicate, "Couldn't translate join predicate: "s + predicate_expression->as_column_name());
     join_predicates.emplace_back(*join_predicate);
   }
 
@@ -337,7 +334,6 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_join_node(
 
     if (JoinOperator::supports({join_node->join_mode, primary_join_predicate.predicate_condition, left_data_type,
                                 right_data_type, !secondary_join_predicates.empty()})) {
-      std::cout << "in LQPTranslator: " << primary_join_predicate.column_ids.first << " x " << primary_join_predicate.column_ids.second << std::endl;
       join_operator = std::make_shared<JoinOperator>(input_left_operator, input_right_operator, join_node->join_mode,
                                                      primary_join_predicate, std::move(secondary_join_predicates));
     }
@@ -363,7 +359,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_aggregate_node(
 
     Assert(
         expression->type == ExpressionType::Aggregate,
-        "Expression '" + expression->description(AbstractExpression::DescriptionMode::ColumnName) + "' used as AggregateExpression is not an AggregateExpression");
+        "Expression '" + expression->as_column_name() + "' used as AggregateExpression is not an AggregateExpression");
 
     const auto& aggregate_expression = std::static_pointer_cast<AggregateExpression>(expression);
 
@@ -389,7 +385,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_aggregate_node(
        ++expression_idx) {
     const auto& expression = aggregate_node->node_expressions[expression_idx];
     const auto column_id = node->left_input()->find_column_id(*expression);
-    Assert(column_id, "GroupBy expression '"s + expression->description(AbstractExpression::DescriptionMode::ColumnName) + "' not available as column");
+    Assert(column_id, "GroupBy expression '"s + expression->as_column_name() + "' not available as column");
     group_by_column_ids.emplace_back(*column_id);
   }
 
@@ -518,7 +514,7 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
       expression =
           std::make_shared<PQPColumnExpression>(*column_id, referenced_expression->data_type(),
                                                 node->is_column_nullable(node->get_column_id(*referenced_expression)),
-                                                referenced_expression->description(AbstractExpression::DescriptionMode::ColumnName));
+                                                referenced_expression->as_column_name());
       return ExpressionVisitation::DoNotVisitArguments;
     }
 
@@ -552,7 +548,7 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
     }
 
     AssertInput(expression->type != ExpressionType::LQPColumn,
-                "Failed to resolve Column '"s + expression->description(AbstractExpression::DescriptionMode::Detailed) + "', LQP is invalid");
+                "Failed to resolve Column '"s + expression->as_column_name() + "', LQP is invalid");
 
     return ExpressionVisitation::VisitArguments;
   });

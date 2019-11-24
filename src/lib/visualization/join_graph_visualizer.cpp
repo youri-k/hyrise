@@ -21,7 +21,7 @@ void JoinGraphVisualizer::_build_graph(const std::vector<JoinGraph>& graphs) {
         auto& predicates_layout = layout.add_sublayout();
 
         for (const auto& predicate : predicates) {
-          predicates_layout.add_label(predicate->description(AbstractExpression::DescriptionMode::ColumnName));
+          predicates_layout.add_label(predicate->as_column_name());
         }
       }
 
@@ -50,7 +50,7 @@ void JoinGraphVisualizer::_build_graph(const std::vector<JoinGraph>& graphs) {
 
         std::stringstream edge_label_stream;
         for (const auto& predicate : edge.predicates) {
-          edge_label_stream << predicate->description(AbstractExpression::DescriptionMode::ColumnName);
+          edge_label_stream << predicate->as_column_name();
           edge_label_stream << "\n";
         }
 
@@ -68,7 +68,7 @@ void JoinGraphVisualizer::_build_graph(const std::vector<JoinGraph>& graphs) {
         std::stringstream vertex_label_stream;
         for (size_t predicate_idx{0}; predicate_idx < edge.predicates.size(); ++predicate_idx) {
           const auto& predicate = edge.predicates[predicate_idx];
-          vertex_label_stream << predicate->description(AbstractExpression::DescriptionMode::ColumnName);
+          vertex_label_stream << predicate->as_column_name();
           if (predicate_idx + 1 < edge.predicates.size()) {
             vertex_label_stream << "\n";
           }

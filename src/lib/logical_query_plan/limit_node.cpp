@@ -14,7 +14,7 @@ LimitNode::LimitNode(const std::shared_ptr<AbstractExpression>& num_rows_express
 
 std::string LimitNode::description() const {
   std::stringstream stream;
-  stream << "[Limit] " << num_rows_expression()->description(AbstractExpression::DescriptionMode::ColumnName);
+  stream << "[Limit] " << num_rows_expression()->as_column_name();
   return stream.str();
 }
 

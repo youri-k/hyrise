@@ -35,8 +35,6 @@ void add_to_column_mapping(const std::shared_ptr<AbstractExpression>& from_expre
                            ColumnReplacementMappings& mappings) {
   Assert(from_expression->type == to_expression->type, "Expected same type");
 
-  std::cout << "add_to_column_mapping(" << from_expression->description(AbstractExpression::DescriptionMode::Detailed) << ", " << to_expression->description(AbstractExpression::DescriptionMode::Detailed) << ")\n";
-
   // TODO test that LQPColumnExpressions hidden in an argument (e.g., SUM(x) or AND(x, y)) are also detected
   // TODO test COUNT(*), also nested and some LQP nodes away
 
@@ -98,14 +96,11 @@ void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expr
       const auto column_reference = column_expression->column_reference;
       auto upstream_lineage = std::vector<std::pair<std::weak_ptr<const AbstractLQPNode>, LQPInputSide>>{};
 
-      std::cout << "\tshould I replace " << column_reference.description() << "?" << std::endl;
       const auto column_replacement_iter = column_replacement_mappings.find(column_reference);
       if (column_replacement_iter != column_replacement_mappings.end()) {
         auto new_column_reference = column_replacement_iter->second;
 
         sub_expression = std::make_shared<LQPColumnExpression>(new_column_reference);
-
-        std::cout << "replaced with " << new_column_reference.description() << std::endl;
 
         replacement_occured = true;
       }
@@ -128,9 +123,7 @@ void apply_column_replacement_mappings(std::vector<std::shared_ptr<AbstractExpre
 void apply_column_replacement_mappings_upwards(
     const std::shared_ptr<AbstractLQPNode>& node, ColumnReplacementMappings& column_replacement_mappings,
     std::unordered_map<std::shared_ptr<AbstractLQPNode>, ColumnReplacementMappings>& per_node_replacements) {
-  std::cout << "!!!apply_column_replacement_mappings_upwards!!!" << std::endl;
   visit_lqp_upwards(node, [&column_replacement_mappings, &per_node_replacements](const auto& sub_node) {
-    std::cout << *sub_node << std::endl;
     auto column_replacement_mappings_local = column_replacement_mappings;
 
     if (const auto join_node = std::dynamic_pointer_cast<JoinNode>(sub_node)) {
@@ -145,9 +138,6 @@ void apply_column_replacement_mappings_upwards(
 //             join_node->join_mode != JoinMode::AntiNullAsFalse) {
 //           DebugAssert(!left_column_references.contains(from) || !right_column_references.contains(from),
 //                       "Ambiguous mapping 1");
-//         for (const auto& x : join_node->column_expressions()) std::cout << "\t" << *x << std::endl;
-        std::cout << "old: " << from.description() << " => " << to.description() << std::endl;
-
 
 // // Looks like the new mapping is not properly passed upwards
 
@@ -188,10 +178,6 @@ void apply_column_replacement_mappings_upwards(
 
 
 
-      for (const auto& [from, to] : column_replacement_mappings) {
-        std::cout << "tmp: " << from.description() << " => " << to.description() << std::endl;
-      }
-
 // TODO add << for LQPInputSide
 
       updated_mappings.clear();
@@ -201,14 +187,11 @@ void apply_column_replacement_mappings_upwards(
           if (!to.lineage.empty() && to.lineage.back().first.lock() == join_node) continue;
           // Someone might be using this node as part of their lineage - update those as well
           for (const auto side : {LQPInputSide::Left, LQPInputSide::Right}) {
-            std::cout << "testing: " << from.description() << " => " << to.description() << " on " << (side == LQPInputSide::Left ? "left" : "right") << std::endl;
             bool all_via_nodes_found = true;
             for (const auto& via : to.lineage) {
-              std::cout << "\tvia " << via.first.lock() << std::endl;
               bool node_found = false;
               visit_lqp(join_node->input(side), [&](const auto x) {
                 if (x == via.first.lock()) {
-                  std::cout << "\t\tfound" << std::endl;
                   node_found = true;
                 }
                 return LQPVisitation::VisitInputs;
@@ -235,10 +218,6 @@ void apply_column_replacement_mappings_upwards(
 
 
 
-
-      for (const auto& [from, to] : column_replacement_mappings) {
-        std::cout << "new: " << from.description() << " => " << to.description() << std::endl;
-      }
     }
 
     per_node_replacements[sub_node] = column_replacement_mappings_local;
@@ -256,9 +235,6 @@ namespace opossum {
 
 void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) const {
   Assert(root->type == LQPNodeType::Root, "SubplanReuseRule needs root to hold onto");
-
-  std::cout << "\n\n\n=== IN ===" << std::endl;
-  std::cout << *root << std::endl;
 
   bool more = true;  // TODO: try_another_iteration
   while (more) {
@@ -280,7 +256,6 @@ void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) co
       apply_column_replacement_mappings_upwards(node, column_mapping, per_node_replacements);
 
       for (const auto& [node, mapping] : per_node_replacements) {
-        // std::cout << node->description() << std::endl;
         apply_column_replacement_mappings(node->node_expressions, mapping);
       }
 
@@ -288,18 +263,12 @@ void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) co
         output->set_input(input_side, primary_subplan);
       }
 
-      std::cout << "\n\n\n=== TMP ===" << std::endl;
-      std::cout << *root << std::endl;
-
       // TODO
       more = true;
 
       return LQPVisitation::DoNotVisitInputs;
     });
   }
-
-  std::cout << "\n\n\n=== OUT ===" << std::endl;
-  std::cout << *root << std::endl;
 }
 
 }  // namespace opossum

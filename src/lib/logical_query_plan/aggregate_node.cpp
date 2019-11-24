@@ -39,7 +39,7 @@ std::string AggregateNode::description() const {
 
   stream << "GroupBy: [";
   for (auto expression_idx = size_t{0}; expression_idx < aggregate_expressions_begin_idx; ++expression_idx) {
-    stream << node_expressions[expression_idx]->description(AbstractExpression::DescriptionMode::Detailed);
+    stream << node_expressions[expression_idx]->as_column_name();
     if (expression_idx + 1 < aggregate_expressions_begin_idx) stream << ", ";
   }
   stream << "] ";
@@ -47,7 +47,7 @@ std::string AggregateNode::description() const {
   stream << "Aggregates: [";
   for (auto expression_idx = aggregate_expressions_begin_idx; expression_idx < node_expressions.size();
        ++expression_idx) {
-    stream << node_expressions[expression_idx]->description(AbstractExpression::DescriptionMode::Detailed);
+    stream << node_expressions[expression_idx]->as_column_name();
     if (expression_idx + 1 < node_expressions.size()) stream << ", ";
   }
   stream << "]";

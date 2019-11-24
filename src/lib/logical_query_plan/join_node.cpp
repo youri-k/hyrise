@@ -37,14 +37,14 @@ std::string JoinNode::description() const {
   stream << "[Join] Mode: " << join_mode;
 
   for (const auto& predicate : join_predicates()) {
-    stream << " [" << predicate->description(AbstractExpression::DescriptionMode::Detailed) << "]";
+    stream << " [" << predicate->as_column_name() << "]";
   }
 
   return stream.str();
 }
 
 const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::column_expressions() const {
-  Assert(left_input() && right_input(), "Both inputs need to be set to determine a JoinNode's output expressions");
+  Assert(left_input() && right_input(), "Both inputs need to be set to determine a JoiNode's output expressions");
 
   /**
    * Update the JoinNode's output expressions every time they are requested. An overhead, but keeps the LQP code simple.
@@ -224,11 +224,7 @@ std::optional<ColumnID> JoinNode::find_column_id(const AbstractExpression& expre
 
   const auto left_input_column_count = left_input()->column_expressions().size();
   const auto& this_column_expressions = column_expressions();
-  std::cout << "node " << description() << " @ " << this << std::endl;
-  std::cout << "find_column_id " << expression.description(AbstractExpression::DescriptionMode::Detailed) << std::endl;
-  std::cout << "disambiguated_expression " << disambiguated_expression->description(AbstractExpression::DescriptionMode::Detailed) << std::endl;
   for (auto column_id = ColumnID{0}; column_id < this_column_expressions.size(); ++column_id) {
-    std::cout << "Candidate " << this_column_expressions[column_id]->description(AbstractExpression::DescriptionMode::Detailed) << std::endl;
     // TODO can we do the first part earlier?
     if (*this_column_expressions[column_id] != expression &&
         *this_column_expressions[column_id] != *disambiguated_expression)

@@ -36,7 +36,7 @@ DataType PQPSubqueryExpression::data_type() const {
 
 bool PQPSubqueryExpression::is_correlated() const { return !parameters.empty(); }
 
-std::string PQPSubqueryExpression::description(const DescriptionMode mode) const {
+std::string PQPSubqueryExpression::as_column_name() const {
   std::stringstream stream;
   stream << "SUBQUERY (PQP, " << pqp.get() << ")";
   return stream.str();

@@ -22,7 +22,7 @@ PredicateNode::PredicateNode(const std::shared_ptr<AbstractExpression>& predicat
 
 std::string PredicateNode::description() const {
   std::stringstream stream;
-  stream << "[Predicate] " << predicate()->description(AbstractExpression::DescriptionMode::Detailed);
+  stream << "[Predicate] " << predicate()->as_column_name();
   return stream.str();
 }
 

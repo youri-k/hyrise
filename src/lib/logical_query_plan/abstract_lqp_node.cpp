@@ -226,18 +226,15 @@ const std::vector<std::shared_ptr<AbstractExpression>>& AbstractLQPNode::column_
 
 std::optional<ColumnID> AbstractLQPNode::find_column_id(const AbstractExpression& expression) const {
   const auto& column_expressions = this->column_expressions();  // Avoid redundant retrieval in loop below
-
   for (auto column_id = ColumnID{0}; column_id < column_expressions.size(); ++column_id) {
-    if (*column_expressions[column_id] == expression) {
-      return column_id;
-    }
+    if (*column_expressions[column_id] == expression) return column_id;
   }
   return std::nullopt;
 }
 
 ColumnID AbstractLQPNode::get_column_id(const AbstractExpression& expression) const {
   const auto column_id = find_column_id(expression);
-  Assert(column_id, "This node has no column '"s + expression.description(AbstractExpression::DescriptionMode::ColumnName) + "'");
+  Assert(column_id, "This node has no column '"s + expression.as_column_name() + "'");
   return *column_id;
 }
 
@@ -330,7 +327,6 @@ std::ostream& operator<<(std::ostream& stream, const AbstractLQPNode& node) {
       if (!node2->comment.empty()) {
         stream2 << " (" << node2->comment << ")";
       }
-      stream2 << " @ " << node2;
     };
 
     print_directed_acyclic_graph<const AbstractLQPNode>(root.shared_from_this(), get_inputs_fn, node_print_fn, stream);

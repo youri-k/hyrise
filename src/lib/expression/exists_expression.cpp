@@ -20,10 +20,10 @@ std::shared_ptr<AbstractExpression> ExistsExpression::subquery() const {
   return arguments[0];
 }
 
-std::string ExistsExpression::description(const DescriptionMode mode) const {
+std::string ExistsExpression::as_column_name() const {
   std::stringstream stream;
   stream << (exists_expression_type == ExistsExpressionType::Exists ? "EXISTS" : "NOT EXISTS");
-  stream << "(" << subquery()->description(mode) << ")";
+  stream << "(" << subquery()->as_column_name() << ")";
   return stream.str();
 }
 

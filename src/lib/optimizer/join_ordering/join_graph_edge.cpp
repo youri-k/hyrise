@@ -12,7 +12,7 @@ std::ostream& operator<<(std::ostream& stream, const JoinGraphEdge& join_graph_e
   stream << "Vertices: " << join_graph_edge.vertex_set << "; " << join_graph_edge.predicates.size() << " predicates"
          << std::endl;
   for (const auto& predicate : join_graph_edge.predicates) {
-    stream << predicate->description(AbstractExpression::DescriptionMode::ColumnName) << std::endl;
+    stream << predicate->as_column_name() << std::endl;
   }
   return stream;
 }

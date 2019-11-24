@@ -35,7 +35,7 @@ class LQPColumnReference final {
  private:
   // Needs to be weak since Nodes can hold ColumnReferences referring to themselves
   std::weak_ptr<const AbstractLQPNode> _original_node;
-  ColumnID _original_column_id{1337};
+  ColumnID _original_column_id{INVALID_COLUMN_ID};
 };
 
 std::ostream& operator<<(std::ostream& os, const LQPColumnReference& column_reference);

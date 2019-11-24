@@ -70,8 +70,7 @@ ColumnCount Table::column_count() const {
 }
 
 const std::string& Table::column_name(const ColumnID column_id) const {
-  DebugAssert(column_id < _column_definitions.size(),
-              std::string{"ColumnID "} + std::to_string(column_id) + " out of range");
+  DebugAssert(column_id < _column_definitions.size(), "ColumnID out of range");
   return _column_definitions[column_id].name;
 }
 
@@ -85,8 +84,7 @@ std::vector<std::string> Table::column_names() const {
 }
 
 DataType Table::column_data_type(const ColumnID column_id) const {
-  DebugAssert(column_id < _column_definitions.size(),
-              std::string{"ColumnID "} + std::to_string(column_id) + " out of range");
+  DebugAssert(column_id < _column_definitions.size(), "ColumnID out of range");
   return _column_definitions[column_id].data_type;
 }
 

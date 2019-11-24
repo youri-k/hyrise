@@ -108,8 +108,8 @@ TEST_F(PQPSubqueryExpressionTest, IsNullable) {
 }
 
 TEST_F(PQPSubqueryExpressionTest, AsColumnName) {
-  EXPECT_TRUE(std::regex_search(subquery_table->description(AbstractExpression::DescriptionMode::ColumnName), std::regex{"SUBQUERY \\(PQP, 0x[0-9a-f]+\\)"}));
-  EXPECT_TRUE(std::regex_search(subquery_single_value_one_parameter->description(AbstractExpression::DescriptionMode::ColumnName),
+  EXPECT_TRUE(std::regex_search(subquery_table->as_column_name(), std::regex{"SUBQUERY \\(PQP, 0x[0-9a-f]+\\)"}));
+  EXPECT_TRUE(std::regex_search(subquery_single_value_one_parameter->as_column_name(),
                                 std::regex{"SUBQUERY \\(PQP, 0x[0-9a-f]+\\)"}));
 }
 

@@ -74,10 +74,6 @@ TEST_F(MockNodeTest, Copy) {
 
   _mock_node_b->set_pruned_column_ids({ColumnID{1}});
   EXPECT_EQ(*_mock_node_b, *_mock_node_b->deep_copy());
-
-  // MockNode::name is not part of the equality check (since it is only there for debugging),
-  // so we have to explicitly test whether it gets copied
-  EXPECT_EQ(std::dynamic_pointer_cast<MockNode>(_mock_node_b->deep_copy())->name, "mock_name");
 }
 
 TEST_F(MockNodeTest, NodeExpressions) { ASSERT_EQ(_mock_node_a->node_expressions.size(), 0u); }

@@ -17,9 +17,9 @@ std::shared_ptr<AbstractExpression> UnaryMinusExpression::deep_copy() const {
   return std::make_shared<UnaryMinusExpression>(argument());
 }
 
-std::string UnaryMinusExpression::description(const DescriptionMode mode) const {
+std::string UnaryMinusExpression::as_column_name() const {
   std::stringstream stream;
-  stream << "-" << _enclose_argument_as_column_name(*argument(), mode);
+  stream << "-" << _enclose_argument_as_column_name(*argument());
   return stream.str();
 }
 

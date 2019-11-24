@@ -14,7 +14,7 @@ ProjectionNode::ProjectionNode(const std::vector<std::shared_ptr<AbstractExpress
 std::string ProjectionNode::description() const {
   std::stringstream stream;
 
-  stream << "[Projection] " << expression_descriptions(node_expressions, AbstractExpression::DescriptionMode::Detailed);
+  stream << "[Projection] " << expression_column_names(node_expressions);
 
   return stream.str();
 }
