@@ -237,8 +237,12 @@ std::optional<ColumnID> JoinNode::find_column_id(const AbstractExpression& expre
   }
 
   if (disambiguated_input_side) {
-    if (column_id_on_left) DebugAssert(*disambiguated_input_side == LQPInputSide::Left, "Expression has lineage information pointing to left side, but could not be resolved there");
-    if (column_id_on_right) DebugAssert(*disambiguated_input_side == LQPInputSide::Right, "Expression has lineage information pointing to right side, but could not be resolved there");
+    if (column_id_on_left) {
+      DebugAssert(*disambiguated_input_side == LQPInputSide::Left, "Expression has lineage information pointing to left side, but could not be resolved there");
+    }
+    if (column_id_on_right) {
+      DebugAssert(*disambiguated_input_side == LQPInputSide::Right, "Expression has lineage information pointing to right side, but could not be resolved there");
+    }
   }
 
   if (column_id_on_left && !column_id_on_right) {
