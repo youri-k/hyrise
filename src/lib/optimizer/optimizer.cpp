@@ -177,8 +177,8 @@ std::shared_ptr<AbstractLQPNode> Optimizer::optimize(std::shared_ptr<AbstractLQP
   const auto optimized_node = root_node->left_input();
   root_node->set_left_input(nullptr);
 
-  std::cout << "\n\n\n\n===Optimizer result===" << std::endl;
-  std::cout << *optimized_node << std::endl;
+  // std::cout << "\n\n\n\n===Optimizer result===" << std::endl;
+  // std::cout << *optimized_node << std::endl;
 
   return optimized_node;
 }

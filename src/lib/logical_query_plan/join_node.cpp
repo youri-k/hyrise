@@ -158,7 +158,7 @@ bool JoinNode::is_column_nullable(const ColumnID column_id) const {
 const std::vector<std::shared_ptr<AbstractExpression>>& JoinNode::join_predicates() const { return node_expressions; }
 
 std::optional<ColumnID> JoinNode::find_column_id(const AbstractExpression& expression) const {  // TODO is this reeeeeally necessary?
-  std::cout << "JoinNode::find_column_id(" << expression << " on " << this << ")\n";
+  // std::cout << "JoinNode::find_column_id(" << expression << " on " << this << ")\n";
   std::optional<ColumnID> column_id_on_left;
   std::optional<ColumnID> column_id_on_right;
 
@@ -190,25 +190,25 @@ std::optional<ColumnID> JoinNode::find_column_id(const AbstractExpression& expre
     }
     return ExpressionVisitation::VisitArguments;
   });
-  std::cout << "\tdisambiguated as " << *disambiguated_expression << " on ";
-  if (disambiguated_input_side) {
-    std::cout << (disambiguated_input_side == LQPInputSide::Left ? "left" : "right");
-  } else {
-    std::cout << "unknown";
-  }
-  std::cout << " side" << std::endl;
+  // std::cout << "\tdisambiguated as " << *disambiguated_expression << " on ";
+  // if (disambiguated_input_side) {
+  //   std::cout << (disambiguated_input_side == LQPInputSide::Left ? "left" : "right");
+  // } else {
+  //   std::cout << "unknown";
+  // }
+  // std::cout << " side" << std::endl;
 
   const auto left_input_column_count = static_cast<ColumnID::base_type>(left_input()->column_expressions().size());
   const auto& this_column_expressions = all_column_expressions();
   for (auto column_id = ColumnID{0}; column_id < this_column_expressions.size(); ++column_id) {
-    std::cout << "\tcandidate " << *this_column_expressions[column_id] << std::endl;
+    // std::cout << "\tcandidate " << *this_column_expressions[column_id] << std::endl;
 
     // TODO can we do the first part earlier?
     if (*this_column_expressions[column_id] != expression &&
         *this_column_expressions[column_id] != *disambiguated_expression) {
       continue;
     }
-    std::cout << "\t\tmatch" << std::endl;
+    // std::cout << "\t\tmatch" << std::endl;
 
     // Once a match is found, do not attempt to find more matches on that side. However, we need to check the other
     // side as we need to rule out ambiguities.

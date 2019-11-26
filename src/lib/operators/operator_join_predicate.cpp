@@ -82,9 +82,9 @@ std::optional<OperatorJoinPredicate> OperatorJoinPredicate::from_expression(cons
   const auto num_left_column_expressions =
       static_cast<ColumnID::base_type>(join_node.left_input()->column_expressions().size());
 
-  std::cout << *abstract_predicate_expression << std::endl;
-  std::cout << "\targ1 " << *abstract_predicate_expression->arguments[0] << std::endl;
-  std::cout << "\targ2 " << *abstract_predicate_expression->arguments[1] << std::endl;
+  // std::cout << *abstract_predicate_expression << std::endl;
+  // std::cout << "\targ1 " << *abstract_predicate_expression->arguments[0] << std::endl;
+  // std::cout << "\targ2 " << *abstract_predicate_expression->arguments[1] << std::endl;
 
   DebugAssert(*left_arg_column_id >= num_left_column_expressions ^ *right_arg_column_id >= num_left_column_expressions, "Join arguments are not unambiguously from left or right");
 

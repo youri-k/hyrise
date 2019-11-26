@@ -91,7 +91,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::translate_node(const std::share
     return operator_iter->second;
   }
 
-  std::cout << red << *node << reset << std::endl;
+  // std::cout << red << *node << reset << std::endl;
 
   auto pqp = _translate_by_node_type(node->type, node);
 
@@ -549,7 +549,7 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
       return ExpressionVisitation::DoNotVisitArguments;
     }
 
-    std::cout << node << std::endl;
+    // std::cout << node << std::endl;
     AssertInput(expression->type != ExpressionType::LQPColumn,
                 "Failed to resolve Column '"s + expression->as_column_name() + "'' on " + node->description() + ", LQP is invalid");
 
