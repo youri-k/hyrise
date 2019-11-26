@@ -335,6 +335,16 @@ TEST_F(LogicalQueryPlanTest, DeepCopyBasics) {
   EXPECT_EQ(copied_expression_b->column_reference.original_node(), copied_node_int_int);
 }
 
+TEST_F(LogicalQueryPlanTest, DeepCopyDiamond) {
+  const auto predicate_a = PredicateNode::make(less_than_(a1, 5), node_int_int);
+  const auto predicate_b = PredicateNode::make(greater_than_(a1, 10), node_int_int);
+  const auto union_node = UnionNode::make(UnionMode::Positions, predicate_a, predicate_b);
+
+  const auto copied_union_node = union_node->deep_copy();
+  EXPECT_EQ(copied_union_node->left_input()->left_input(), copied_union_node->right_input()->left_input());
+}
+
+
 TEST_F(LogicalQueryPlanTest, PrintWithoutSubquery) {
   // clang-format off
   const auto lqp =

@@ -177,6 +177,9 @@ std::shared_ptr<AbstractLQPNode> Optimizer::optimize(std::shared_ptr<AbstractLQP
   const auto optimized_node = root_node->left_input();
   root_node->set_left_input(nullptr);
 
+  std::cout << "\n\n\n\n===Optimizer result===" << std::endl;
+  std::cout << *optimized_node << std::endl;
+
   return optimized_node;
 }
 
@@ -220,6 +223,7 @@ void Optimizer::validate_lqp(const std::shared_ptr<AbstractLQPNode>& root_node) 
 
       // Check that all LQPColumnExpressions in the node can be resolved. This does, however, not guarantee that it is
       // correctly used as one of the (transitive) inputs of `node`. Checking that would be more expensive.
+      // TODO do it anyway? Check lineage?
       for (const auto& node_expression : node->node_expressions) {
         visit_expression(node_expression, [&all_nodes](const auto& sub_expression) {
           if (sub_expression->type != ExpressionType::LQPColumn) return ExpressionVisitation::VisitArguments;

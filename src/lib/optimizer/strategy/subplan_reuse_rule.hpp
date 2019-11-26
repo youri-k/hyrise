@@ -11,6 +11,7 @@ namespace opossum {
 
 // TODO Doc
 //  * We do not optimize across subqueries as lineage is complicated enough
+//  * Finding replacement candidates is cheap, applying the optimization is not. The latter should be amortized by the saved execution time.
 
 class SubplanReuseRule : public AbstractRule {
  public:

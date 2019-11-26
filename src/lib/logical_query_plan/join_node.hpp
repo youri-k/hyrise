@@ -30,6 +30,10 @@ class JoinNode : public EnableMakeForLQPNode<JoinNode>, public AbstractLQPNode {
 
   std::string description() const override;
   const std::vector<std::shared_ptr<AbstractExpression>>& column_expressions() const override;
+
+  // Similar to column_expressions, but returns expressions for left and right side even for semi/anti joins
+  std::vector<std::shared_ptr<AbstractExpression>> all_column_expressions() const;   // TODO do we really need this?
+
   bool is_column_nullable(const ColumnID column_id) const override;
 
   const std::vector<std::shared_ptr<AbstractExpression>>& join_predicates() const;
@@ -38,8 +42,11 @@ class JoinNode : public EnableMakeForLQPNode<JoinNode>, public AbstractLQPNode {
   std::optional<ColumnID> find_column_id(const AbstractExpression& expression) const override;
 
   mutable JoinMode join_mode;  // TODO
+  mutable bool disambiguate{false};
 
  protected:
+  std::vector<std::shared_ptr<AbstractExpression>> _column_expressions_impl(const bool always_include_right_side) const;
+
   size_t _shallow_hash() const override;
   std::shared_ptr<AbstractLQPNode> _on_shallow_copy(LQPNodeMapping& node_mapping) const override;
   bool _on_shallow_equals(const AbstractLQPNode& rhs, const LQPNodeMapping& node_mapping) const override;

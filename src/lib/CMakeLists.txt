@@ -652,7 +652,7 @@ set_source_files_properties(
 
 # -rdynamic tells the linker to export the library's symbols so that plugins can use them.
 target_link_libraries(hyrise_impl ${LIBRARIES} -rdynamic)
-target_link_libraries_system(hyrise_impl nlohmann_json::nlohmann_json)
+target_link_libraries_system(hyrise_impl termcolor nlohmann_json::nlohmann_json)
 target_include_directories(hyrise_impl PUBLIC ${CMAKE_BINARY_DIR})
 
 # -fPIC generates position independent code which is necessary because plugins might access hyrise functions.

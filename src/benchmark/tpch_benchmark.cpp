@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  std::cout << "- TPCH scale factor is " << scale_factor << std::endl;
+  std::cout << "- TPC-H scale factor is " << scale_factor << std::endl;
   std::cout << "- Using prepared statements: " << (use_prepared_statements ? "yes" : "no") << std::endl;
 
   // Add TPCH-specific information

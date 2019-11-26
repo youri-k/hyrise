@@ -6,6 +6,7 @@
 
 #include <boost/hana/for_each.hpp>
 #include <boost/hana/tuple.hpp>
+#include <termcolor/termcolor.hpp>
 
 #include "abstract_lqp_node.hpp"
 #include "aggregate_node.hpp"
@@ -63,6 +64,7 @@
 #include "update_node.hpp"
 
 using namespace std::string_literals;  // NOLINT
+using namespace termcolor;
 
 namespace opossum {
 
@@ -88,6 +90,8 @@ std::shared_ptr<AbstractOperator> LQPTranslator::translate_node(const std::share
   if (operator_iter != _operator_by_lqp_node.end()) {
     return operator_iter->second;
   }
+
+  std::cout << red << *node << reset << std::endl;
 
   auto pqp = _translate_by_node_type(node->type, node);
 
@@ -545,8 +549,9 @@ std::shared_ptr<AbstractExpression> LQPTranslator::_translate_expression(
       return ExpressionVisitation::DoNotVisitArguments;
     }
 
+    std::cout << node << std::endl;
     AssertInput(expression->type != ExpressionType::LQPColumn,
-                "Failed to resolve Column '"s + expression->as_column_name() + "', LQP is invalid");
+                "Failed to resolve Column '"s + expression->as_column_name() + "'' on " + node->description() + ", LQP is invalid");
 
     return ExpressionVisitation::VisitArguments;
   });

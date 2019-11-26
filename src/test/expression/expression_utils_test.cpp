@@ -21,10 +21,14 @@ class ExpressionUtilsTest : public ::testing::Test {
     node_b = MockNode::make(MockNode::ColumnDefinitions{{{DataType::Int, "a"}, {DataType::Int, "b"}}});
     b_a = LQPColumnReference{node_b, ColumnID{0}};
     b_b = LQPColumnReference{node_b, ColumnID{1}};
+
+    node_c = MockNode::make(MockNode::ColumnDefinitions{{{DataType::Int, "a"}, {DataType::Int, "b"}}});
+    c_a = LQPColumnReference{node_c, ColumnID{0}};
+    c_b = LQPColumnReference{node_c, ColumnID{1}};
   }
 
-  std::shared_ptr<MockNode> node_a, node_b;
-  LQPColumnReference a_a, a_b, a_c, b_a, b_b;
+  std::shared_ptr<MockNode> node_a, node_b, node_c;
+  LQPColumnReference a_a, a_b, a_c, b_a, b_b, c_a, c_b;
 };
 
 TEST_F(ExpressionUtilsTest, ExpressionFlattenAndInflate) {
@@ -143,6 +147,59 @@ TEST_F(ExpressionUtilsTest, ExpressionContainsCorrelatedParameter) {
       and_(greater_than_(a_a, placeholder_(ParameterID{5})), equals_(a_c, 7))));
   EXPECT_TRUE(expression_contains_correlated_parameter(
       and_(greater_than_(a_a, correlated_parameter_(ParameterID{5}, lqp_column_(a_a))), equals_(a_c, 7))));
+}
+
+TEST_F(ExpressionUtilsTest, AdaptExpressionToDifferentLQPSimple) {
+  const auto input = add_(lqp_column_(a_a), lqp_column_(b_b));
+  const auto mapping = LQPNodeMapping{{node_a, node_b}, {node_b, node_c}};
+
+  const auto adapted = expression_copy_and_adapt_to_different_lqp(*input, mapping);
+  const auto expected = add_(lqp_column_(b_a), lqp_column_(c_b));
+
+  EXPECT_EQ(*adapted, *expected);
+}
+
+TEST_F(ExpressionUtilsTest, AdaptExpressionToDifferentLQPWithLineage) {
+  // based on SELECT a1.a + a2.a FROM a a1, a a2 WHERE a1.a = a2.a + 1
+
+  auto a1_a = a_a;
+  auto a2_a = a_a;
+
+  // clang-format off
+  const auto input_lqp =
+  PredicateNode::make(add_(a1_a, a2_a),
+    JoinNode::make(JoinMode::Inner, equals_(a1_a, add_(a2_a, 1)),
+      node_a,
+      node_a));
+  // clang-format on
+
+  const auto join_node = input_lqp->left_input();
+  a1_a.lineage.emplace_back(join_node, LQPInputSide::Left);
+  a2_a.lineage.emplace_back(join_node, LQPInputSide::Right);
+
+  const auto target_lqp = input_lqp->deep_copy();
+  const auto target_join_node = target_lqp->left_input();
+  const auto target_node_a = target_join_node->left_input();
+
+  EXPECT_NE(node_a, target_node_a);
+  EXPECT_NE(join_node, target_join_node);
+
+  const auto mapping = LQPNodeMapping{{node_a, target_node_a}, {join_node, target_join_node}};
+
+  auto target_a1_a = a_a;
+  target_a1_a.lineage.emplace_back(target_join_node, LQPInputSide::Left);
+  auto target_a2_a = a_a;
+  target_a2_a.lineage.emplace_back(target_join_node, LQPInputSide::Right);
+
+  // Test adapted join predicates
+  const auto input_join_predicates = static_cast<JoinNode&>(*join_node).join_predicates();
+  const auto adapted_join_predicates = expressions_copy_and_adapt_to_different_lqp(input_join_predicates, mapping);
+
+  EXPECT_EQ(*adapted_join_predicates[0], *equals_(target_a1_a, add_(target_a2_a, 1)));
+
+  // Test adapted projection
+  const auto adapted_projection = expression_copy_and_adapt_to_different_lqp(*target_lqp->node_expressions[0], mapping);
+  EXPECT_EQ(*adapted_projection, *add_(target_a1_a, target_a2_a));
 }
 
 }  // namespace opossum

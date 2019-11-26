@@ -2,33 +2,38 @@
 
 #include <unordered_map>
 
+#include <termcolor/termcolor.hpp>
+
 #include "expression/binary_predicate_expression.hpp"
 #include "expression/expression_functional.hpp"
 #include "expression/expression_utils.hpp"
 #include "expression/lqp_column_expression.hpp"
 #include "logical_query_plan/abstract_lqp_node.hpp"
+#include "logical_query_plan/union_node.hpp"
 #include "logical_query_plan/lqp_utils.hpp"
+
+using namespace termcolor;
 
 namespace {
 
 using namespace opossum;  // NOLINT
 using namespace opossum::expression_functional;  // NOLINT
 
-std::unordered_set<LQPColumnReference> get_column_references(
+std::unordered_set<std::shared_ptr<LQPColumnExpression>> get_column_expressions(
     const std::vector<std::shared_ptr<AbstractExpression>>& expressions) {
-  auto column_references = std::unordered_set<LQPColumnReference>{};
+  auto column_expressions = std::unordered_set<std::shared_ptr<LQPColumnExpression>>{};
   for (const auto& expression : expressions) {
     visit_expression(expression, [&](const auto& sub_expression) {
       if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
-        column_references.emplace(column_expression->column_reference);
+        column_expressions.emplace(std::move(column_expression));
       }
       return ExpressionVisitation::VisitArguments;
     });
   }
-  return column_references;
+  return column_expressions;
 }
 
-using ColumnReplacementMappings = std::unordered_map<LQPColumnReference, LQPColumnReference>;
+using ColumnReplacementMappings = ExpressionUnorderedMap<std::shared_ptr<LQPColumnExpression>>;
 
 void add_to_column_mapping(const std::shared_ptr<AbstractExpression>& from_expression,
                            const std::shared_ptr<AbstractExpression>& to_expression,
@@ -40,7 +45,7 @@ void add_to_column_mapping(const std::shared_ptr<AbstractExpression>& from_expre
 
   if (const auto from_column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(from_expression)) {
     const auto to_column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(to_expression);
-    mappings.emplace(from_column_expression->column_reference, to_column_expression->column_reference);
+    mappings.emplace(from_column_expression, to_column_expression);
   } else {
     auto from_expressions_arguments_iter = from_expression->arguments.begin();
     auto from_expressions_arguments_end_iter = from_expression->arguments.end();
@@ -59,10 +64,10 @@ void add_to_column_mapping(const std::shared_ptr<AbstractExpression>& from_expre
 }
 
 ColumnReplacementMappings create_column_mapping(const std::shared_ptr<AbstractLQPNode>& from_node, const std::shared_ptr<AbstractLQPNode>& to_node) {
-  auto mapping = std::unordered_map<LQPColumnReference, LQPColumnReference>{};
+  auto mapping = ColumnReplacementMappings{};
 
-  const auto& from_expressions = from_node->column_expressions();
-  const auto& to_expressions = to_node->column_expressions();
+  const auto& from_expressions = from_node->type == LQPNodeType::Join ? static_cast<const JoinNode&>(*from_node).all_column_expressions() : from_node->column_expressions();
+  const auto& to_expressions = to_node->type == LQPNodeType::Join ? static_cast<const JoinNode&>(*to_node).all_column_expressions() : to_node->column_expressions();
 
   Assert(from_expressions.size() == to_expressions.size(), "Expected same number of expressions");
 
@@ -72,13 +77,19 @@ ColumnReplacementMappings create_column_mapping(const std::shared_ptr<AbstractLQ
 
   // Add COUNT(*)s
   for (const auto& [from, to] : mapping) {
-    auto adapted_from = LQPColumnReference(from.original_node(), INVALID_COLUMN_ID);
-    adapted_from.lineage = from.lineage;
+    const auto from_column_expression = std::dynamic_pointer_cast<const LQPColumnExpression>(from);
+    const auto to_column_expression = std::dynamic_pointer_cast<const LQPColumnExpression>(to);
+    DebugAssert(from_column_expression && to_column_expression, "Expected ColumnReplacementMappings to contain only LQPColumnExpressions");
 
-    auto adapted_to = LQPColumnReference(to.original_node(), INVALID_COLUMN_ID);
-    adapted_to.lineage = to.lineage;
+    const auto& from_column_reference = from_column_expression->column_reference;
+    auto adapted_from = LQPColumnReference{from_column_reference.original_node(), INVALID_COLUMN_ID};
+    adapted_from.lineage = from_column_reference.lineage;
 
-    mapping.emplace(adapted_from, adapted_to);
+    const auto& to_column_reference = to_column_expression->column_reference;
+    auto adapted_to = LQPColumnReference{to_column_reference.original_node(), INVALID_COLUMN_ID};
+    adapted_to.lineage = to_column_reference.lineage;
+
+    mapping.emplace(std::make_shared<LQPColumnExpression>(adapted_from), std::make_shared<LQPColumnExpression>(adapted_to));
   }
 
   return mapping;
@@ -86,143 +97,129 @@ ColumnReplacementMappings create_column_mapping(const std::shared_ptr<AbstractLQ
 
 // TODO test multiple self joins to force multi-step lineage - e.g., SELECT * FROM (SELECT t1.id FROM id_int_int_int_100 t1 JOIN id_int_int_int_100 t2 ON t1.id + 1 = t2.id) AS s1, id_int_int_int_100 t3 WHERE s1.id + 5 = t3.id
 
-void apply_column_replacement_mappings(std::shared_ptr<AbstractExpression>& expression,
-                                       const ColumnReplacementMappings& column_replacement_mappings) {
-  // need copy so that we do not manipulate upstream expressions
-  auto expression_copy = expression->deep_copy();
-  auto replacement_occured = false;
-  visit_expression(expression_copy, [&column_replacement_mappings, &replacement_occured](auto& sub_expression) {
-    if (const auto column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(sub_expression)) {
-      const auto column_reference = column_expression->column_reference;
-      auto upstream_lineage = std::vector<std::pair<std::weak_ptr<const AbstractLQPNode>, LQPInputSide>>{};
-
-      const auto column_replacement_iter = column_replacement_mappings.find(column_reference);
-      if (column_replacement_iter != column_replacement_mappings.end()) {
-        auto new_column_reference = column_replacement_iter->second;
-
-        sub_expression = std::make_shared<LQPColumnExpression>(new_column_reference);
-
-        replacement_occured = true;
-      }
-
-      // TheLQPColumnExpression has no inputs, so at this point, we have reached the end of visit_expression.
-    }
-    return ExpressionVisitation::VisitArguments;
+std::optional<LQPInputSide> find_lineage(const LQPColumnExpression& expression, const std::shared_ptr<AbstractLQPNode>& node) {
+  const auto& lineage = expression.column_reference.lineage;
+  const auto lineage_iter = std::find_if(lineage.begin(), lineage.end(), [&node](const auto& step) {
+    DebugAssert(step.first.lock(), "Via node should not have expired");
+    return step.first.lock() == node;
   });
-  if (replacement_occured) expression = expression_copy;
+  if (lineage_iter == lineage.end()) return std::nullopt;
+  return lineage_iter->second;
 }
 
-void apply_column_replacement_mappings(std::vector<std::shared_ptr<AbstractExpression>>& expressions,
-                                       const ColumnReplacementMappings& column_replacement_mappings) {
-  for (auto& expression : expressions) {
-    apply_column_replacement_mappings(expression, column_replacement_mappings);
-  }
-}
-
-// TODO rename to collect or alike?
+// Yes, taking mapping by value
 void apply_column_replacement_mappings_upwards(
-    const std::shared_ptr<AbstractLQPNode>& node, ColumnReplacementMappings& column_replacement_mappings,
-    std::unordered_map<std::shared_ptr<AbstractLQPNode>, ColumnReplacementMappings>& per_node_replacements) {
-  visit_lqp_upwards(node, [&column_replacement_mappings, &per_node_replacements](const auto& sub_node) {
-    auto column_replacement_mappings_local = column_replacement_mappings;
+    const std::shared_ptr<AbstractLQPNode>& node, ColumnReplacementMappings mapping, const LQPInputSide side) {
+  std::cout << "\n\n\n" << *node << std::endl;
+  std::cout << "Initial mappings:" << std::endl;
+  for (const auto& [from, to] : mapping) {
+    std::cout << "\t" << *from << " => " << *to << std::endl;
+  }
 
-    if (const auto join_node = std::dynamic_pointer_cast<JoinNode>(sub_node)) {
-      const auto left_column_references = get_column_references(join_node->left_input()->column_expressions());
-      const auto right_column_references = get_column_references(join_node->right_input()->column_expressions());
+  if (const auto join_node = std::dynamic_pointer_cast<JoinNode>(node)) {
+    std::cout << "Initial mappings adapted by JoinNode:" << std::endl;
 
-      // Cannot change column_replacement_mappings during iteration
-      ColumnReplacementMappings updated_mappings;
+    for (const auto& [from, to] : mapping) {
+      const auto from_column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(from);
+      const auto to_column_expression = std::dynamic_pointer_cast<LQPColumnExpression>(to);
+      DebugAssert(from_column_expression && to_column_expression, "Expected ColumnReplacementMappings to contain only LQPColumnExpressions");
 
-      for (auto& [from, to] : column_replacement_mappings) {
-//         if (join_node->join_mode != JoinMode::Semi && join_node->join_mode != JoinMode::AntiNullAsTrue &&
-//             join_node->join_mode != JoinMode::AntiNullAsFalse) {
-//           DebugAssert(!left_column_references.contains(from) || !right_column_references.contains(from),
-//                       "Ambiguous mapping 1");
+      if (find_lineage(*to_column_expression, join_node)) continue;
 
-// // Looks like the new mapping is not properly passed upwards
+      auto adapted_column_reference = to_column_expression->column_reference;
+      adapted_column_reference.lineage.emplace_back(join_node, side);
 
-
-
-//           DebugAssert(!left_column_references.contains(to) || !right_column_references.contains(to),
-//                       "Ambiguous mapping 2");
-//         }
-
-        if (left_column_references.contains(from) && right_column_references.contains(to)) {
-          auto updated_to_left = to;
-          updated_to_left.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Left);
-          updated_mappings[from] = updated_to_left;
-
-          auto updated_to_right = to;
-          updated_to_right.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Right);
-          updated_mappings[to] = updated_to_right;
-        }
-
-        if (right_column_references.contains(from) && left_column_references.contains(to)) {
-          auto updated_to_right = to;
-          updated_to_right.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Right);
-          updated_mappings[from] = updated_to_right;
-
-          auto updated_to_left = to;
-          updated_to_left.lineage.emplace_back(join_node->shared_from_this(), LQPInputSide::Left);
-          updated_mappings[to] = updated_to_left;
-        }
-      }
-
-      for (const auto& [from, to] : updated_mappings) {
-        column_replacement_mappings_local[from] = to;
-        if (join_node->join_mode != JoinMode::Semi && join_node->join_mode != JoinMode::AntiNullAsTrue &&
-            join_node->join_mode != JoinMode::AntiNullAsFalse) {
-          column_replacement_mappings[from] = to;
-        }
-      }
-
-
-
-// TODO add << for LQPInputSide
-
-      updated_mappings.clear();
-      if (join_node->join_mode != JoinMode::Semi && join_node->join_mode != JoinMode::AntiNullAsTrue &&
-            join_node->join_mode != JoinMode::AntiNullAsFalse) {
-        for (const auto& [from, to] : column_replacement_mappings) {
-          if (!to.lineage.empty() && to.lineage.back().first.lock() == join_node) continue;
-          // Someone might be using this node as part of their lineage - update those as well
-          for (const auto side : {LQPInputSide::Left, LQPInputSide::Right}) {
-            bool all_via_nodes_found = true;
-            for (const auto& via : to.lineage) {
-              bool node_found = false;
-              visit_lqp(join_node->input(side), [&](const auto x) {
-                if (x == via.first.lock()) {
-                  node_found = true;
-                }
-                return LQPVisitation::VisitInputs;
-              });
-              if (!node_found) all_via_nodes_found = false;
-            }
-            if (!all_via_nodes_found) continue;
-
-            auto updated_from = from;
-            updated_from.lineage.emplace_back(join_node, side);
-            auto updated_to = to;
-            updated_to.lineage.emplace_back(join_node, side);
-            updated_mappings[updated_from] = updated_to;
-          }
-        }
-      }
-
-      for (const auto& [from, to] : updated_mappings) {
-        column_replacement_mappings_local[from] = to;
-        column_replacement_mappings[from] = to;
-      }
-
-
-
-
-
+      if (from_column_expression->column_reference == adapted_column_reference) continue;
+      mapping[from] = std::make_shared<LQPColumnExpression>(adapted_column_reference);
+      std::cout << "\t" << *from << " => " << *mapping[from] << " (old: " << *to_column_expression << ")" << std::endl;
     }
 
-    per_node_replacements[sub_node] = column_replacement_mappings_local;
-    return LQPUpwardVisitation::VisitOutputs;
-  });
+    const auto& opposite_expressions = join_node->input(side == LQPInputSide::Left ? LQPInputSide::Right : LQPInputSide::Left)->column_expressions();  // TODO opposite_side()
+    for (const auto& opposite_column_expression : get_column_expressions(opposite_expressions)) {
+      if (find_lineage(*opposite_column_expression, join_node)) continue;
+
+      auto adapted_column_reference = opposite_column_expression->column_reference;
+      adapted_column_reference.lineage.emplace_back(join_node, (side == LQPInputSide::Left ? LQPInputSide::Right : LQPInputSide::Left));
+
+      if (opposite_column_expression->column_reference == adapted_column_reference) continue;
+      mapping[opposite_column_expression] = std::make_shared<LQPColumnExpression>(adapted_column_reference);
+      std::cout << "\t" << *opposite_column_expression << " => " << *mapping[opposite_column_expression] << " (on opposite side)" << std::endl;
+    }
+
+    // This JoinNode might have already been used as a disambiguation node - add corresponding replacements:
+    if (join_node->disambiguate) {
+      // We must not modify mapping during iteration, thus, we store new mappings here
+      auto new_mappings = ColumnReplacementMappings{};
+      std::cout << "Corresponding replacements added by JoinNode:" << std::endl;
+      for (const auto& [from, to] : mapping) {
+        const auto from_column_expression = std::dynamic_pointer_cast<const LQPColumnExpression>(from);
+        const auto to_column_expression = std::dynamic_pointer_cast<const LQPColumnExpression>(to);
+        DebugAssert(from_column_expression && to_column_expression, "Expected ColumnReplacementMappings to contain only LQPColumnExpressions");
+
+        for (const auto adapted_side : {LQPInputSide::Left, LQPInputSide::Right}) {
+          std::cout << "\ttest " << *from_column_expression << " => " << *to_column_expression << std::endl;
+          const auto existing_lineage_side = find_lineage(*to_column_expression, join_node);
+
+          auto adapted_from_column_reference = from_column_expression->column_reference;
+          adapted_from_column_reference.lineage.emplace_back(join_node, adapted_side);
+          auto adapted_to_column_reference = to_column_expression->column_reference;
+          if (!existing_lineage_side) {
+            adapted_to_column_reference.lineage.emplace_back(join_node, adapted_side);
+          } else {
+            adapted_to_column_reference.lineage.back() = {join_node, adapted_side};
+          }
+
+          if (adapted_from_column_reference == adapted_to_column_reference) {std::cout << "\t\tcont2" << std::endl; continue;}
+
+          // TODO mapping vs mappings
+          const auto adapted_from_column_expression = std::make_shared<LQPColumnExpression>(adapted_from_column_reference);
+          const auto adapted_to_column_expression = std::make_shared<LQPColumnExpression>(adapted_to_column_reference);
+          new_mappings[adapted_from_column_expression] = adapted_to_column_expression;
+
+          std::cout << "\t" << *adapted_from_column_expression << " => " << *adapted_to_column_expression << std::endl;
+        }
+      }
+      mapping.merge(new_mappings);
+    } else {
+      // We need to make sure that ALL column_expressions leaving this join node are disambiguated. We already did this for the opposite side above.
+      for (const auto& column_expression : get_column_expressions(join_node->input(side)->column_expressions())) {
+        if (mapping.contains(column_expression)) continue;
+
+        auto adapted_column_reference = column_expression->column_reference;
+        adapted_column_reference.lineage.emplace_back(join_node, side);
+
+        mapping[column_expression] = std::make_shared<LQPColumnExpression>(adapted_column_reference);
+        std::cout << "\t" << *column_expression << " => " << *mapping[column_expression] << " (newly disambiguated)" << std::endl;
+      }
+    }
+
+    join_node->disambiguate = true;
+  }
+
+  std::cout << "Applied replacements:" << std::endl;
+  for (auto& node_expression : node->node_expressions) {
+    std::cout << "\tInput expression: " << *node_expression << std::endl;
+
+    // The inner expressions of node_expression might be used by equivalent expressions in other nodes as well. As such, we need to deep-copy the expression before manipulating it.
+    // TODO really?
+    auto updated_node_expression = node_expression->deep_copy();
+    visit_expression(updated_node_expression, [&](auto& sub_expression) {
+      if (mapping.contains(sub_expression)) {
+        std::cout << "\t\tSub expression " << *sub_expression << " => " << *mapping[sub_expression] << std::endl;
+        sub_expression = mapping[sub_expression];
+        return ExpressionVisitation::DoNotVisitArguments;
+      }
+      return ExpressionVisitation::VisitArguments;
+    });
+    node_expression = updated_node_expression;
+
+    std::cout << "\tOutput expression: " << *node_expression << std::endl;
+  }
+
+  // TODO If the node does not produce any expressions that are subject to replacement, we can stop here, thus avoiding diamond blowups
+  for (const auto& [output, input_side] : node->output_relations()) {
+    apply_column_replacement_mappings_upwards(output, mapping, input_side);
+  }
 }
 
 }  // namespace
@@ -231,44 +228,51 @@ void apply_column_replacement_mappings_upwards(
 
 namespace opossum {
 
-// TODO Is it necessary to update the lineage? Test this
-
 void SubplanReuseRule::apply_to(const std::shared_ptr<AbstractLQPNode>& root) const {
   Assert(root->type == LQPNodeType::Root, "SubplanReuseRule needs root to hold onto");
 
-  bool more = true;  // TODO: try_another_iteration
-  while (more) {
+  bool found_match = false;
+  do {
     LQPNodeUnorderedSet primary_subplans;
-    more = false;
+    found_match = false;
     visit_lqp(root, [&](const auto& node) {
-      if (more) return LQPVisitation::DoNotVisitInputs;
+      // Do one replacement at a time - break here and wait for the next iteration in the do loop
+      if (found_match) return LQPVisitation::DoNotVisitInputs;
+
+      // Do not do anything to UnionPosition nodes, as we will be in a world of hell (mismatching StoredTableNodes)
+      // TODO(anyone): continue below the union node
+      if (node->type == LQPNodeType::Union) {
+        const auto& union_node = static_cast<UnionNode&>(*node);
+        if (union_node.union_mode == UnionMode::Positions) return LQPVisitation::DoNotVisitInputs;
+      }
+
       const auto [primary_subplan_iter, is_primary_subplan] = primary_subplans.emplace(node);
       if (is_primary_subplan) return LQPVisitation::VisitInputs;
 
       // We have seen this plan before and can reuse it
       const auto& primary_subplan = *primary_subplan_iter;
 
-      auto column_mapping = create_column_mapping(node, primary_subplan);
-
-      std::unordered_map<std::shared_ptr<AbstractLQPNode>, ColumnReplacementMappings>
-          per_node_replacements;  // TODO does this have to be a map?
-
-      apply_column_replacement_mappings_upwards(node, column_mapping, per_node_replacements);
-
-      for (const auto& [node, mapping] : per_node_replacements) {
-        apply_column_replacement_mappings(node->node_expressions, mapping);
-      }
+      auto mapping = create_column_mapping(node, primary_subplan);
 
       for (const auto& [output, input_side] : node->output_relations()) {
+        apply_column_replacement_mappings_upwards(output, mapping, input_side);
         output->set_input(input_side, primary_subplan);
+        std::cout << yellow << *node << reset << std::endl;
       }
 
-      // TODO
-      more = true;
+      found_match = true;
 
       return LQPVisitation::DoNotVisitInputs;
     });
-  }
+
+    std::cout << "\n\n\n\n===SubplanReuseRule temp result===" << std::endl;
+    std::cout << green << *root << reset << std::endl;
+
+    if (found_match) {
+      std::cout << on_red << "\n\n\nOnly doing single pass\n\n\n" << reset << std::endl;
+      break;
+    }
+  } while (found_match);
 }
 
 }  // namespace opossum

@@ -92,6 +92,7 @@ endif()
 # Add Libraries with their own build setup
 add_subdirectory(googletest)
 add_subdirectory(libpqxx)
+add_subdirectory(termcolor)
 add_subdirectory(tpch-dbgen)
 add_subdirectory(nlohmann_json)
 

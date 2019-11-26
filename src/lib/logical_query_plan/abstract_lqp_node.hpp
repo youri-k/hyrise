@@ -126,8 +126,11 @@ class AbstractLQPNode : public std::enable_shared_from_this<AbstractLQPNode> {
 
   /**
    * @return The ColumnID of the @param expression, or std::nullopt if it can't be found. Note that because COUNT(*)
-   *         has a special treatment (it is represented as an LQPColumnReference with an INVALID_COLUMN_ID), it might
-  *          be evaluable even if find_column_id returns nullopt.
+   *         has a special treatment (it is represented as an LQPColumnReference with an INVALID_COLUMN_ID), it is
+   *         be evaluable even if find_column_id returns nullopt as long as the LQPColumnReference's original_node
+   *         is part of this LQP.
+   *         This method is specialized only by the JoinNode, which needs to disambiguate LQPColumnReferences by
+   *         looking at their lineage information.
    */
   virtual std::optional<ColumnID> find_column_id(const AbstractExpression& expression) const;
 
