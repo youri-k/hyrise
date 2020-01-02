@@ -61,6 +61,8 @@ const std::shared_ptr<hsql::SQLParserResult>& SQLPipelineStatement::get_parsed_s
     return _parsed_sql_statement;
   }
 
+  std::cout << "_parsed_sql_statement seems to be NULL" << std::endl;
+
   DebugAssert(!_sql_string.empty(), "Cannot parse empty SQL string");
 
   _parsed_sql_statement = std::make_shared<hsql::SQLParserResult>();
@@ -146,7 +148,7 @@ const std::shared_ptr<AbstractOperator>& SQLPipelineStatement::get_physical_plan
     return _physical_plan;
   }
 
-  // If we need a transaction context but haven't passed one in, this is the latest point where we can create it
+  // If we need a transaction context but haven't passed one in, this is the last point where we can create it
   if (!_transaction_context && _use_mvcc == UseMvcc::Yes) {
     _transaction_context = Hyrise::get().transaction_manager.new_transaction_context();
   }

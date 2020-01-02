@@ -33,6 +33,8 @@
 #include "logical_query_plan/abstract_lqp_node.hpp"
 #include "logical_query_plan/aggregate_node.hpp"
 #include "logical_query_plan/alias_node.hpp"
+#include "logical_query_plan/begin_transaction_node.hpp"
+#include "logical_query_plan/commit_transaction_node.hpp"
 #include "logical_query_plan/create_prepared_plan_node.hpp"
 #include "logical_query_plan/create_table_node.hpp"
 #include "logical_query_plan/create_view_node.hpp"
@@ -46,6 +48,7 @@
 #include "logical_query_plan/lqp_utils.hpp"
 #include "logical_query_plan/predicate_node.hpp"
 #include "logical_query_plan/projection_node.hpp"
+#include "logical_query_plan/rollback_transaction_node.hpp"
 #include "logical_query_plan/sort_node.hpp"
 #include "logical_query_plan/static_table_node.hpp"
 #include "logical_query_plan/stored_table_node.hpp"
@@ -188,10 +191,22 @@ std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_statement(const hsql:
       return _translate_execute(static_cast<const hsql::ExecuteStatement&>(statement));
     case hsql::kStmtTransaction:
       std::cout << "Transaction Statement detected!" << std::endl;
-      return std::make_shared<DummyTableNode>();
+      return _translate_transaction(static_cast<const hsql::TransactionStatement&>(statement));
     default:
       FailInput("SQL statement type not supported");
   }
+}
+
+std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_transaction(
+    const hsql::TransactionStatement& transaction_statement) {
+  if (transaction_statement.command == hsql::kBeginTransaction) {
+    return BeginTransactionNode::make();
+  } else if (transaction_statement.command == hsql::kCommitTransaction) {
+    return CommitTransactionNode::make();
+  } else if (transaction_statement.command == hsql::kRollbackTransaction) {
+    return RollbackTransactionNode::make();
+  }
+  FailInput("TransactionStatement command not supported");
 }
 
 std::shared_ptr<AbstractLQPNode> SQLTranslator::_translate_select_statement(const hsql::SelectStatement& select) {

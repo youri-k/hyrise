@@ -202,7 +202,10 @@ const std::vector<std::vector<std::shared_ptr<OperatorTask>>>& SQLPipeline::get_
 std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipeline::get_result_table() & {
   const auto& [pipeline_status, tables] = get_result_tables();
 
-  if (pipeline_status != SQLPipelineStatus::Success) {
+  DebugAssert(pipeline_status != SQLPipelineStatus::NotExecuted,
+              "SQLPipeline::get_result_table() should either return Success or RolledBack");
+
+  if (pipeline_status == SQLPipelineStatus::RolledBack) {
     static std::shared_ptr<const Table> null_table;
     return {pipeline_status, null_table};
   }
@@ -249,7 +252,8 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
 
     _result_tables.emplace_back(table);
 
-    previous_statement_transaction_context = pipeline_statement->auto_commit() ? nullptr : pipeline_statement->transaction_context();
+    previous_statement_transaction_context =
+        pipeline_statement->auto_commit() ? nullptr : pipeline_statement->transaction_context();
   }
 
   _pipeline_status = SQLPipelineStatus::Success;
