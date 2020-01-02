@@ -104,6 +104,10 @@ set(
     logical_query_plan/alias_node.hpp
     logical_query_plan/base_non_query_node.cpp
     logical_query_plan/base_non_query_node.hpp
+    logical_query_plan/begin_transaction_node.hpp
+    logical_query_plan/begin_transaction_node.cpp
+    logical_query_plan/commit_transaction_node.hpp
+    logical_query_plan/commit_transaction_node.cpp
     logical_query_plan/create_prepared_plan_node.cpp
     logical_query_plan/create_prepared_plan_node.hpp
     logical_query_plan/create_table_node.cpp
@@ -139,6 +143,8 @@ set(
     logical_query_plan/predicate_node.hpp
     logical_query_plan/projection_node.cpp
     logical_query_plan/projection_node.hpp
+    logical_query_plan/rollback_transaction_node.hpp
+    logical_query_plan/rollback_transaction_node.cpp
     logical_query_plan/sort_node.cpp
     logical_query_plan/sort_node.hpp
     logical_query_plan/static_table_node.cpp

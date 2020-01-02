@@ -104,33 +104,56 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_by_node_type(
     LQPNodeType type, const std::shared_ptr<AbstractLQPNode>& node) const {
   switch (type) {
     // clang-format off
-    case LQPNodeType::Alias:              return _translate_alias_node(node);
-    case LQPNodeType::StoredTable:        return _translate_stored_table_node(node);
-    case LQPNodeType::Predicate:          return _translate_predicate_node(node);
-    case LQPNodeType::Projection:         return _translate_projection_node(node);
-    case LQPNodeType::Sort:               return _translate_sort_node(node);
-    case LQPNodeType::Join:               return _translate_join_node(node);
-    case LQPNodeType::Aggregate:          return _translate_aggregate_node(node);
-    case LQPNodeType::Limit:              return _translate_limit_node(node);
-    case LQPNodeType::Insert:             return _translate_insert_node(node);
-    case LQPNodeType::Delete:             return _translate_delete_node(node);
-    case LQPNodeType::DummyTable:         return _translate_dummy_table_node(node);
-    case LQPNodeType::StaticTable:        return _translate_static_table_node(node);
-    case LQPNodeType::Update:             return _translate_update_node(node);
-    case LQPNodeType::Validate:           return _translate_validate_node(node);
-    case LQPNodeType::Union:              return _translate_union_node(node);
+    case LQPNodeType::Alias:                return _translate_alias_node(node);
+    case LQPNodeType::StoredTable:          return _translate_stored_table_node(node);
+    case LQPNodeType::Predicate:            return _translate_predicate_node(node);
+    case LQPNodeType::Projection:           return _translate_projection_node(node);
+    case LQPNodeType::Sort:                 return _translate_sort_node(node);
+    case LQPNodeType::Join:                 return _translate_join_node(node);
+    case LQPNodeType::Aggregate:            return _translate_aggregate_node(node);
+    case LQPNodeType::Limit:                return _translate_limit_node(node);
+    case LQPNodeType::Insert:               return _translate_insert_node(node);
+    case LQPNodeType::Delete:               return _translate_delete_node(node);
+    case LQPNodeType::DummyTable:           return _translate_dummy_table_node(node);
+    case LQPNodeType::StaticTable:          return _translate_static_table_node(node);
+    case LQPNodeType::Update:               return _translate_update_node(node);
+    case LQPNodeType::Validate:             return _translate_validate_node(node);
+    case LQPNodeType::Union:                return _translate_union_node(node);
 
       // Maintenance operators
-    case LQPNodeType::CreateView:         return _translate_create_view_node(node);
-    case LQPNodeType::DropView:           return _translate_drop_view_node(node);
-    case LQPNodeType::CreateTable:        return _translate_create_table_node(node);
-    case LQPNodeType::DropTable:          return _translate_drop_table_node(node);
-    case LQPNodeType::CreatePreparedPlan: return _translate_create_prepared_plan_node(node);
+    case LQPNodeType::CreateView:           return _translate_create_view_node(node);
+    case LQPNodeType::DropView:             return _translate_drop_view_node(node);
+    case LQPNodeType::CreateTable:          return _translate_create_table_node(node);
+    case LQPNodeType::DropTable:            return _translate_drop_table_node(node);
+    case LQPNodeType::CreatePreparedPlan:   return _translate_create_prepared_plan_node(node);
+
+      // Transaction operators
+    case LQPNodeType::BeginTransaction:     return _translate_begin_transaction_node(node);
+    case LQPNodeType::CommitTransaction:    return _translate_commit_transaction_node(node);
+    case LQPNodeType::RollbackTransaction:  return _translate_rollback_transaction_node(node);
       // clang-format on
 
     default:
       Fail("Unknown node type encountered.");
   }
+}
+
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_begin_transaction_node(
+    const std::shared_ptr<AbstractLQPNode>& node) const {
+  std::cout << "Translate BeginTransaction LQPNode to an AbstractOperator implementation..." << std::endl;
+  return nullptr;
+}
+
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_commit_transaction_node(
+    const std::shared_ptr<AbstractLQPNode>& node) const {
+  std::cout << "Translate CommitTransaction LQPNode to an AbstractOperator implementation..." << std::endl;
+  return nullptr;
+}
+
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_rollback_transaction_node(
+    const std::shared_ptr<AbstractLQPNode>& node) const {
+  std::cout << "Translate RollbackTransaction LQPNode to an AbstractOperator implementation..." << std::endl;
+  return nullptr;
 }
 
 // NOLINTNEXTLINE - while this particular method could be made static, others cannot.

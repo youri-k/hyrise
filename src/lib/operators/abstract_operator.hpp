@@ -18,7 +18,14 @@ class TransactionContext;
 enum class OperatorType {
   Aggregate,
   Alias,
+  BeginTransaction,
+  CreateTable,
+  CreatePreparedPlan,
+  CreateView,
+  CommitTransaction,
   Delete,
+  DropTable,
+  DropView,
   Difference,
   ExportBinary,
   ExportCsv,
@@ -36,6 +43,7 @@ enum class OperatorType {
   Print,
   Product,
   Projection,
+  RollbackTransaction,
   Sort,
   TableScan,
   TableWrapper,
@@ -43,12 +51,6 @@ enum class OperatorType {
   UnionPositions,
   Update,
   Validate,
-  CreateTable,
-  CreatePreparedPlan,
-  CreateView,
-  DropTable,
-  DropView,
-
   Mock  // for Tests that need to Mock operators
 };
 

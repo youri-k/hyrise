@@ -206,6 +206,8 @@ std::set<std::string> lqp_find_modified_tables(const std::shared_ptr<AbstractLQP
       } break;
       case LQPNodeType::CreateTable:
       case LQPNodeType::CreatePreparedPlan:
+      case LQPNodeType::BeginTransaction:
+      case LQPNodeType::CommitTransaction:
       case LQPNodeType::DropTable:
       case LQPNodeType::Validate:
       case LQPNodeType::Aggregate:
@@ -217,6 +219,7 @@ std::set<std::string> lqp_find_modified_tables(const std::shared_ptr<AbstractLQP
       case LQPNodeType::Limit:
       case LQPNodeType::Predicate:
       case LQPNodeType::Projection:
+      case LQPNodeType::RollbackTransaction:
       case LQPNodeType::Root:
       case LQPNodeType::Sort:
       case LQPNodeType::StaticTable:
