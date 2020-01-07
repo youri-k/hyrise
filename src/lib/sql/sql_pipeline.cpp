@@ -230,10 +230,8 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
 
   std::shared_ptr<TransactionContext> previous_statement_transaction_context = nullptr;
 
-  if (pipeline_size > 0) {
-    previous_statement_transaction_context = _sql_pipeline_statements.front()->transaction_context();
-  }
-
+  previous_statement_transaction_context = _transaction_context;
+  
   for (auto& pipeline_statement : _sql_pipeline_statements) {
     pipeline_statement->set_transaction_context(previous_statement_transaction_context);
     const auto& [statement_status, table] = pipeline_statement->get_result_table();

@@ -10,7 +10,8 @@ namespace opossum {
 Session::Session(boost::asio::io_service& io_service, const SendExecutionInfo send_execution_info)
     : _socket(std::make_shared<Socket>(io_service)),
       _postgres_protocol_handler(std::make_shared<PostgresProtocolHandler<Socket>>(_socket)),
-      _send_execution_info(send_execution_info) {}
+      _send_execution_info(send_execution_info),
+      _transaction_context(Hyrise::get().transaction_manager.new_transaction_context()) { }
 
 std::shared_ptr<Socket> Session::socket() { return _socket; }
 
