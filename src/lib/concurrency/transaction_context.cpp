@@ -10,11 +10,12 @@
 
 namespace opossum {
 
-TransactionContext::TransactionContext(const TransactionID transaction_id, const CommitID snapshot_commit_id)
+TransactionContext::TransactionContext(const TransactionID transaction_id, const CommitID snapshot_commit_id, bool is_auto_commit)
     : _transaction_id{transaction_id},
       _snapshot_commit_id{snapshot_commit_id},
       _phase{TransactionPhase::Active},
-      _num_active_operators{0} {
+      _num_active_operators{0},
+      _is_auto_commit(is_auto_commit) {
   Hyrise::get().transaction_manager._register_transaction(snapshot_commit_id);
 }
 
@@ -170,6 +171,10 @@ void TransactionContext::on_operator_finished() {
   if (num_before == 1) {
     _active_operators_cv.notify_all();
   }
+}
+
+bool TransactionContext::is_auto_commit() {
+  return _is_auto_commit;
 }
 
 void TransactionContext::_wait_for_active_operators_to_finish() const {

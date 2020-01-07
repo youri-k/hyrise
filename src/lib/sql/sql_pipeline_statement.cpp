@@ -37,7 +37,6 @@ SQLPipelineStatement::SQLPipelineStatement(const std::string& sql, std::shared_p
       _use_mvcc(use_mvcc),
       _auto_commit(_use_mvcc == UseMvcc::Yes && !transaction_context),
       _transaction_context(transaction_context),
-      _shared_transaction_context(transaction_context),
       _optimizer(optimizer),
       _parsed_sql_statement(std::move(parsed_sql)),
       _metrics(std::make_shared<SQLPipelineStatementMetrics>()),
@@ -267,8 +266,6 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
 const std::shared_ptr<TransactionContext>& SQLPipelineStatement::transaction_context() const {
   return _transaction_context;
 }
-
-bool SQLPipelineStatement::shared_transaction_context() const { return _shared_transaction_context; }
 
 const std::shared_ptr<SQLPipelineStatementMetrics>& SQLPipelineStatement::metrics() const { return _metrics; }
 

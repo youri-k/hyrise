@@ -53,7 +53,7 @@ class TransactionContext : public std::enable_shared_from_this<TransactionContex
   friend class TransactionManager;
 
  public:
-  TransactionContext(TransactionID transaction_id, CommitID snapshot_commit_id);
+  TransactionContext(TransactionID transaction_id, CommitID snapshot_commit_id, bool is_auto_commit = true);
   ~TransactionContext();
 
   /**
@@ -125,6 +125,12 @@ class TransactionContext : public std::enable_shared_from_this<TransactionContex
   void on_operator_finished();
   /**@}*/
 
+  /**
+   * Returns information, whether the transaction context is automatically generated or explicitly created in order to
+   * keep the transaction context alive for multiple statements in one session.
+   */
+  bool is_auto_commit();
+
  private:
   /**
    * @defgroup Lifetime management
@@ -184,5 +190,7 @@ class TransactionContext : public std::enable_shared_from_this<TransactionContex
 
   mutable std::condition_variable _active_operators_cv;
   mutable std::mutex _active_operators_mutex;
+
+  const bool _is_auto_commit;
 };
 }  // namespace opossum

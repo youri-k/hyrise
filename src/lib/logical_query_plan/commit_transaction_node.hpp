@@ -16,7 +16,7 @@ class CommitTransactionNode : public EnableMakeForLQPNode<CommitTransactionNode>
  public:
   CommitTransactionNode();
 
-  std::string description() const override;
+  std::string description(const DescriptionMode mode) const override;
 
  protected:
   std::shared_ptr<AbstractLQPNode> _on_shallow_copy(LQPNodeMapping& node_mapping) const override;

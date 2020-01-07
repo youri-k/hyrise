@@ -12,7 +12,7 @@ namespace opossum {
 
 BeginTransactionNode::BeginTransactionNode() : BaseNonQueryNode(LQPNodeType::BeginTransaction) {}
 
-std::string BeginTransactionNode::description() const { return "LQPNode for BeginTransaction statement"; }
+std::string BeginTransactionNode::description(const DescriptionMode mode) const { return "LQPNode for BeginTransaction statement"; }
 
 std::shared_ptr<AbstractLQPNode> BeginTransactionNode::_on_shallow_copy(LQPNodeMapping& node_mapping) const {
   return std::make_shared<BeginTransactionNode>();

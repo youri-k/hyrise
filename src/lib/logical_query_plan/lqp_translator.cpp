@@ -144,12 +144,7 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_by_node_type(
 std::shared_ptr<AbstractOperator> LQPTranslator::_translate_begin_transaction_node(const std::shared_ptr<AbstractLQPNode>& node) const {
   const auto input_node = node->left_input();
   const auto input_operator = translate_node(input_node);
-  auto begin_transaction_operator = std::make_shared<BeginTransactionOperator>(input_operator);
-  
-  // set the transaction context correclty
-  // where do we get it from though?
-  if (input_operator->)
-  begin_transaction_operator->set_transaction_context()
+  return std::make_shared<BeginTransactionOperator>(input_operator);
 }
 
 std::shared_ptr<AbstractOperator> LQPTranslator::_translate_commit_transaction_node(const std::shared_ptr<AbstractLQPNode>& node) const {
