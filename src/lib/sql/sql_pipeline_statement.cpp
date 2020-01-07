@@ -216,7 +216,7 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
     return false;
   };
 
-  if (_transaction_context->phase() == TransactionPhase::Invalid) {
+  if (_transaction_context && _transaction_context->phase() == TransactionPhase::Invalid) {
     return {SQLPipelineStatus::Success, _result_table};
   }
 
