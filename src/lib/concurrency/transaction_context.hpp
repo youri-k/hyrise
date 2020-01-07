@@ -41,7 +41,8 @@ enum class TransactionPhase {
   Aborted,     // One of the operators failed. Transaction needs to be rolled back.
   RolledBack,  // Transaction has been rolled back.
   Committing,  // Commit ID has been assigned. Operators may commit records.
-  Committed    // Transaction has been committed.
+  Committed,   // Transaction has been committed.
+  Invalid      // Transaction is invalid and has to be replaced
 };
 
 std::ostream& operator<<(std::ostream& stream, const TransactionPhase& phase);
@@ -102,6 +103,11 @@ class TransactionContext : public std::enable_shared_from_this<TransactionContex
    * Blocks until transaction is actually committed.
    */
   void commit();
+
+  /**
+   * Sets the phase of the current transaction to invalid
+   */
+  void invalidate();
 
   /**
    * Add an operator to the list of read-write operators.

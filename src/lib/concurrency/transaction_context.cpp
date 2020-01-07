@@ -106,6 +106,10 @@ void TransactionContext::commit() {
   committed_future.wait();
 }
 
+void TransactionContext::invalidate() {
+  _transition(TransactionPhase::Active, TransactionPhase::Committed);
+}
+
 void TransactionContext::_abort() {
   _transition(TransactionPhase::Active, TransactionPhase::Aborted);
 
@@ -204,6 +208,9 @@ std::ostream& operator<<(std::ostream& stream, const TransactionPhase& phase) {
       break;
     case TransactionPhase::Committed:
       stream << "Committed";
+      break;
+    case TransactionPhase::Invalid:
+      stream << "Invalid";
       break;
   }
   return stream;

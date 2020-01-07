@@ -31,7 +31,7 @@ std::shared_ptr<const Table> BeginTransactionOperator::_on_execute(std::shared_p
     FailInput("Cannot begin transaction inside an active transaction.");
   }
 
-  transaction_context = Hyrise::get().transaction_manager.new_transaction_context(false);
+  transaction_context->invalidate(); // Forces creation of a new transaction
 
   return nullptr;
 }

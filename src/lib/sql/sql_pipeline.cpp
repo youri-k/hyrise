@@ -1,4 +1,5 @@
 #include "sql_pipeline.hpp"
+#include "hyrise.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -252,10 +253,18 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
 
     _result_tables.emplace_back(table);
 
-    // We only want to set the previous statement context if it is shared across statements and not auto generated
-    //TODO-TIL
-    previous_statement_transaction_context = 
-      pipeline_statement->transaction_context()->is_auto_commit() ? nullptr : pipeline_statement->transaction_context();
+    switch (pipeline_statement->transaction_context()->phase()) {
+      case TransactionPhase::Invalid:
+        previous_statement_transaction_context = Hyrise::get().transaction_manager.new_transaction_context(false);
+        break;
+      case TransactionPhase::Committed:
+      case TransactionPhase::RolledBack:
+        previous_statement_transaction_context = Hyrise::get().transaction_manager.new_transaction_context();
+        break;
+      default:
+        previous_statement_transaction_context =
+          pipeline_statement->transaction_context()->is_auto_commit() ? nullptr : pipeline_statement->transaction_context();
+    }
   }
 
   _pipeline_status = SQLPipelineStatus::Success;

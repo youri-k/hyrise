@@ -216,6 +216,10 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
     return false;
   };
 
+  if (_transaction_context->phase() == TransactionPhase::Invalid) {
+    return {SQLPipelineStatus::Success, _result_table};
+  }
+
   if (was_rolled_back()) {
     return {SQLPipelineStatus::RolledBack, _result_table};
   }
@@ -238,7 +242,8 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
     return {SQLPipelineStatus::RolledBack, _result_table};
   }
 
-  if (_auto_commit) {
+  // TODO: Pipeline statement does not need an auto commit boolean anymore
+  if (_auto_commit && transaction_context()->is_auto_commit()) {
     _transaction_context->commit();
   }
 

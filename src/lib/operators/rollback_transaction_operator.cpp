@@ -31,9 +31,6 @@ std::shared_ptr<const Table> RollbackTransactionOperator::_on_execute(std::share
 
   transaction_context->rollback();
 
-  transaction_context = Hyrise::get().transaction_manager.new_transaction_context();
-
-
   return nullptr;
 }
 

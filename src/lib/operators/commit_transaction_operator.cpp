@@ -31,8 +31,6 @@ std::shared_ptr<const Table> CommitTransactionOperator::_on_execute(std::shared_
 
   transaction_context->commit();
 
-  transaction_context = Hyrise::get().transaction_manager.new_transaction_context();
-
   return nullptr;
 }
 
