@@ -7,7 +7,7 @@ namespace opossum {
 
 class CommitTransactionOperator : public AbstractReadWriteOperator {
  public:
-  explicit CommitTransactionOperator(const std::shared_ptr<const AbstractOperator>& input);
+  explicit CommitTransactionOperator();
 
   const std::string& name() const override;
 

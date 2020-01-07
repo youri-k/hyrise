@@ -7,7 +7,7 @@ namespace opossum {
 
 class RollbackTransactionOperator : public AbstractReadWriteOperator {
  public:
-  explicit RollbackTransactionOperator(const std::shared_ptr<const AbstractOperator>& input);
+  explicit RollbackTransactionOperator();
 
   void _on_commit_records(const CommitID commit_id) override;
 
