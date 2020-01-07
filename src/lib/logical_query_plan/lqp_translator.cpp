@@ -30,6 +30,8 @@
 #include "limit_node.hpp"
 #include "operators/aggregate_hash.hpp"
 #include "operators/alias_operator.hpp"
+#include "operators/begin_transaction_operator.hpp"
+#include "operators/commit_transaction_operator.hpp"
 #include "operators/delete.hpp"
 #include "operators/get_table.hpp"
 #include "operators/index_scan.hpp"
@@ -47,6 +49,7 @@
 #include "operators/operator_scan_predicate.hpp"
 #include "operators/product.hpp"
 #include "operators/projection.hpp"
+#include "operators/rollback_transaction_operator.hpp"
 #include "operators/sort.hpp"
 #include "operators/table_scan.hpp"
 #include "operators/table_wrapper.hpp"
@@ -138,22 +141,27 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_by_node_type(
   }
 }
 
-std::shared_ptr<AbstractOperator> LQPTranslator::_translate_begin_transaction_node(
-    const std::shared_ptr<AbstractLQPNode>& node) const {
-  std::cout << "Translate BeginTransaction LQPNode to an AbstractOperator implementation..." << std::endl;
-  return nullptr;
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_begin_transaction_node(const std::shared_ptr<AbstractLQPNode>& node) const {
+  const auto input_node = node->left_input();
+  const auto input_operator = translate_node(input_node);
+  auto begin_transaction_operator = std::make_shared<BeginTransactionOperator>(input_operator);
+  
+  // set the transaction context correclty
+  // where do we get it from though?
+  if (input_operator->)
+  begin_transaction_operator->set_transaction_context()
 }
 
-std::shared_ptr<AbstractOperator> LQPTranslator::_translate_commit_transaction_node(
-    const std::shared_ptr<AbstractLQPNode>& node) const {
-  std::cout << "Translate CommitTransaction LQPNode to an AbstractOperator implementation..." << std::endl;
-  return nullptr;
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_commit_transaction_node(const std::shared_ptr<AbstractLQPNode>& node) const {
+  const auto input_node = node->left_input();
+  const auto input_operator = translate_node(input_node);
+  return std::make_shared<CommitTransactionOperator>(input_operator);
 }
 
-std::shared_ptr<AbstractOperator> LQPTranslator::_translate_rollback_transaction_node(
-    const std::shared_ptr<AbstractLQPNode>& node) const {
-  std::cout << "Translate RollbackTransaction LQPNode to an AbstractOperator implementation..." << std::endl;
-  return nullptr;
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_rollback_transaction_node(const std::shared_ptr<AbstractLQPNode>& node) const {
+  const auto input_node = node->left_input();
+  const auto input_operator = translate_node(input_node);
+  return std::make_shared<RollbackTransactionOperator>(input_operator);
 }
 
 // NOLINTNEXTLINE - while this particular method could be made static, others cannot.
