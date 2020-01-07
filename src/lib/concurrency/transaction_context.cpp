@@ -107,7 +107,7 @@ void TransactionContext::commit() {
 }
 
 void TransactionContext::invalidate() {
-  _transition(TransactionPhase::Active, TransactionPhase::Committed);
+  _transition(TransactionPhase::Active, TransactionPhase::Invalid);
 }
 
 void TransactionContext::_abort() {

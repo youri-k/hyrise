@@ -214,11 +214,7 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
       return _transaction_context->phase() == TransactionPhase::RolledBack;
     }
     return false;
-  };
-
-  if (_transaction_context && _transaction_context->phase() == TransactionPhase::Invalid) {
-    return {SQLPipelineStatus::Success, _result_table};
-  }
+  };  
 
   if (was_rolled_back()) {
     return {SQLPipelineStatus::RolledBack, _result_table};
@@ -237,6 +233,10 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
   DTRACE_PROBE3(HYRISE, TASKS_PER_STATEMENT, reinterpret_cast<uintptr_t>(&tasks), _sql_string.c_str(),
                 reinterpret_cast<uintptr_t>(this));
   Hyrise::get().scheduler()->schedule_and_wait_for_tasks(tasks);
+
+  if (_transaction_context && _transaction_context->phase() == TransactionPhase::Invalid) {
+    return {SQLPipelineStatus::Success, _result_table};
+  }
 
   if (was_rolled_back()) {
     return {SQLPipelineStatus::RolledBack, _result_table};
