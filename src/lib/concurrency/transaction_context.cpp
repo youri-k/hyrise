@@ -10,7 +10,8 @@
 
 namespace opossum {
 
-TransactionContext::TransactionContext(const TransactionID transaction_id, const CommitID snapshot_commit_id, bool is_auto_commit)
+TransactionContext::TransactionContext(const TransactionID transaction_id, const CommitID snapshot_commit_id,
+                                       bool is_auto_commit)
     : _transaction_id{transaction_id},
       _snapshot_commit_id{snapshot_commit_id},
       _phase{TransactionPhase::Active},
@@ -37,8 +38,9 @@ TransactionContext::~TransactionContext() {
 
   DebugAssert(([this]() {
                 const auto has_registered_operators = !_read_write_operators.empty();
-                const auto committed_or_rolled_back =
-                    _phase == TransactionPhase::Committed || _phase == TransactionPhase::RolledBack;
+                const auto committed_or_rolled_back = _phase == TransactionPhase::Committed ||
+                                                      _phase == TransactionPhase::RolledBack ||
+                                                      _phase == TransactionPhase::Invalid;
                 return !has_registered_operators || committed_or_rolled_back;
                 // Note: When thrown during stack unwinding, this exception might hide previous exceptions. If you are
                 // seeing this, either use a debugger and break on exceptions or disable this exception as a trial.
@@ -106,9 +108,7 @@ void TransactionContext::commit() {
   committed_future.wait();
 }
 
-void TransactionContext::invalidate() {
-  _transition(TransactionPhase::Active, TransactionPhase::Invalid);
-}
+void TransactionContext::invalidate() { _transition(TransactionPhase::Active, TransactionPhase::Invalid); }
 
 void TransactionContext::_abort() {
   _transition(TransactionPhase::Active, TransactionPhase::Aborted);
@@ -177,9 +177,7 @@ void TransactionContext::on_operator_finished() {
   }
 }
 
-bool TransactionContext::is_auto_commit() {
-  return _is_auto_commit;
-}
+bool TransactionContext::is_auto_commit() { return _is_auto_commit; }
 
 void TransactionContext::_wait_for_active_operators_to_finish() const {
   std::unique_lock<std::mutex> lock(_active_operators_mutex);

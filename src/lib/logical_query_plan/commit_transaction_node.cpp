@@ -12,7 +12,9 @@ namespace opossum {
 
 CommitTransactionNode::CommitTransactionNode() : BaseNonQueryNode(LQPNodeType::CommitTransaction) {}
 
-std::string CommitTransactionNode::description(const DescriptionMode mode) const { return "LQPNode for CommitTransaction statement"; }
+std::string CommitTransactionNode::description(const DescriptionMode mode) const {
+  return "LQPNode for CommitTransaction statement";
+}
 
 std::shared_ptr<AbstractLQPNode> CommitTransactionNode::_on_shallow_copy(LQPNodeMapping& node_mapping) const {
   return std::make_shared<CommitTransactionNode>();

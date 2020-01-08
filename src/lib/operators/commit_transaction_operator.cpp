@@ -4,8 +4,7 @@
 
 namespace opossum {
 
-CommitTransactionOperator::CommitTransactionOperator()
-    : AbstractReadWriteOperator(OperatorType::CommitTransaction) {}
+CommitTransactionOperator::CommitTransactionOperator() : AbstractReadWriteOperator(OperatorType::CommitTransaction) {}
 
 const std::string& CommitTransactionOperator::name() const {
   static const auto name = std::string{"CommitTransaction"};
@@ -24,7 +23,8 @@ void CommitTransactionOperator::_on_commit_records(const CommitID commit_id) {}
 
 void CommitTransactionOperator::_on_rollback_records() {}
 
-std::shared_ptr<const Table> CommitTransactionOperator::_on_execute(std::shared_ptr<TransactionContext> transaction_context) {
+std::shared_ptr<const Table> CommitTransactionOperator::_on_execute(
+    std::shared_ptr<TransactionContext> transaction_context) {
   if (transaction_context->is_auto_commit()) {
     FailInput("Cannot commit since there is no active transaction.");
   }

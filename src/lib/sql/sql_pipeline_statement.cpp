@@ -214,7 +214,7 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
       return _transaction_context->phase() == TransactionPhase::RolledBack;
     }
     return false;
-  };  
+  };
 
   if (was_rolled_back()) {
     return {SQLPipelineStatus::RolledBack, _result_table};

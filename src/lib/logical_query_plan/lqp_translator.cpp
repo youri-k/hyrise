@@ -141,15 +141,18 @@ std::shared_ptr<AbstractOperator> LQPTranslator::_translate_by_node_type(
   }
 }
 
-std::shared_ptr<AbstractOperator> LQPTranslator::_translate_begin_transaction_node(const std::shared_ptr<AbstractLQPNode>& node) const {
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_begin_transaction_node(
+    const std::shared_ptr<AbstractLQPNode>& node) const {
   return std::make_shared<BeginTransactionOperator>();
 }
 
-std::shared_ptr<AbstractOperator> LQPTranslator::_translate_commit_transaction_node(const std::shared_ptr<AbstractLQPNode>& node) const {
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_commit_transaction_node(
+    const std::shared_ptr<AbstractLQPNode>& node) const {
   return std::make_shared<CommitTransactionOperator>();
 }
 
-std::shared_ptr<AbstractOperator> LQPTranslator::_translate_rollback_transaction_node(const std::shared_ptr<AbstractLQPNode>& node) const {
+std::shared_ptr<AbstractOperator> LQPTranslator::_translate_rollback_transaction_node(
+    const std::shared_ptr<AbstractLQPNode>& node) const {
   return std::make_shared<RollbackTransactionOperator>();
 }
 

@@ -231,7 +231,7 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
   std::shared_ptr<TransactionContext> previous_statement_transaction_context = nullptr;
 
   previous_statement_transaction_context = _transaction_context;
-  
+
   for (auto& pipeline_statement : _sql_pipeline_statements) {
     pipeline_statement->set_transaction_context(previous_statement_transaction_context);
     const auto& [statement_status, table] = pipeline_statement->get_result_table();
@@ -260,8 +260,9 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
         previous_statement_transaction_context = Hyrise::get().transaction_manager.new_transaction_context();
         break;
       default:
-        previous_statement_transaction_context =
-          pipeline_statement->transaction_context()->is_auto_commit() ? nullptr : pipeline_statement->transaction_context();
+        previous_statement_transaction_context = pipeline_statement->transaction_context()->is_auto_commit()
+                                                     ? nullptr
+                                                     : pipeline_statement->transaction_context();
     }
   }
 

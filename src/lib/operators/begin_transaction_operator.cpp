@@ -6,8 +6,7 @@
 
 namespace opossum {
 
-BeginTransactionOperator::BeginTransactionOperator()
-    : AbstractReadWriteOperator(OperatorType::BeginTransaction) {}
+BeginTransactionOperator::BeginTransactionOperator() : AbstractReadWriteOperator(OperatorType::BeginTransaction) {}
 
 const std::string& BeginTransactionOperator::name() const {
   static const auto name = std::string{"BeginTransaction"};
@@ -26,12 +25,13 @@ void BeginTransactionOperator::_on_commit_records(const CommitID commit_id) {}
 
 void BeginTransactionOperator::_on_rollback_records() {}
 
-std::shared_ptr<const Table> BeginTransactionOperator::_on_execute(std::shared_ptr<TransactionContext> transaction_context) {
+std::shared_ptr<const Table> BeginTransactionOperator::_on_execute(
+    std::shared_ptr<TransactionContext> transaction_context) {
   if (!transaction_context->is_auto_commit()) {
     FailInput("Cannot begin transaction inside an active transaction.");
   }
 
-  transaction_context->invalidate(); // Forces creation of a new transaction
+  transaction_context->invalidate();  // Forces creation of a new transaction
 
   return nullptr;
 }
