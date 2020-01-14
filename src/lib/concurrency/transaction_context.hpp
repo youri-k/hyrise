@@ -37,12 +37,12 @@ class CommitContext;
  *                                 +-----------+
  */
 enum class TransactionPhase {
-  Active,                 // Transaction has just been created. Operators may be executed.
-  Aborted,               	// One of the operators failed. Transaction needs to be rolled back.
-  ExplicitlyRolledBack,		// Transaction has been rolled back due to transaction statement.
-  ErrorRolledBack,  			// Transaction has been rolled back due to error.
-  Committing,  						// Commit ID has been assigned. Operators may commit records.
-  Committed,   						// Transaction has been committed.
+  Active,                // Transaction has just been created. Operators may be executed.
+  Aborted,               // One of the operators failed. Transaction needs to be rolled back.
+  ExplicitlyRolledBack,  // Transaction has been rolled back due to transaction statement.
+  ErrorRolledBack,       // Transaction has been rolled back due to error.
+  Committing,            // Commit ID has been assigned. Operators may commit records.
+  Committed,             // Transaction has been committed.
 };
 
 std::ostream& operator<<(std::ostream& stream, const TransactionPhase& phase);

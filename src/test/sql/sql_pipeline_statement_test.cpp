@@ -98,8 +98,7 @@ class SQLPipelineStatementTest : public BaseTest {
 
   static bool _contains_validate(const std::vector<std::shared_ptr<AbstractTask>>& tasks) {
     for (const auto& task : tasks) {
-      if (auto op_task = std::dynamic_pointer_cast<OperatorTask>(task))
-      {
+      if (auto op_task = std::dynamic_pointer_cast<OperatorTask>(task)) {
         if (std::dynamic_pointer_cast<Validate>(op_task->get_operator())) return true;
       }
     }
