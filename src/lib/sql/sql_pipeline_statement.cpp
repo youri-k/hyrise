@@ -36,7 +36,6 @@ SQLPipelineStatement::SQLPipelineStatement(const std::string& sql, std::shared_p
       lqp_cache(lqp_cache),
       _sql_string(sql),
       _use_mvcc(use_mvcc),
-      _auto_commit(_use_mvcc == UseMvcc::Yes && !transaction_context),
       _transaction_context(transaction_context),
       _optimizer(optimizer),
       _parsed_sql_statement(std::move(parsed_sql)),
@@ -195,7 +194,7 @@ const std::shared_ptr<AbstractOperator>& SQLPipelineStatement::get_physical_plan
   return _physical_plan;
 }
 
-const std::vector<std::shared_ptr<OperatorTask>>& SQLPipelineStatement::get_tasks() {
+const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_tasks() {
   if (!_tasks.empty()) {
     return _tasks;
   }
@@ -203,9 +202,7 @@ const std::vector<std::shared_ptr<OperatorTask>>& SQLPipelineStatement::get_task
   auto sql_statement = get_parsed_sql_statement();
 
   const std::vector<hsql::SQLStatement*>& statements = sql_statement->getStatements();
-
-  Assert(statements.size() == 1, "SQLPipelineStatement must hold exactly one sql statement.");
-
+  
   switch (statements[0]->type()) {
     // Create JobTask for each TransactionStatement
     case hsql::kBeginTransaction: {
@@ -236,7 +233,12 @@ const std::vector<std::shared_ptr<OperatorTask>>& SQLPipelineStatement::get_task
       break;
     }
     default: {
-      _tasks = OperatorTask::make_tasks_from_operator(get_physical_plan(), _cleanup_temporaries);
+      auto operator_tasks = OperatorTask::make_tasks_from_operator(get_physical_plan(), _cleanup_temporaries);
+      _tasks.reserve(operator_tasks.size());
+      for (auto& ot : operator_tasks)
+      {
+        _tasks.emplace_back(ot);
+      }
       break;
     }
   }
@@ -278,8 +280,8 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
   if (was_rolled_back()) {
     return {SQLPipelineStatus::RolledBack, _result_table};
   }
-  
-  if (_auto_commit && _transaction_context->is_auto_commit()) {
+
+  if (_use_mvcc == UseMvcc::Yes && _transaction_context->is_auto_commit()) {
     _transaction_context->commit();
   }
 

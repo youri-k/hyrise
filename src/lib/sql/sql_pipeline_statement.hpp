@@ -75,7 +75,7 @@ class SQLPipelineStatement : public Noncopyable {
   const std::shared_ptr<AbstractOperator>& get_physical_plan();
 
   // Returns all tasks that need to be executed for this query.
-  const std::vector<std::shared_ptr<OperatorTask>>& get_tasks();
+  const std::vector<std::shared_ptr<AbstractTask>>& get_tasks();
 
   // Executes all tasks, waits for them to finish, and returns
   //   - {Success, table}       if the statement was successful and returned a table
@@ -104,9 +104,6 @@ class SQLPipelineStatement : public Noncopyable {
   const std::string _sql_string;
   const UseMvcc _use_mvcc;
 
-  // Perform MVCC commit right after the Statement was executed
-  const bool _auto_commit;
-
   // Might be the Statement's own transaction context, or the one shared by all Statements in a Pipeline
   std::shared_ptr<TransactionContext> _transaction_context;
 
@@ -117,7 +114,7 @@ class SQLPipelineStatement : public Noncopyable {
   std::shared_ptr<AbstractLQPNode> _unoptimized_logical_plan;
   std::shared_ptr<AbstractLQPNode> _optimized_logical_plan;
   std::shared_ptr<AbstractOperator> _physical_plan;
-  std::vector<std::shared_ptr<OperatorTask>> _tasks;
+  std::vector<std::shared_ptr<AbstractTask>> _tasks;
   std::shared_ptr<const Table> _result_table;
   // Assume there is an output table. Only change if nullptr is returned from execution.
   bool _query_has_output{true};
