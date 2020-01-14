@@ -12,7 +12,8 @@ AbstractTPCCProcedure::AbstractTPCCProcedure(BenchmarkSQLExecutor& sql_executor)
 }
 
 bool AbstractTPCCProcedure::execute() {
-  DebugAssert(!_sql_executor.transaction_context || _sql_executor.transaction_context->is_auto_commit(), "The SQLExecutor should not already have a transaction context set");
+  DebugAssert(!_sql_executor.transaction_context || _sql_executor.transaction_context->is_auto_commit(),
+              "The SQLExecutor should not already have a transaction context set");
 
   // Private to the AbstractTPCCProcedure. The actual procedures should not directly interact with the context.
   auto transaction_context = Hyrise::get().transaction_manager.new_transaction_context(false);

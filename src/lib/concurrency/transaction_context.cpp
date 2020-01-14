@@ -38,8 +38,9 @@ TransactionContext::~TransactionContext() {
 
   DebugAssert(([this]() {
                 const auto has_registered_operators = !_read_write_operators.empty();
-                const auto committed_or_rolled_back =
-                    _phase == TransactionPhase::Committed || _phase == TransactionPhase::ExplicitlyRolledBack || _phase == TransactionPhase::ErrorRolledBack;
+                const auto committed_or_rolled_back = _phase == TransactionPhase::Committed ||
+                                                      _phase == TransactionPhase::ExplicitlyRolledBack ||
+                                                      _phase == TransactionPhase::ErrorRolledBack;
                 return !has_registered_operators || committed_or_rolled_back;
                 // Note: When thrown during stack unwinding, this exception might hide previous exceptions. If you are
                 // seeing this, either use a debugger and break on exceptions or disable this exception as a trial.
@@ -122,7 +123,8 @@ void TransactionContext::_mark_as_rolled_back(bool is_explicit) {
               }()),
               "All read/write operators need to have been rolled back.");
 
-  _transition(TransactionPhase::Aborted, is_explicit ? TransactionPhase::ExplicitlyRolledBack : TransactionPhase::ErrorRolledBack);
+  _transition(TransactionPhase::Aborted,
+              is_explicit ? TransactionPhase::ExplicitlyRolledBack : TransactionPhase::ErrorRolledBack);
 }
 
 void TransactionContext::_prepare_commit() {

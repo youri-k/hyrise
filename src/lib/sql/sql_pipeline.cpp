@@ -1,7 +1,8 @@
-#include "sql_pipeline.hpp"
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <utility>
+#include <boost/algorithm/string.hpp>
+
+#include "sql_pipeline.hpp"
 #include "SQLParser.h"
 #include "create_sql_parser_error_message.hpp"
 #include "hyrise.hpp"
@@ -225,9 +226,7 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
 
   _result_tables.reserve(pipeline_size);
 
-  std::shared_ptr<TransactionContext> previous_statement_transaction_context = nullptr;
-
-  previous_statement_transaction_context = _transaction_context;
+  std::shared_ptr<TransactionContext> previous_statement_transaction_context = _transaction_context;
 
   for (auto& pipeline_statement : _sql_pipeline_statements) {
     pipeline_statement->set_transaction_context(previous_statement_transaction_context);
@@ -235,7 +234,7 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
     if (statement_status == SQLPipelineStatus::Failure) {
       _failed_pipeline_statement = pipeline_statement;
 
-      if (!_transaction_context->is_auto_commit()) {
+      if (_transaction_context && !_transaction_context->is_auto_commit()) {
         // The pipeline was executed using a transaction context (i.e., no auto-commit after each statement).
         // Previously returned results are invalid.
         _result_tables.clear();

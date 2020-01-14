@@ -31,7 +31,7 @@ enum class SQLPipelineStatus {
   Success,      // The pipeline or the pipeline statement has been executed successfully. If use_mvcc is set but no
                 //     transaction_context was supplied, the statement has been auto-committed. If a context was
                 //     supplied, that context continues to be active (i.e., is not yet committed).
-  Failure      // The pipeline or the pipeline statement caused a transaction conflict and has been rolled back.
+  Failure       // The pipeline or the pipeline statement caused a transaction conflict and has been rolled back.
 };
 
 /**

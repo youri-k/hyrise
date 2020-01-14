@@ -9,7 +9,6 @@
 #include "scheduler/operator_task.hpp"
 #include "sql/sql_pipeline_statement.hpp"
 #include "storage/chunk.hpp"
-#include "types.hpp"
 
 namespace opossum {
 
