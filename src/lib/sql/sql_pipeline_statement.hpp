@@ -23,7 +23,7 @@ struct SQLPipelineStatementMetrics {
 };
 
 enum class SQLPipelineStatus {
-  NotExecuted,  // The pipeline or the pipeline statement has been not been executed yet.
+  NotExecuted,  // The pipeline or the pipeline statement has not been executed yet.
   Success,      // The pipeline or the pipeline statement has been executed successfully. If use_mvcc is set but no
                 //     transaction_context was supplied, the statement has been auto-committed. If a context was
                 //     supplied, that context continues to be active (i.e., is not yet committed).
@@ -90,10 +90,6 @@ class SQLPipelineStatement : public Noncopyable {
   // This can be a nullptr if no transaction management is wanted.
   const std::shared_ptr<TransactionContext>& transaction_context() const;
 
-  // Returns whether the transaction context was created by the Statement or is shared across Statements.
-  // If a transaction_context is provided, this indicates that it was created by the statement itself.
-  bool shared_transaction_context() const;
-
   const std::shared_ptr<SQLPipelineStatementMetrics>& metrics() const;
 
   const std::shared_ptr<SQLPhysicalPlanCache> pqp_cache;
@@ -113,9 +109,6 @@ class SQLPipelineStatement : public Noncopyable {
 
   // Might be the Statement's own transaction context, or the one shared by all Statements in a Pipeline
   std::shared_ptr<TransactionContext> _transaction_context;
-
-  // This indicates whether the transaction context was created by the Statement or is shared across Statements.
-  const bool _shared_transaction_context;
 
   const std::shared_ptr<Optimizer> _optimizer;
 
