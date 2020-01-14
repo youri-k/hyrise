@@ -1,0 +1,1 @@
+/usr/local/opt/llvm/bin/clang++ -g -fopenmp-simd -O0 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk -dynamiclib -Wl,-headerpad_max_install_names  -O0 -o ../../lib/libMvccDeletePlugin.dylib -install_name @rpath/libMvccDeletePlugin.dylib CMakeFiles/MvccDeletePlugin.dir/mvcc_delete_plugin.cpp.o -undefined dynamic_lookup 

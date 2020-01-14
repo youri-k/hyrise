@@ -1,0 +1,1 @@
+/usr/local/opt/llvm/bin/clang++  -g -fopenmp-simd -O0 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names -Wl,-export_dynamic  -O0 CMakeFiles/test-capacity.dir/src/unit-capacity.cpp.o CMakeFiles/doctest_main.dir/src/unit.cpp.o  -o ../../../test-capacity 

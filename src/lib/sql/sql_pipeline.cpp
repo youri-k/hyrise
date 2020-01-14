@@ -1,8 +1,9 @@
+#include "sql_pipeline.hpp"
+
 #include <algorithm>
 #include <utility>
 #include <boost/algorithm/string.hpp>
 
-#include "sql_pipeline.hpp"
 #include "SQLParser.h"
 #include "create_sql_parser_error_message.hpp"
 #include "hyrise.hpp"

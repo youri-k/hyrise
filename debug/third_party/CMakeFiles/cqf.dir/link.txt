@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcqf.a  CMakeFiles/cqf.dir/cqf/src/cqf2.cpp.o CMakeFiles/cqf.dir/cqf/src/cqf4.cpp.o CMakeFiles/cqf.dir/cqf/src/cqf8.cpp.o CMakeFiles/cqf.dir/cqf/src/cqf16.cpp.o CMakeFiles/cqf.dir/cqf/src/cqf32.cpp.o
+/usr/bin/ranlib libcqf.a
