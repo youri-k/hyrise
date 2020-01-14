@@ -30,8 +30,8 @@ TransactionContext::~TransactionContext() {
                   }
                 }
 
-                const auto is_rolled_back = _phase == TransactionPhase::RolledBack;
-                return (!an_operator_failed || is_rolled_back);
+                const auto is_rolled_back = _phase == TransactionPhase::ErrorRolledBack;
+                return !an_operator_failed || is_rolled_back;
               }()),
               "A registered operator failed but the transaction has not been rolled back. You may also see this "
               "exception if an operator threw an uncaught exception.");
@@ -39,7 +39,7 @@ TransactionContext::~TransactionContext() {
   DebugAssert(([this]() {
                 const auto has_registered_operators = !_read_write_operators.empty();
                 const auto committed_or_rolled_back =
-                    _phase == TransactionPhase::Committed || _phase == TransactionPhase::RolledBack;
+                    _phase == TransactionPhase::Committed || _phase == TransactionPhase::ExplicitlyRolledBack || _phase == TransactionPhase::ErrorRolledBack;
                 return !has_registered_operators || committed_or_rolled_back;
                 // Note: When thrown during stack unwinding, this exception might hide previous exceptions. If you are
                 // seeing this, either use a debugger and break on exceptions or disable this exception as a trial.
@@ -66,17 +66,17 @@ TransactionPhase TransactionContext::phase() const { return _phase; }
 
 bool TransactionContext::aborted() const {
   const auto phase = _phase.load();
-  return (phase == TransactionPhase::Aborted) || (phase == TransactionPhase::RolledBack);
+  return (phase == TransactionPhase::Aborted) || (phase == TransactionPhase::ErrorRolledBack);
 }
 
-void TransactionContext::rollback() {
+void TransactionContext::rollback(bool is_explicit) {
   _abort();
 
   for (const auto& op : _read_write_operators) {
     op->rollback_records();
   }
 
-  _mark_as_rolled_back();
+  _mark_as_rolled_back(is_explicit);
 }
 
 void TransactionContext::commit_async(const std::function<void(TransactionID)>& callback) {
@@ -113,7 +113,7 @@ void TransactionContext::_abort() {
   _wait_for_active_operators_to_finish();
 }
 
-void TransactionContext::_mark_as_rolled_back() {
+void TransactionContext::_mark_as_rolled_back(bool is_explicit) {
   DebugAssert(([this]() {
                 for (const auto& op : _read_write_operators) {
                   if (op->state() != ReadWriteOperatorState::RolledBack) return false;
@@ -122,7 +122,7 @@ void TransactionContext::_mark_as_rolled_back() {
               }()),
               "All read/write operators need to have been rolled back.");
 
-  _transition(TransactionPhase::Aborted, TransactionPhase::RolledBack);
+  _transition(TransactionPhase::Aborted, is_explicit ? TransactionPhase::ExplicitlyRolledBack : TransactionPhase::ErrorRolledBack);
 }
 
 void TransactionContext::_prepare_commit() {
@@ -195,8 +195,11 @@ std::ostream& operator<<(std::ostream& stream, const TransactionPhase& phase) {
     case TransactionPhase::Aborted:
       stream << "Aborted";
       break;
-    case TransactionPhase::RolledBack:
-      stream << "RolledBack";
+    case TransactionPhase::ErrorRolledBack:
+      stream << "ErrorRolledBack";
+      break;
+    case TransactionPhase::ExplicitlyRolledBack:
+      stream << "ExplicitlyRolledBack";
       break;
     case TransactionPhase::Committing:
       stream << "Committing";

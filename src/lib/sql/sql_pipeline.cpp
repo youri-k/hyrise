@@ -203,7 +203,7 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipeline::g
   DebugAssert(pipeline_status != SQLPipelineStatus::NotExecuted,
               "SQLPipeline::get_result_table() should either return Success or RolledBack");
 
-  if (pipeline_status == SQLPipelineStatus::RolledBack) {
+  if (pipeline_status == SQLPipelineStatus::Failure) {
     static std::shared_ptr<const Table> null_table;
     return {pipeline_status, null_table};
   }
@@ -232,16 +232,16 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
   for (auto& pipeline_statement : _sql_pipeline_statements) {
     pipeline_statement->set_transaction_context(previous_statement_transaction_context);
     const auto& [statement_status, table] = pipeline_statement->get_result_table();
-    if (statement_status == SQLPipelineStatus::RolledBack) {
+    if (statement_status == SQLPipelineStatus::Failure) {
       _failed_pipeline_statement = pipeline_statement;
 
-      if (_transaction_context) {
+      if (!_transaction_context->is_auto_commit()) {
         // The pipeline was executed using a transaction context (i.e., no auto-commit after each statement).
         // Previously returned results are invalid.
         _result_tables.clear();
       }
 
-      return {SQLPipelineStatus::RolledBack, _result_tables};
+      return {SQLPipelineStatus::Failure, _result_tables};
     }
 
     DebugAssert(statement_status == SQLPipelineStatus::Success, "Unexpected pipeline status");
@@ -250,12 +250,12 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
 
     switch (pipeline_statement->transaction_context()->phase()) {
       case TransactionPhase::Committed:
-      case TransactionPhase::RolledBack:
+      case TransactionPhase::ExplicitlyRolledBack:
         previous_statement_transaction_context = Hyrise::get().transaction_manager.new_transaction_context();
         break;
       default:
         previous_statement_transaction_context = pipeline_statement->transaction_context()->is_auto_commit()
-                                                     ? nullptr
+                                                     ? Hyrise::get().transaction_manager.new_transaction_context()
                                                      : pipeline_statement->transaction_context();
     }
   }

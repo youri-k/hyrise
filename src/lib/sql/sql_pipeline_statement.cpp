@@ -203,14 +203,14 @@ const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_task
 
   const std::vector<hsql::SQLStatement*>& statements = sql_statement->getStatements();
 
-  if (statements[0]->isType(hsql::StatementType::kStmtTransaction)) {
-    auto transaction_statement = static_cast<const hsql::TransactionStatement&>(*statements[0]);
+  if (statements.front()->isType(hsql::StatementType::kStmtTransaction)) {
+    auto transaction_statement = static_cast<const hsql::TransactionStatement&>(*statements.front());
 
     switch (transaction_statement.command) {
       // Create JobTask for each TransactionStatement
       case hsql::kBeginTransaction: {
         auto job = std::make_shared<JobTask>([this]() {
-          if (!_transaction_context->is_auto_commit()) {
+          if (!_transaction_context || !_transaction_context->is_auto_commit()) {
             FailInput("Cannot begin transaction inside an active transaction.");
           }
           _transaction_context = Hyrise::get().transaction_manager.new_transaction_context(false);
@@ -220,7 +220,7 @@ const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_task
       }
       case hsql::kCommitTransaction: {
         auto job = std::make_shared<JobTask>([this]() {
-          if (_transaction_context->is_auto_commit()) {
+          if (!_transaction_context || _transaction_context->is_auto_commit()) {
             FailInput("Cannot commit since there is no active transaction.");
           }
           _transaction_context->commit();
@@ -233,7 +233,7 @@ const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_task
           if (_transaction_context->is_auto_commit()) {
             FailInput("Cannot commit since there is no active transaction.");
           }
-          _transaction_context->rollback();
+          _transaction_context->rollback(true);
         });
         _tasks.emplace_back(job);
         break;
@@ -252,19 +252,20 @@ const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_task
 
 std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineStatement::get_result_table() {
   // Returns true if a transaction was set and that transaction was rolled back.
-  const auto was_rolled_back = [&]() {
+  const auto has_failed = [&]() {
     if (_transaction_context) {
       DebugAssert(_transaction_context->phase() == TransactionPhase::Active ||
-                      _transaction_context->phase() == TransactionPhase::RolledBack ||
+                      _transaction_context->phase() == TransactionPhase::ExplicitlyRolledBack ||
+                      _transaction_context->phase() == TransactionPhase::ErrorRolledBack ||
                       _transaction_context->phase() == TransactionPhase::Committed,
                   "Transaction found in unexpected state");
-      return _transaction_context->phase() == TransactionPhase::RolledBack;
+      return _transaction_context->phase() == TransactionPhase::ErrorRolledBack;
     }
     return false;
   };
 
-  if (was_rolled_back()) {
-    return {SQLPipelineStatus::RolledBack, _result_table};
+  if (has_failed()) {
+    return {SQLPipelineStatus::Failure, _result_table};
   }
 
   if (_result_table || !_query_has_output) {
@@ -281,8 +282,8 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
                 reinterpret_cast<uintptr_t>(this));
   Hyrise::get().scheduler()->schedule_and_wait_for_tasks(tasks);
 
-  if (was_rolled_back()) {
-    return {SQLPipelineStatus::RolledBack, _result_table};
+  if (has_failed()) {
+    return {SQLPipelineStatus::Failure, _result_table};
   }
 
   if (_use_mvcc == UseMvcc::Yes && _transaction_context->is_auto_commit()) {
@@ -291,7 +292,8 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
 
   if (_transaction_context) {
     Assert(_transaction_context->phase() == TransactionPhase::Active ||
-               _transaction_context->phase() == TransactionPhase::Committed,
+               _transaction_context->phase() == TransactionPhase::Committed ||
+               _transaction_context->phase() == TransactionPhase::ExplicitlyRolledBack,
            "Transaction should either be still active or have been auto-committed by now");
   }
 
