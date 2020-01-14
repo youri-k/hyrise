@@ -40,7 +40,8 @@ SQLPipelineStatement::SQLPipelineStatement(const std::string& sql, std::shared_p
       _optimizer(optimizer),
       _parsed_sql_statement(std::move(parsed_sql)),
       _metrics(std::make_shared<SQLPipelineStatementMetrics>()),
-      _cleanup_temporaries(cleanup_temporaries) {
+      _cleanup_temporaries(cleanup_temporaries),
+      _transaction_exception(std::nullopt) {
   Assert(!_parsed_sql_statement || _parsed_sql_statement->size() == 1,
          "SQLPipelineStatement must hold exactly one SQL statement");
   DebugAssert(!_sql_string.empty(), "An SQLPipelineStatement should always contain a SQL statement string for caching");
@@ -204,14 +205,15 @@ const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_task
   const std::vector<hsql::SQLStatement*>& statements = sql_statement->getStatements();
 
   if (statements.front()->isType(hsql::StatementType::kStmtTransaction)) {
-    auto transaction_statement = static_cast<const hsql::TransactionStatement&>(*statements.front());
+      auto *transaction_statement = reinterpret_cast<hsql::TransactionStatement *>(statements.front());
 
-    switch (transaction_statement.command) {
+    switch (transaction_statement->command) {
       // Create JobTask for each TransactionStatement
       case hsql::kBeginTransaction: {
         auto job = std::make_shared<JobTask>([this]() {
           if (!_transaction_context || !_transaction_context->is_auto_commit()) {
-            FailInput("Cannot begin transaction inside an active transaction.");
+              this->set_transaction_exception(InvalidInputException(std::string("Invalid input error: Cannot begin transaction inside an active transaction.")));
+              return;
           }
           _transaction_context = Hyrise::get().transaction_manager.new_transaction_context(false);
         });
@@ -221,7 +223,8 @@ const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_task
       case hsql::kCommitTransaction: {
         auto job = std::make_shared<JobTask>([this]() {
           if (!_transaction_context || _transaction_context->is_auto_commit()) {
-            FailInput("Cannot commit since there is no active transaction.");
+              this->set_transaction_exception(InvalidInputException(std::string("Invalid input error: Cannot commit since there is no active transaction.")));
+              return;
           }
           _transaction_context->commit();
         });
@@ -231,7 +234,8 @@ const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_task
       case hsql::kRollbackTransaction: {
         auto job = std::make_shared<JobTask>([this]() {
           if (_transaction_context->is_auto_commit()) {
-            FailInput("Cannot commit since there is no active transaction.");
+              this->set_transaction_exception(InvalidInputException(std::string("Invalid input error: Cannot rollback since there is no active transaction.")));
+              return;
           }
           _transaction_context->rollback(true);
         });
@@ -280,7 +284,11 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
 
   DTRACE_PROBE3(HYRISE, TASKS_PER_STATEMENT, reinterpret_cast<uintptr_t>(&tasks), _sql_string.c_str(),
                 reinterpret_cast<uintptr_t>(this));
+
+
   Hyrise::get().scheduler()->schedule_and_wait_for_tasks(tasks);
+
+  if (_transaction_exception) throw _transaction_exception.value();
 
   if (has_failed()) {
     return {SQLPipelineStatus::Failure, _result_table};
@@ -363,5 +371,9 @@ void SQLPipelineStatement::_precheck_ddl_operators(const std::shared_ptr<Abstrac
     default:
       break;
   }
+}
+
+void SQLPipelineStatement::set_transaction_exception(std::runtime_error transaction_exception) {
+    _transaction_exception = transaction_exception;
 }
 }  // namespace opossum

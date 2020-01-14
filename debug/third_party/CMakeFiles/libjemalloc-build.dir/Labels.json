@@ -1,0 +1,40 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/CMakeFiles/libjemalloc-build"
+		},
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/CMakeFiles/libjemalloc-build.rule"
+		},
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/libjemalloc-prefix/src/libjemalloc-stamp/libjemalloc-build.rule"
+		},
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/libjemalloc-prefix/src/libjemalloc-stamp/libjemalloc-configure.rule"
+		},
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/libjemalloc-prefix/src/libjemalloc-stamp/libjemalloc-update.rule"
+		},
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/libjemalloc-prefix/src/libjemalloc-stamp/libjemalloc-patch.rule"
+		},
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/libjemalloc-prefix/src/libjemalloc-stamp/libjemalloc-check_for_changes.rule"
+		},
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/libjemalloc-prefix/src/libjemalloc-stamp/libjemalloc-download.rule"
+		},
+		{
+			"file" : "/Users/till/HPI/Vorlesungen/7.Semester/DYOD/youri/hyrise/debug/third_party/libjemalloc-prefix/src/libjemalloc-stamp/libjemalloc-mkdir.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"libjemalloc"
+		],
+		"name" : "libjemalloc-build"
+	}
+}
