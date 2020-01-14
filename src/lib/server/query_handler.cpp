@@ -29,10 +29,15 @@ std::pair<ExecutionInformation, std::shared_ptr<TransactionContext>> QueryHandle
     }
   } else if (pipeline_status == SQLPipelineStatus::RolledBack) {
     const std::string failed_statement = sql_pipeline.failed_pipeline_statement()->get_sql_string();
-    execution_info.error_message = {
-        {PostgresMessageType::HumanReadableError,
-         "Transaction conflict, transaction was rolled back. Failed statement: " + failed_statement},
-        {PostgresMessageType::SqlstateCodeError, TRANSACTION_CONFLICT}};
+    if (failed_statement == "ROLLBACK;") {
+      execution_info.error_message = {{PostgresMessageType::HumanReadableError, "The transaction was rolled back"},
+                                      {PostgresMessageType::SqlstateCodeError, TRANSACTION_CONFLICT}};
+    } else {
+      execution_info.error_message = {
+          {PostgresMessageType::HumanReadableError,
+           "Transaction conflict, transaction was rolled back. Failed statement: " + failed_statement},
+          {PostgresMessageType::SqlstateCodeError, TRANSACTION_CONFLICT}};
+    }
   }
   return std::make_pair(execution_info, sql_pipeline.transaction_context());
 }

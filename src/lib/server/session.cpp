@@ -110,6 +110,7 @@ void Session::_handle_simple_query() {
       QueryHandler::execute_pipeline(query, _send_execution_info, _transaction_context);
 
   if (!execution_information.error_message.empty()) {
+    _transaction_context = nullptr;
     _postgres_protocol_handler->send_error_message(execution_information.error_message);
   } else {
     uint64_t row_count = 0;

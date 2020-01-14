@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include "SQLParserResult.h"
@@ -7,6 +8,9 @@
 #include "concurrency/transaction_context.hpp"
 #include "logical_query_plan/lqp_translator.hpp"
 #include "optimizer/optimizer.hpp"
+#include "scheduler/abstract_task.hpp"
+#include "scheduler/job_task.hpp"
+#include "scheduler/operator_task.hpp"
 #include "sql_plan_cache.hpp"
 #include "storage/table.hpp"
 

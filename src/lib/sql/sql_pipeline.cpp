@@ -1,13 +1,10 @@
 #include "sql_pipeline.hpp"
-#include "hyrise.hpp"
-
 #include <algorithm>
-#include <utility>
-
 #include <boost/algorithm/string.hpp>
-
+#include <utility>
 #include "SQLParser.h"
 #include "create_sql_parser_error_message.hpp"
+#include "hyrise.hpp"
 #include "sql_plan_cache.hpp"
 #include "utils/assert.hpp"
 #include "utils/format_duration.hpp"
@@ -183,7 +180,7 @@ const std::vector<std::shared_ptr<AbstractOperator>>& SQLPipeline::get_physical_
   return _physical_plans;
 }
 
-const std::vector<std::vector<std::shared_ptr<OperatorTask>>>& SQLPipeline::get_tasks() {
+const std::vector<std::vector<std::shared_ptr<AbstractTask>>>& SQLPipeline::get_tasks() {
   if (!_tasks.empty()) {
     return _tasks;
   }

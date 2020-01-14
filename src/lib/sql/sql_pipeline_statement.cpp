@@ -202,44 +202,48 @@ const std::vector<std::shared_ptr<AbstractTask>>& SQLPipelineStatement::get_task
   auto sql_statement = get_parsed_sql_statement();
 
   const std::vector<hsql::SQLStatement*>& statements = sql_statement->getStatements();
-  
-  switch (statements[0]->type()) {
-    // Create JobTask for each TransactionStatement
-    case hsql::kBeginTransaction: {
-      auto job = std::make_shared<JobTask>([this]() {
-        if (!_transaction_context->is_auto_commit()) {
-          FailInput("Cannot begin transaction inside an active transaction.");
-        }
-        _transaction_context = Hyrise::get().transaction_manager.new_transaction_context(false);
-      });
-      break;
-    }
-    case hsql::kCommitTransaction: {
-      auto job = std::make_shared<JobTask>([this]() {
-        if (_transaction_context->is_auto_commit()) {
-          FailInput("Cannot commit since there is no active transaction.");
-        }
-        _transaction_context->commit();
-      });
-      break;
-    }
-    case hsql::kRollbackTransaction: {
-      auto job = std::make_shared<JobTask>([this]() {
-        if (_transaction_context->is_auto_commit()) {
-          FailInput("Cannot commit since there is no active transaction.");
-        }
-        _transaction_context->rollback();
-      });
-      break;
-    }
-    default: {
-      auto operator_tasks = OperatorTask::make_tasks_from_operator(get_physical_plan(), _cleanup_temporaries);
-      _tasks.reserve(operator_tasks.size());
-      for (auto& ot : operator_tasks)
-      {
-        _tasks.emplace_back(ot);
+
+  if (statements[0]->isType(hsql::StatementType::kStmtTransaction)) {
+    auto transaction_statement = static_cast<const hsql::TransactionStatement&>(*statements[0]);
+
+    switch (transaction_statement.command) {
+      // Create JobTask for each TransactionStatement
+      case hsql::kBeginTransaction: {
+        auto job = std::make_shared<JobTask>([this]() {
+          if (!_transaction_context->is_auto_commit()) {
+            FailInput("Cannot begin transaction inside an active transaction.");
+          }
+          _transaction_context = Hyrise::get().transaction_manager.new_transaction_context(false);
+        });
+        _tasks.emplace_back(job);
+        break;
       }
-      break;
+      case hsql::kCommitTransaction: {
+        auto job = std::make_shared<JobTask>([this]() {
+          if (_transaction_context->is_auto_commit()) {
+            FailInput("Cannot commit since there is no active transaction.");
+          }
+          _transaction_context->commit();
+        });
+        _tasks.emplace_back(job);
+        break;
+      }
+      case hsql::kRollbackTransaction: {
+        auto job = std::make_shared<JobTask>([this]() {
+          if (_transaction_context->is_auto_commit()) {
+            FailInput("Cannot commit since there is no active transaction.");
+          }
+          _transaction_context->rollback();
+        });
+        _tasks.emplace_back(job);
+        break;
+      }
+    }
+  } else {
+    auto operator_tasks = OperatorTask::make_tasks_from_operator(get_physical_plan(), _cleanup_temporaries);
+    _tasks.reserve(operator_tasks.size());
+    for (auto& ot : operator_tasks) {
+      _tasks.emplace_back(ot);
     }
   }
 
@@ -295,7 +299,11 @@ std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipelineSta
   _metrics->plan_execution_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(done - started);
 
   // Get output from the last task
-  _result_table = tasks.back()->get_operator()->get_output();
+  auto sql_statement = get_parsed_sql_statement();
+  const std::vector<hsql::SQLStatement*>& statements = sql_statement->getStatements();
+  if (statements[0]->type() != hsql::StatementType::kStmtTransaction) {
+    _result_table = std::dynamic_pointer_cast<OperatorTask>(tasks.back())->get_operator()->get_output();
+  }
   if (!_result_table) _query_has_output = false;
 
   DTRACE_PROBE8(HYRISE, SUMMARY, _sql_string.c_str(), _metrics->sql_translation_duration.count(),
