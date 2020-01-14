@@ -1,4 +1,5 @@
 #include "sql_pipeline.hpp"
+#include "hyrise.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -202,7 +203,10 @@ const std::vector<std::vector<std::shared_ptr<OperatorTask>>>& SQLPipeline::get_
 std::pair<SQLPipelineStatus, const std::shared_ptr<const Table>&> SQLPipeline::get_result_table() & {
   const auto& [pipeline_status, tables] = get_result_tables();
 
-  if (pipeline_status != SQLPipelineStatus::Success) {
+  DebugAssert(pipeline_status != SQLPipelineStatus::NotExecuted,
+              "SQLPipeline::get_result_table() should either return Success or RolledBack");
+
+  if (pipeline_status == SQLPipelineStatus::RolledBack) {
     static std::shared_ptr<const Table> null_table;
     return {pipeline_status, null_table};
   }
@@ -226,9 +230,7 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
 
   std::shared_ptr<TransactionContext> previous_statement_transaction_context = nullptr;
 
-  if (pipeline_size > 0) {
-    previous_statement_transaction_context = _sql_pipeline_statements.front()->transaction_context();
-  }
+  previous_statement_transaction_context = _transaction_context;
 
   for (auto& pipeline_statement : _sql_pipeline_statements) {
     pipeline_statement->set_transaction_context(previous_statement_transaction_context);
@@ -249,9 +251,16 @@ std::pair<SQLPipelineStatus, const std::vector<std::shared_ptr<const Table>>&> S
 
     _result_tables.emplace_back(table);
 
-    // We only want to set the previous statement context if it is shared across statements and not auto generated
-    previous_statement_transaction_context =
-        pipeline_statement->shared_transaction_context() ? pipeline_statement->transaction_context() : nullptr;
+    switch (pipeline_statement->transaction_context()->phase()) {
+      case TransactionPhase::Committed:
+      case TransactionPhase::RolledBack:
+        previous_statement_transaction_context = Hyrise::get().transaction_manager.new_transaction_context();
+        break;
+      default:
+        previous_statement_transaction_context = pipeline_statement->transaction_context()->is_auto_commit()
+                                                     ? nullptr
+                                                     : pipeline_statement->transaction_context();
+    }
   }
 
   _pipeline_status = SQLPipelineStatus::Success;
